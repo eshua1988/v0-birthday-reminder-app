@@ -24,7 +24,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDateBirthdays, setSelectedDateBirthdays] = useState<Birthday[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [calendarView, setCalendarView] = useState<CalendarView>("month")
+  const [calendarView, setCalendarView] = useState<CalendarView>("year")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
   const [newBirthdayDate, setNewBirthdayDate] = useState<string>("")
