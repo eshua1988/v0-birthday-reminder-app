@@ -132,11 +132,11 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-background hidden md:block">
-      <nav className="flex h-full flex-col items-center py-6 justify-between">
+      <nav className="flex h-full flex-col items-center py-6 gap-2">
         {user && (
           <Link
             href="/profile"
-            className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden"
+            className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden mb-2"
             title="Профиль"
           >
             <Avatar className="h-12 w-12">
