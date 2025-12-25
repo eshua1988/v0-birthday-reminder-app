@@ -333,14 +333,14 @@ export default function CalendarPage() {
               onValueChange={(value) => value && setCalendarView(value as CalendarView)}
               className={cn(isMobile && "w-full")}
             >
+              <ToggleGroupItem value="year" aria-label="Год" className={cn(isMobile && "flex-1")}>
+                Год
+              </ToggleGroupItem>
               <ToggleGroupItem value="month" aria-label="Месяц" className={cn(isMobile && "flex-1")}>
                 Месяц
               </ToggleGroupItem>
               <ToggleGroupItem value="week" aria-label="Неделя" className={cn(isMobile && "flex-1")}>
                 Неделя
-              </ToggleGroupItem>
-              <ToggleGroupItem value="year" aria-label="Год" className={cn(isMobile && "flex-1")}>
-                Год
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
