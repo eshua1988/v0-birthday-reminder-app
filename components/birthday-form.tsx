@@ -236,7 +236,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
                   className="h-8"
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Добавить время
+                  {t.addNotificationTime}
                 </Button>
               </div>
 
@@ -268,7 +268,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
               </div>
 
               <p className="text-xs text-muted-foreground">
-                {t.notificationTimeDescription} (Максимум 5 уведомлений в день)
+                {t.notificationTimeDescription} ({t.maxNotificationTimes})
               </p>
             </div>
           </div>

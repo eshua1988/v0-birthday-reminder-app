@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { checkNotificationSupport, requestNotificationPermission, sendNotification } from "@/lib/notifications"
 import { requestFirebaseNotificationPermission } from "@/lib/firebase"
 import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
-import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react"
+import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const [defaultNotificationTime, setDefaultNotificationTime] = useState("09:00")
+  const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(["09:00"])
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -195,6 +196,29 @@ export default function SettingsPage() {
     if (browserNotifData) {
       setBrowserNotificationsEnabled(browserNotifData.value === "true")
     }
+
+    // Load settings
+    if (user) {
+      // Load default notification times from settings
+      const { data: timesData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("user_id", user.id)
+        .eq("key", "default_notification_times")
+        .maybeSingle()
+
+      if (timesData && timesData.value) {
+        try {
+          const times = JSON.parse(timesData.value)
+          if (Array.isArray(times) && times.length > 0) {
+            setDefaultNotificationTimes(times)
+            setDefaultNotificationTime(times[0])
+          }
+        } catch (e) {
+          console.error("[v0] Error parsing default notification times:", e)
+        }
+      }
+    }
   }
 
   const handleSaveSettings = async () => {
@@ -323,6 +347,45 @@ export default function SettingsPage() {
         }
       }
 
+      // Save default notification times array
+      const { data: existingTimes, error: checkTimesError } = await supabase
+        .from("settings")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("key", "default_notification_times")
+        .maybeSingle()
+
+      if (checkTimesError) {
+        console.error("[v0] Error checking existing times setting:", checkTimesError)
+        throw checkTimesError
+      }
+
+      const timesValue = JSON.stringify(defaultNotificationTimes)
+
+      if (existingTimes) {
+        const { error: updateTimesError } = await supabase
+          .from("settings")
+          .update({ value: timesValue, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .eq("key", "default_notification_times")
+
+        if (updateTimesError) {
+          console.error("[v0] Error updating times:", updateTimesError)
+          throw updateTimesError
+        }
+      } else {
+        const { error: insertTimesError } = await supabase.from("settings").insert({
+          user_id: user.id,
+          key: "default_notification_times",
+          value: timesValue,
+        })
+
+        if (insertTimesError) {
+          console.error("[v0] Error inserting times:", insertTimesError)
+          throw insertTimesError
+        }
+      }
+
       console.log("[v0] Settings saved successfully")
 
       toast({
@@ -435,6 +498,31 @@ export default function SettingsPage() {
           variant: "destructive",
         })
       }
+    }
+  }
+
+  const addDefaultNotificationTime = () => {
+    if (defaultNotificationTimes.length < 5) {
+      setDefaultNotificationTimes([...defaultNotificationTimes, "09:00"])
+    }
+  }
+
+  const removeDefaultNotificationTime = (index: number) => {
+    if (defaultNotificationTimes.length > 1) {
+      const newTimes = defaultNotificationTimes.filter((_, i) => i !== index)
+      setDefaultNotificationTimes(newTimes)
+      if (index === 0) {
+        setDefaultNotificationTime(newTimes[0])
+      }
+    }
+  }
+
+  const updateDefaultNotificationTime = (index: number, time: string) => {
+    const newTimes = [...defaultNotificationTimes]
+    newTimes[index] = time
+    setDefaultNotificationTimes(newTimes)
+    if (index === 0) {
+      setDefaultNotificationTime(time)
     }
   }
 
@@ -669,18 +757,49 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="default_time">Время оповещения по умолчанию</Label>
-                <Input
-                  id="default_time"
-                  type="time"
-                  value={defaultNotificationTime}
-                  onChange={(e) => setDefaultNotificationTime(e.target.value)}
-                  disabled={!notificationsEnabled}
-                  className={cn(!notificationsEnabled && "opacity-50 cursor-not-allowed")}
-                />
+                <div className="flex items-center justify-between">
+                  <Label>{t.notificationTime}</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addDefaultNotificationTime}
+                    disabled={!notificationsEnabled || defaultNotificationTimes.length >= 5}
+                    className="h-8"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    {t.addNotificationTime}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {defaultNotificationTimes.map((time, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        type="time"
+                        value={time}
+                        onChange={(e) => updateDefaultNotificationTime(index, e.target.value)}
+                        disabled={!notificationsEnabled}
+                        className={cn(!notificationsEnabled && "opacity-50 cursor-not-allowed")}
+                      />
+                      {defaultNotificationTimes.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeDefaultNotificationTime(index)}
+                          disabled={!notificationsEnabled}
+                          className="h-10 w-10 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 <p className="text-sm text-muted-foreground">
-                  Это время будет использоваться для всех новых записей. Для каждого именинника можно установить
-                  индивидуальное время при добавлении или редактировании.
+                  {t.notificationTimeDescription} ({t.maxNotificationTimes})
                 </p>
               </div>
 
