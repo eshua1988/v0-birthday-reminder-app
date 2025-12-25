@@ -128,5 +128,102 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Улучшения адаптивности для всех устройств */
+@layer utilities {
+  /* Предотвращение горизонтального скролла */
+  .overflow-x-hidden {
+    overflow-x: hidden;
+  }
+  
+  /* Безопасные отступы для notch на iOS */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  /* Минимальная высота с учетом notch */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Предотвращение текстового переполнения */
+  .text-overflow-safe {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  
+  /* Плавная прокрутка */
+  .scroll-smooth-enhanced {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Активное состояние для тач-устройств */
+  .active\:scale-98:active {
+    transform: scale(0.98);
+  }
+  
+  /* Оптимизация производительности */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+}
+
+/* Отзывчивые брейкпоинты */
+@media (max-width: 640px) {
+  /* Мобильные устройства */
+  html {
+    font-size: 14px;
+  }
+  
+  /* Увеличение областей нажатия */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Планшеты */
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1025px) {
+  /* Десктоп */
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Улучшение производительности анимаций */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Оптимизация для touch устройств */
+@media (hover: none) and (pointer: coarse) {
+  /* Увеличение активных зон для тач-экранов */
+  button:not(:disabled), 
+  a:not(:disabled), 
+  [role="button"]:not(:disabled) {
+    padding: 0.75rem 1rem;
   }
 }

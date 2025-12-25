@@ -32,22 +32,26 @@ export function FilterBar({ sortBy, sortDirection, onSortChange, onSortDirection
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
-      <Filter className="h-4 w-4 text-muted-foreground" />
-      <Label className="text-sm font-medium">Сортировка:</Label>
-      <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortOption)}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue>{getSortLabel()}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="date">По дате рождения</SelectItem>
-          <SelectItem value="alphabet">По алфавиту</SelectItem>
-          <SelectItem value="age">По возрасту</SelectItem>
-        </SelectContent>
-      </Select>
-      <Button variant="outline" size="icon" onClick={onSortDirectionToggle} title="Изменить направление сортировки">
-        <ArrowUpDown className="h-4 w-4" />
-      </Button>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 rounded-lg border bg-card p-3 sm:p-4">
+      <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <Label className="text-xs sm:text-sm font-medium">Сортировка:</Label>
+      </div>
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortOption)}>
+          <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10 text-xs sm:text-sm">
+            <SelectValue>{getSortLabel()}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date">По дате рождения</SelectItem>
+            <SelectItem value="alphabet">По алфавиту</SelectItem>
+            <SelectItem value="age">По возрасту</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="icon" onClick={onSortDirectionToggle} title="Изменить направление сортировки" className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
+          <ArrowUpDown className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }

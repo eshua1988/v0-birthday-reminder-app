@@ -69,12 +69,12 @@ export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) 
   return (
     <>
       <Card
-        className="overflow-hidden transition-shadow hover:shadow-lg cursor-pointer"
+        className="overflow-hidden transition-shadow hover:shadow-lg cursor-pointer border-2 active:scale-98"
         onClick={() => setShowDetails(true)}
       >
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <Avatar className="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
               <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
               <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
             </Avatar>

@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { checkNotificationSupport, requestNotificationPermission, sendNotification } from "@/lib/notifications"
 import { requestFirebaseNotificationPermission } from "@/lib/firebase"
-import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
 import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { useToast } from "@/hooks/use-toast"
@@ -65,7 +64,7 @@ export default function SettingsPage() {
 
       if (firebaseConfigured) {
         try {
-          const vapidKey = await getFirebaseVapidKey()
+          const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
 
           if (vapidKey) {
             const token = await requestFirebaseNotificationPermission(vapidKey)

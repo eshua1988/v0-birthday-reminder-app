@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { requestFirebaseNotificationPermission, onFirebaseMessage, checkNotificationPermission } from "@/lib/firebase"
-import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
 import { useToast } from "@/hooks/use-toast"
 
 export function FirebaseNotificationManager() {
@@ -27,7 +26,7 @@ export function FirebaseNotificationManager() {
 
       // Only try to get token if permission is granted or default (will prompt)
       if (permission === "granted" || permission === "default") {
-        const vapidKey = await getFirebaseVapidKey()
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
 
         if (!vapidKey) {
           console.log("[v0] VAPID key not configured, skipping FCM initialization")
