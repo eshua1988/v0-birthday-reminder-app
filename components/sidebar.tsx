@@ -133,41 +133,39 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-background hidden md:block">
       <nav className="flex h-full flex-col items-center py-6 justify-between">
-        <div className="flex flex-col items-center gap-4">
-          {user && (
-            <Link
-              href="/profile"
-              className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden"
-              title="Профиль"
-            >
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
-                <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            </Link>
-          )}
+        {user && (
+          <Link
+            href="/profile"
+            className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden"
+            title="Профиль"
+          >
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
+              <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </Link>
+        )}
 
-          {links.map((link) => {
-            const Icon = link.icon
-            const isActive = pathname === link.href
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-lg transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-                title={link.label}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="sr-only">{link.label}</span>
-              </Link>
-            )
-          })}
-        </div>
+        {links.map((link) => {
+          const Icon = link.icon
+          const isActive = pathname === link.href
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "flex h-12 w-12 items-center justify-center rounded-lg transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+              title={link.label}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="sr-only">{link.label}</span>
+            </Link>
+          )
+        })}
       </nav>
     </aside>
   )

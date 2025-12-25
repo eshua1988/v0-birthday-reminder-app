@@ -323,7 +323,7 @@ export default function CalendarPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-8 md:ml-16")}>
+      <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Календарь дней рождения</h1>

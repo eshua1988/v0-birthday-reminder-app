@@ -33,7 +33,7 @@ export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, o
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6 pl-16 sm:pl-6">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6 pl-16 md:pl-20">
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
