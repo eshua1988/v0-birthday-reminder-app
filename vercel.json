@@ -1,4 +1,6 @@
 {
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "crons": [
     {
       "path": "/api/cron/check-birthdays",
