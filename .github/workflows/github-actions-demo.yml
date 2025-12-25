@@ -16,4 +16,3 @@ run-name: ${{ github.actor }} тестирует GitHub Actions 🚀
         выполнить: |
           ls ${{ github.workspace }}
       - выполнить: echo "🍏 Статус этой задачи: ${{ job.status }}."
-
