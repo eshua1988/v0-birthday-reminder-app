@@ -181,9 +181,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-4 sm:p-6 md:p-10">
-      <div className="w-full max-w-sm sm:max-w-md">
-        <Card className="border-0 shadow-lg sm:border sm:shadow-md">
+    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+      <div className="w-full max-w-sm">
+        <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Вход</CardTitle>
             <CardDescription>Введите email и пароль для входа</CardDescription>
@@ -207,61 +207,61 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <form action="#" onSubmit={handleLogin}>
+            <form onSubmit={handleLogin}>
               <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-11 sm:h-12 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 transition-all duration-200 hover:shadow-md text-sm sm:text-base"
+                    className="w-full bg-transparent"
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
                   >
-                    <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                       <path
-                        fill="#4285F4"
+                        fill="currentColor"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                       />
                       <path
-                        fill="#34A853"
+                        fill="currentColor"
                         d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
                       />
                       <path
-                        fill="#FBBC05"
+                        fill="currentColor"
                         d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
                       />
                       <path
-                        fill="#EA4335"
+                        fill="currentColor"
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    <span className="font-medium">Войти через Google</span>
+                    Войти через Google
                   </Button>
 
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 transition-all duration-200 hover:shadow-md"
+                    className="w-full bg-transparent"
                     onClick={handleFacebookSignIn}
                     disabled={isLoading}
                   >
-                    <svg className="mr-2 h-5 w-5" fill="#1877F2" viewBox="0 0 24 24">
+                    <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
-                    <span className="font-medium">Войти через Facebook</span>
+                    Войти через Facebook
                   </Button>
 
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 transition-all duration-200 hover:shadow-md"
+                    className="w-full bg-transparent"
                     onClick={handleAppleSignIn}
                     disabled={isLoading}
                   >
-                    <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
                     </svg>
-                    <span className="font-medium">Войти через Apple</span>
+                    Войти через Apple
                   </Button>
                 </div>
 
@@ -272,12 +272,11 @@ export default function LoginPage() {
                 </div>
 
                 <div className="grid gap-2 relative">
-                  <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="example@church.com"
-                    className="h-10 sm:h-11 text-sm sm:text-base"
                     required
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
@@ -289,12 +288,12 @@ export default function LoginPage() {
                     onBlur={() => setTimeout(() => setShowEmailSuggestions(false), 200)}
                   />
                   {showEmailSuggestions && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-10">
                       {EMAIL_DOMAINS.map((domain) => (
                         <button
                           key={domain}
                           type="button"
-                          className="w-full text-left px-3 py-2 hover:bg-accent text-xs sm:text-sm transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
                           onClick={() => selectDomain(domain)}
                         >
                           {email.split("@")[0] + domain}
@@ -305,7 +304,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="password" className="text-sm sm:text-base">Пароль</Label>
+                  <Label htmlFor="password">Пароль</Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -313,7 +312,7 @@ export default function LoginPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pr-10 h-10 sm:h-11 text-sm sm:text-base"
+                      className="pr-10"
                     />
                     <button
                       type="button"
@@ -325,8 +324,8 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {error && <p className="text-xs sm:text-sm text-red-500 break-words">{error}</p>}
-                <Button type="submit" className="w-full h-10 sm:h-11 text-sm sm:text-base" disabled={isLoading}>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Вход..." : "Войти"}
                 </Button>
               </div>

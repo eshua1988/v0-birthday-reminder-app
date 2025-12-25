@@ -84,7 +84,7 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
           <DialogTitle>{t.addMultiple}</DialogTitle>
         </DialogHeader>
 
-        <form action="#" onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {members.map((member, index) => (
             <div key={member.id} className="rounded-lg border p-4 space-y-4">
               <div className="flex items-center justify-between">

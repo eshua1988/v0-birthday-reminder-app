@@ -46,47 +46,21 @@ export default function ProfilePage() {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) {
-        console.log("[v0] No user found, redirecting to login")
         router.push("/auth/login")
         return
       }
-      
-      console.log("[v0] User loaded:", user.id)
       setUser(user)
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle()
+      const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
-      if (profileError) {
-        console.error("[v0] Error loading profile:", {
-          message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint,
-          code: profileError.code,
-          fullError: profileError
-        })
-        
-        if (profileError.message?.includes("relation") || profileError.message?.includes("does not exist")) {
-          console.error("[v0] Таблица 'profiles' не найдена. Выполните scripts/010_create_auth_tables.sql")
-        }
-      } else if (profileData) {
-        console.log("[v0] Profile loaded successfully")
+      if (profileData) {
         setProfile(profileData)
         setFirstName(profileData.first_name || "")
         setLastName(profileData.last_name || "")
         setPhoneNumber(profileData.phone_number || "")
-      } else {
-        console.warn("[v0] No profile found for user:", user.id)
       }
-    } catch (error: any) {
-      console.error("[v0] Exception loading user:", {
-        message: error?.message,
-        stack: error?.stack,
-        fullError: error
-      })
+    } catch (error) {
+      console.error("[v0] Error loading user:", error)
     } finally {
       setIsLoading(false)
     }
@@ -108,34 +82,12 @@ export default function ProfilePage() {
         })
         .eq("id", user.id)
 
-      if (error) {
-        console.error("[v0] Profile update error:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          fullError: error
-        })
-        throw error
-      }
+      if (error) throw error
 
-      console.log("[v0] Profile updated successfully")
       setSuccess("Профиль успешно обновлен")
       await loadUser()
     } catch (error: any) {
-      console.error("[v0] Exception updating profile:", {
-        message: error?.message,
-        fullError: error
-      })
-      
-      let errorMsg = error.message || "Ошибка при обновлении профиля"
-      if (error.message?.includes("relation") || error.message?.includes("does not exist")) {
-        errorMsg = "Таблица 'profiles' не найдена. Выполните SQL скрипты из DATABASE_SETUP.md"
-      } else if (error.message?.includes("policy")) {
-        errorMsg = "Ошибка доступа. Проверьте RLS политики для таблицы profiles"
-      }
-      
-      setError(errorMsg)
+      setError(error.message || "Ошибка при обновлении профиля")
     } finally {
       setIsUpdatingProfile(false)
     }
@@ -163,24 +115,12 @@ export default function ProfilePage() {
         password: newPassword,
       })
 
-      if (error) {
-        console.error("[v0] Password update error:", {
-          message: error.message,
-          status: error.status,
-          fullError: error
-        })
-        throw error
-      }
+      if (error) throw error
 
-      console.log("[v0] Password updated successfully")
       setSuccess("Пароль успешно изменен")
       setNewPassword("")
       setConfirmPassword("")
     } catch (error: any) {
-      console.error("[v0] Exception updating password:", {
-        message: error?.message,
-        fullError: error
-      })
       setError(error.message || "Ошибка при изменении пароля")
     } finally {
       setIsUpdatingPassword(false)
@@ -194,140 +134,33 @@ export default function ProfilePage() {
     setError(null)
     setSuccess(null)
 
-    // Проверка размера файла (макс 5MB)
-    const maxSize = 5 * 1024 * 1024
-    if (file.size > maxSize) {
-      setError("Размер файла не должен превышать 5MB")
-      return
-    }
-
-    // Проверка типа файла
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
-    if (!allowedTypes.includes(file.type)) {
-      setError("Разрешены только изображения (JPEG, PNG, GIF, WebP)")
-      return
-    }
-
-    setIsUpdatingProfile(true)
-
     try {
-      // Генерируем уникальное имя файла с timestamp
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg"
-      const timestamp = Date.now()
-      const fileName = `${user.id}/avatar_${timestamp}.${fileExt}`
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${user.id}/avatar.${fileExt}`
 
-      console.log("[v0] Uploading avatar:", fileName)
-
-      // Удаляем старый аватар, если он есть
       if (profile?.avatar_url) {
-        try {
-          // Извлекаем путь из URL
-          const urlParts = profile.avatar_url.split("/avatars/")
-          if (urlParts.length > 1) {
-            const oldPath = urlParts[1]
-            console.log("[v0] Removing old avatar:", oldPath)
-            await supabase.storage.from("avatars").remove([oldPath])
-          }
-        } catch (removeError) {
-          console.warn("[v0] Could not remove old avatar:", removeError)
-          // Продолжаем даже если не удалось удалить старый файл
-        }
+        const oldPath = profile.avatar_url.split("/").pop()
+        await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`])
       }
 
-      // Загружаем новый файл
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: true,
-        })
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
+        upsert: true,
+      })
 
-      if (uploadError) {
-        console.error("[v0] Upload error:", {
-          message: uploadError.message,
-          statusCode: uploadError.statusCode,
-          error: uploadError.error,
-          fullError: uploadError
-        })
-        throw uploadError
-      }
+      if (uploadError) throw uploadError
 
-      console.log("[v0] Upload successful:", uploadData)
-
-      // Получаем публичный URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(fileName)
 
-      console.log("[v0] Public URL:", publicUrl)
+      const { error: updateError } = await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id)
 
-      // Обновляем профиль с новым URL
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id)
+      if (updateError) throw updateError
 
-      if (updateError) {
-        console.error("[v0] Profile update error:", {
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code,
-          fullError: updateError
-        })
-        
-        // Специфичные подсказки для ошибок базы данных
-        if (updateError.message?.includes("relation") || updateError.message?.includes("does not exist")) {
-          console.error("[v0] Таблица 'profiles' не найдена. Выполните scripts/010_create_auth_tables.sql")
-        } else if (updateError.message?.includes("policy") || updateError.message?.includes("row-level security")) {
-          console.error("[v0] Ошибка RLS политик. Проверьте политики для таблицы profiles в Supabase")
-        } else if (updateError.message?.includes("violates foreign key")) {
-          console.error("[v0] Пользователь не найден в auth.users. Попробуйте выйти и войти снова")
-        }
-        
-        throw updateError
-      }
-
-      // Обновляем локальное состояние
       setProfile({ ...profile, avatar_url: publicUrl })
-      setSuccess("Фото профиля успешно обновлено!")
-      
-      // Перезагружаем профиль для обновления в sidebar
-      await loadUser()
+      setSuccess("Фото профиля обновлено")
     } catch (error: any) {
-      console.error("[v0] Avatar upload error:", {
-        message: error?.message,
-        name: error?.name,
-        stack: error?.stack,
-        statusCode: error?.statusCode,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint,
-        fullError: error
-      })
-      
-      // Специфичные сообщения об ошибках
-      let errorMessage = "Ошибка при загрузке фото. Попробуйте еще раз."
-      
-      if (error.message?.includes("relation") || error.message?.includes("does not exist")) {
-        errorMessage = "Таблица 'profiles' не найдена. Выполните SQL скрипты из DATABASE_SETUP.md"
-      } else if (error.message?.includes("row-level security") || error.message?.includes("policy")) {
-        errorMessage = "Ошибка доступа. Проверьте настройки политик RLS в Supabase."
-      } else if (error.message?.includes("not found") || error.message?.includes("bucket")) {
-        errorMessage = "Bucket 'avatars' не найден. Создайте его в Supabase Dashboard → Storage (см. STORAGE_SETUP.md)"
-      } else if (error.message?.includes("size")) {
-        errorMessage = "Файл слишком большой. Максимальный размер: 5MB."
-      } else if (error.message?.includes("permission") || error.message?.includes("Unauthorized")) {
-        errorMessage = "Недостаточно прав для загрузки. Проверьте политики безопасности."
-      } else if (error.message?.includes("foreign key") || error.message?.includes("violates")) {
-        errorMessage = "Профиль пользователя не найден. Попробуйте выйти и войти снова."
-      } else if (error.message) {
-        errorMessage = error.message
-      }
-      
-      setError(errorMessage)
-    } finally {
-      setIsUpdatingProfile(false)
+      setError(error.message || "Ошибка при загрузке фото")
     }
   }
 
@@ -375,40 +208,30 @@ export default function ProfilePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Фото профиля</CardTitle>
-                  <CardDescription>Загрузите или измените ваше фото (макс. 5MB, JPEG/PNG/GIF/WebP)</CardDescription>
+                  <CardDescription>Загрузите или измените ваше фото</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="h-32 w-32">
-                      <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
-                      <AvatarFallback className="text-4xl">{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    {isUpdatingProfile && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
-                        <RefreshCw className="h-8 w-8 animate-spin" />
-                      </div>
-                    )}
-                  </div>
+                  <Avatar className="h-32 w-32">
+                    <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
+                    <AvatarFallback className="text-4xl">{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                   <div className="flex gap-2">
                     <Label htmlFor="avatar-upload" className="cursor-pointer">
-                      <Button variant="outline" asChild disabled={isUpdatingProfile}>
+                      <Button variant="outline" asChild>
                         <span>
                           <Upload className="mr-2 h-4 w-4" />
-                          {isUpdatingProfile ? "Загрузка..." : "Загрузить фото"}
+                          Загрузить фото
                         </span>
                       </Button>
                     </Label>
                     <Input
                       id="avatar-upload"
                       type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      accept="image/*"
                       className="hidden"
                       onChange={handleAvatarUpload}
-                      disabled={isUpdatingProfile}
                     />
                   </div>
-                  {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                  {success && <p className="text-sm text-green-500 text-center">{success}</p>}
                 </CardContent>
               </Card>
 
@@ -428,7 +251,7 @@ export default function ProfilePage() {
                   <CardDescription>Обновите вашу личную информацию</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form action="#" onSubmit={handleProfileUpdate} className="space-y-4">
+                  <form onSubmit={handleProfileUpdate} className="space-y-4">
                     <div className="grid gap-2">
                       <Label htmlFor="first-name">{t.firstName}</Label>
                       <Input
@@ -474,7 +297,7 @@ export default function ProfilePage() {
                   <CardDescription>Обновите ваш пароль для входа</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form action="#" onSubmit={handlePasswordChange} className="space-y-4">
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
                     <div className="grid gap-2">
                       <Label htmlFor="new-password">Новый пароль</Label>
                       <Input

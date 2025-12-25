@@ -68,7 +68,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="fixed left-3 top-3 z-[60] md:hidden h-10 w-10 rounded-full shadow-md bg-background/95 backdrop-blur"
+          className="fixed left-4 top-4 z-[60] md:hidden"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -83,19 +83,19 @@ export function Sidebar() {
 
         <aside
           className={cn(
-            "fixed left-0 top-0 z-50 h-screen w-72 sm:w-80 border-r bg-background transition-transform duration-200 md:hidden overflow-y-auto",
+            "fixed left-0 top-0 z-50 h-screen w-64 border-r bg-background transition-transform duration-200 md:hidden",
             isOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <nav className="flex h-full flex-col py-16 px-4 sm:px-6">
+          <nav className="flex h-full flex-col py-16 px-4">
             {user && (
-              <Link href="/profile" onClick={() => setIsOpen(false)} className="mb-4 p-3 rounded-lg hover:bg-muted transition-colors">
+              <Link href="/profile" onClick={() => setIsOpen(false)} className="mb-4 p-3">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
                     <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 overflow-hidden min-w-0">
+                  <div className="flex-1 overflow-hidden">
                     <p className="truncate text-sm font-medium">{user.email}</p>
                   </div>
                 </div>
@@ -112,14 +112,14 @@ export function Sidebar() {
                     href={link.href}
                     onClick={() => setIsOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors text-sm sm:text-base",
+                      "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <span className="truncate">{link.label}</span>
+                    <Icon className="h-5 w-5" />
+                    <span>{link.label}</span>
                   </Link>
                 )
               })}

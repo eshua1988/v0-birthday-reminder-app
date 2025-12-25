@@ -62,6 +62,10 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
+    fetchBirthdays()
+  }, [])
+
+  useEffect(() => {
     filterAndSortBirthdays()
   }, [searchQuery, birthdays, sortBy, sortDirection])
 
@@ -122,19 +126,7 @@ export default function HomePage() {
         .order("birth_date", { ascending: true })
 
       if (error) {
-        console.error("[v0] Error fetching birthdays:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          fullError: error
-        })
-        // Показываем уведомление пользователю
-        if (error.message?.includes("relation") || error.message?.includes("does not exist")) {
-          console.error("[v0] Таблица 'birthdays' не найдена. Выполните SQL скрипты из папки scripts/")
-        } else if (error.message?.includes("policy")) {
-          console.error("[v0] Ошибка RLS политик. Проверьте настройки безопасности в Supabase")
-        }
+        console.error("[v0] Error fetching birthdays:", error)
       } else {
         console.log("[v0] Fetched birthdays:", data?.length || 0, "records")
         setBirthdays(data || [])
@@ -143,12 +135,8 @@ export default function HomePage() {
           setHistoryIndex(0)
         }
       }
-    } catch (error: any) {
-      console.error("[v0] Exception fetching birthdays:", {
-        message: error?.message,
-        stack: error?.stack,
-        fullError: error
-      })
+    } catch (error) {
+      console.error("[v0] Exception fetching birthdays:", error)
     } finally {
       setIsLoading(false)
     }
@@ -345,36 +333,36 @@ export default function HomePage() {
           onRedo={handleRedo}
         />
 
-        <main className={cn("p-4 pb-safe", isMobile ? "pt-20" : "p-6 md:p-8 ml-16 pt-24")}>
+        <main className={cn(isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-24 md:ml-16")}>
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col gap-4">
               <div>
-                <h1 className={cn("font-bold leading-tight", isMobile ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl")}>{t.upcomingBirthdays}</h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.upcomingBirthdays}</h1>
+                <p className="text-muted-foreground mt-1">
                   {birthdays.length} {birthdays.length === 1 ? "member" : "members"}
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={() => setIsFormOpen(true)} className={cn("h-10 text-sm sm:text-base", isMobile && "w-full")}>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setIsFormOpen(true)} className={cn(isMobile && "flex-1")}>
                   <Plus className="h-4 w-4 mr-2" />
                   {t.addMember}
                 </Button>
-                <Button variant="outline" onClick={() => setIsBulkFormOpen(true)} className={cn("h-10 text-sm sm:text-base", isMobile && "w-full")}>
+                <Button variant="outline" onClick={() => setIsBulkFormOpen(true)} className={cn(isMobile && "flex-1")}>
                   <Users className="h-4 w-4 mr-2" />
                   {t.addMultiple}
                 </Button>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={t.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 text-sm sm:text-base"
+                  className="pl-9"
                 />
               </div>
 
@@ -388,18 +376,18 @@ export default function HomePage() {
 
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-sm sm:text-base text-muted-foreground">Загрузка...</div>
+                <div className="text-muted-foreground">Загрузка...</div>
               </div>
             ) : filteredBirthdays.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold">{t.noMembers}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-2 max-w-sm">{t.noMembersDescription}</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold">{t.noMembers}</h3>
+                <p className="text-muted-foreground mt-2">{t.noMembersDescription}</p>
               </div>
             ) : (
               <>
                 {viewMode === "cards" && (
-                  <div className={cn("grid gap-3 sm:gap-4", isMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>
+                  <div className={cn("grid gap-4", isMobile ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3")}>
                     {filteredBirthdays.map((birthday) => (
                       <BirthdayCard key={birthday.id} birthday={birthday} onEdit={handleEdit} onDelete={handleDelete} />
                     ))}

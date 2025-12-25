@@ -9,8 +9,17 @@ export function createClient() {
     return client
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("[v0] Supabase environment variables not found. Please add them in the Vars section.")
+    // Возвращаем mock клиент для предотвращения ошибок
+    return null as any
+  }
+
   // Создаем новый клиент только если его еще нет
-  client = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  client = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
   return client
 }

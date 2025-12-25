@@ -6,12 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Отключаем Server Actions чтобы избежать конфликтов с proxy headers
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
-  },
+ 
 }
 
 export default nextConfig

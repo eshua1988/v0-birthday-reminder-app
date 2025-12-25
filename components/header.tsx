@@ -33,13 +33,13 @@ export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, o
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 md:px-6 pl-16 sm:pl-20 md:pl-6">
-        <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6 pl-16 sm:pl-6">
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size={isMobile ? "icon" : "sm"} className="gap-2 bg-transparent h-9 w-9 sm:h-10 sm:w-auto">
-                <Languages className="h-4 w-4 flex-shrink-0" />
-                {!isMobile && <span className="text-sm">{currentLanguage?.label}</span>}
+              <Button variant="outline" size={isMobile ? "icon" : "sm"} className="gap-2 bg-transparent">
+                <Languages className="h-4 w-4" />
+                {!isMobile && <span>{currentLanguage?.label}</span>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[160px]">
@@ -53,11 +53,11 @@ export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, o
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="flex items-center gap-0.5 sm:gap-1">
-            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} title="Отменить" className="h-9 w-9 sm:h-10 sm:w-10">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} title="Отменить">
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} title="Повторить" className="h-9 w-9 sm:h-10 sm:w-10">
+            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} title="Повторить">
               <Redo2 className="h-4 w-4" />
             </Button>
           </div>

@@ -142,7 +142,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
           <DialogTitle>{birthday ? t.edit : t.addMember}</DialogTitle>
         </DialogHeader>
 
-        <form action="#" onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col items-center gap-4">
             <Avatar className="h-24 w-24">
               <AvatarImage src={formData.photo_url || undefined} />

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { checkNotificationSupport, requestNotificationPermission } from "@/lib/notifications"
 import { requestFirebaseNotificationPermission } from "@/lib/firebase"
+import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
 
 export function NotificationPermissionAutoRequest() {
   const [hasChecked, setHasChecked] = useState(false)
@@ -95,7 +96,7 @@ export function NotificationPermissionAutoRequest() {
       }
 
       try {
-        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+        const vapidKey = await getFirebaseVapidKey()
         if (vapidKey) {
           const token = await requestFirebaseNotificationPermission(vapidKey)
           if (token) {
