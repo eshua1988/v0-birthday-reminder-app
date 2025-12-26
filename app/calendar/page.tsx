@@ -7,9 +7,11 @@ import { Sidebar } from "@/components/sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ChevronLeft, ChevronRight, Mail, Phone, Plus, Edit, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Mail, Phone, Plus, Edit, Trash2, Languages } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLocale } from "@/lib/locale-context"
+import type { Locale } from "@/lib/i18n"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BirthdayForm } from "@/components/birthday-form"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -18,7 +20,7 @@ import { cn } from "@/lib/utils"
 type CalendarView = "month" | "week" | "year"
 
 export default function CalendarPage() {
-  const { t } = useLocale()
+  const { t, setLocale } = useLocale()
   const isMobile = useIsMobile()
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -326,7 +328,30 @@ export default function CalendarPage() {
       <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Календарь дней рождения</h1>
+            <div className="flex items-center gap-3">
+              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Календарь дней рождения</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Languages className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setLocale('ru')} className="cursor-pointer">
+                    🇷🇺 Русский
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocale('pl')} className="cursor-pointer">
+                    🇵🇱 Polski
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocale('uk')} className="cursor-pointer">
+                    🇺🇦 Українська
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocale('en')} className="cursor-pointer">
+                    🇬🇧 English
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <ToggleGroup
               type="single"
               value={calendarView}

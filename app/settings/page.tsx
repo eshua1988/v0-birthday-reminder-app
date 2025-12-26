@@ -11,8 +11,10 @@ import { Switch } from "@/components/ui/switch"
 import { checkNotificationSupport, requestNotificationPermission, sendNotification } from "@/lib/notifications"
 import { requestFirebaseNotificationPermission } from "@/lib/firebase"
 import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
-import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X } from "lucide-react"
+import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X, Languages } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
+import type { Locale } from "@/lib/i18n"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -25,7 +27,7 @@ const APP_VERSION = "0.1.0"
 const LAST_UPDATED = "2025-12-22"
 
 export default function SettingsPage() {
-  const { t } = useLocale()
+  const { t, setLocale } = useLocale()
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const [defaultNotificationTime, setDefaultNotificationTime] = useState("09:00")
@@ -532,9 +534,32 @@ export default function SettingsPage() {
 
       <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
         <div className="max-w-2xl mx-auto space-y-6">
-          <div>
-            <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
-            <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
+              <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <Languages className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setLocale('ru')} className="cursor-pointer">
+                  🇷🇺 Русский
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocale('pl')} className="cursor-pointer">
+                  🇵🇱 Polski
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocale('uk')} className="cursor-pointer">
+                  🇺🇦 Українська
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocale('en')} className="cursor-pointer">
+                  🇬🇧 English
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <Card>
@@ -585,33 +610,6 @@ export default function SettingsPage() {
                   <h3 className="text-lg font-medium">{t.firebaseCloudMessaging}</h3>
                   <p className="text-sm text-muted-foreground">{t.firebaseAdvancedFeatures}</p>
                 </div>
-
-                {!fcmToken && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Требуется разрешение на уведомления</AlertTitle>
-                    <AlertDescription className="space-y-2">
-                      <p className="text-sm">
-                        Для получения push-уведомлений на телефон необходимо разрешить уведомления в браузере.
-                      </p>
-                      <div className="text-sm space-y-2 mt-3">
-                        <p className="font-semibold">Инструкция для Android (Chrome):</p>
-                        <ol className="list-decimal list-inside space-y-1 ml-2">
-                          <li>Нажмите на значок замка слева от адресной строки</li>
-                          <li>Найдите "Уведомления" или "Notifications"</li>
-                          <li>Выберите "Разрешить" (Allow)</li>
-                          <li>Обновите страницу</li>
-                        </ol>
-                        <p className="font-semibold mt-3">Альтернативный способ:</p>
-                        <ol className="list-decimal list-inside space-y-1 ml-2">
-                          <li>Откройте Настройки Chrome (три точки)</li>
-                          <li>Перейдите в "Настройки сайтов" → "Уведомления"</li>
-                          <li>Найдите этот сайт и переключите на "Разрешить"</li>
-                        </ol>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
 
                 {fcmToken && (
                   <div className="space-y-2">
