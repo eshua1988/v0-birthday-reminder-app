@@ -145,6 +145,7 @@ export const translations = {
     settingsSaved: "Настройки сохранены",
     notificationTimeUpdated: "Время оповещения обновлено",
     failedToSaveSettings: "Не удалось сохранить настройки",
+    error: "Ошибка",
   },
   pl: {
     appName: "Urodziny",
@@ -290,6 +291,7 @@ export const translations = {
     settingsSaved: "Ustawienia zapisane",
     notificationTimeUpdated: "Czas powiadomienia zaktualizowany",
     failedToSaveSettings: "Nie udało się zapisać ustawień",
+    error: "Błąd",
   },
   uk: {
     appName: "Дні Народження",
@@ -434,6 +436,7 @@ export const translations = {
     settingsSaved: "Налаштування збережено",
     notificationTimeUpdated: "Час сповіщення оновлено",
     failedToSaveSettings: "Не вдалося зберегти налаштування",
+    error: "Помилка",
   },
   en: {
     appName: "Birthdays",
@@ -579,9 +582,11 @@ export const translations = {
     settingsSaved: "Settings saved",
     notificationTimeUpdated: "Notification times updated",
     failedToSaveSettings: "Failed to save settings",
+    error: "Помилка",
     settingsSaved: "Settings saved",
     notificationTimeUpdated: "Notification times updated",
     failedToSaveSettings: "Failed to save settings",
+    error: "Error",
   },
   ua: {
     appName: "Дні Народження",
@@ -871,6 +876,7 @@ export const translations = {
     settingsSaved: "Налады захаваны",
     notificationTimeUpdated: "Час апавяшчэння абноўлены",
     failedToSaveSettings: "Не ўдалося захаваць налады",
+    error: "Памылка",
   },
 }
 
