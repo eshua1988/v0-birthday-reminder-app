@@ -68,10 +68,10 @@ export default function SettingsPage() {
     const granted = await requestNotificationPermission()
     setBrowserPermission(checkNotificationSupport())
 
-    if (granted) {
+      if (granted) {
       toast({
         title: t.notificationsAllowed,
-        description: "Теперь вы будете получать напоминания о днях рождения",
+        description: t.notificationsEnabledDescription,
       })
 
       if (firebaseConfigured) {
@@ -83,8 +83,8 @@ export default function SettingsPage() {
             if (token) {
               setFcmToken(token)
               toast({
-                title: "Firebase подключен",
-                description: "Push-уведомления будут работать даже когда приложение закрыто",
+                title: t.fcmConnectedTitle,
+                description: t.fcmConnectedDescription,
               })
             }
           } else {
@@ -113,8 +113,8 @@ export default function SettingsPage() {
     })
 
     toast({
-      title: "Тестовое уведомление отправлено",
-      description: "Проверьте уведомления вашего устройства",
+      title: t.sendTestNotification,
+      description: t.checkYourDevices,
     })
   }
 
@@ -126,10 +126,10 @@ export default function SettingsPage() {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) {
+        if (!user) {
         toast({
-          title: "Ошибка",
-          description: "Вы не авторизованы",
+          title: t.error,
+          description: t.notAuthenticated,
           variant: "destructive",
         })
         return
@@ -144,23 +144,23 @@ export default function SettingsPage() {
 
       const data = await response.json()
 
-      if (response.ok) {
+        if (response.ok) {
         toast({
-          title: "Тестовое уведомление отправлено",
-          description: data.message || "Проверьте ваши устройства",
+          title: t.sendTestNotification,
+          description: data.message || t.checkYourDevices,
         })
       } else {
         toast({
-          title: "Ошибка",
-          description: data.error || "Не удалось отправить уведомление",
+          title: t.error,
+          description: data.error || t.failedToSaveSettings,
           variant: "destructive",
         })
       }
     } catch (error) {
       console.error("[v0] Error sending test notification:", error)
       toast({
-        title: "Ошибка",
-        description: "Не удалось отправить тестовое уведомление",
+        title: t.error,
+        description: t.failedToSaveSettings,
         variant: "destructive",
       })
     } finally {
@@ -478,7 +478,7 @@ export default function SettingsPage() {
         }
       } else {
         toast({
-          title: "Уведомления отключены",
+          title: t.notificationsBlocked,
           description: "Вы не будете получать напоминания о днях рождения",
         })
       }
@@ -497,14 +497,14 @@ export default function SettingsPage() {
       try {
         await navigator.clipboard.writeText(fcmToken)
         toast({
-          title: "Токен скопирован",
-          description: "FCM токен скопирован в буфер обмена",
+          title: t.tokenCopied,
+          description: t.fcmTokenCopiedDescription,
         })
       } catch (error) {
         console.error("[v0] Error copying token:", error)
         toast({
           title: "Ошибка",
-          description: "Не удалось скопировать токен",
+          description: t.failedToCopyToken || "Не удалось скопировать токен",
           variant: "destructive",
         })
       }
@@ -568,8 +568,8 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Статус уведомлений</CardTitle>
-              <CardDescription>Проверка конфигурации системы уведомлений</CardDescription>
+                  <CardTitle>{t.notificationStatus}</CardTitle>
+                  <CardDescription>{t.notificationStatusDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between rounded-lg border p-3">
@@ -580,13 +580,13 @@ export default function SettingsPage() {
                     <XCircle className="h-5 w-5 text-red-500" />
                   )}
                   <div>
-                    <p className="text-sm font-medium">Браузерные уведомления</p>
+                    <p className="text-sm font-medium">{t.browserNotifications}</p>
                     <p className="text-xs text-muted-foreground">
                       {browserPermission.supported && browserPermission.granted
-                        ? "Разрешены"
+                        ? t.allowed
                         : browserPermission.denied
-                          ? "Заблокированы"
-                          : "Не настроены"}
+                          ? t.blocked
+                          : t.notConfigured}
                     </p>
                   </div>
                 </div>
@@ -600,9 +600,9 @@ export default function SettingsPage() {
                     <XCircle className="h-5 w-5 text-yellow-500" />
                   )}
                   <div>
-                    <p className="text-sm font-medium">Firebase Cloud Messaging</p>
+                    <p className="text-sm font-medium">{t.firebaseCloudMessaging}</p>
                     <p className="text-xs text-muted-foreground">
-                      {firebaseConfigured ? "Настроен" : "Не настроен (опционально)"}
+                      {firebaseConfigured ? t.configured : t.notConfiguredOptional}
                     </p>
                   </div>
                 </div>
@@ -619,23 +619,22 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Alert>
                       <CheckCircle2 className="h-4 w-4" />
-                      <AlertTitle>FCM Токен успешно получен!</AlertTitle>
-                      <AlertDescription>Ваше устройство готово к получению push-уведомлений.</AlertDescription>
+                      <AlertTitle>{t.fcmTokenSuccess}</AlertTitle>
+                      <AlertDescription>{t.fcmTokenSuccessDescription}</AlertDescription>
                     </Alert>
                     <div className="rounded-lg border p-3 bg-muted/50">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium mb-1">FCM Token для мобильных уведомлений:</p>
+                          <p className="text-xs font-medium mb-1">{t.fcmTokenForMobile}</p>
                           <p className="text-xs font-mono break-all text-muted-foreground">{fcmToken}</p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={handleCopyFcmToken} className="shrink-0">
-                          Копировать
+                          {t.copyToken}
                         </Button>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Этот токен используется для отправки push-уведомлений на ваше устройство. См. MOBILE_FCM_SETUP.md
-                      для инструкций.
+                      {t.fcmTokenForMobile} {t.seeDocumentation}
                     </p>
                   </div>
                 )}
@@ -644,9 +643,9 @@ export default function SettingsPage() {
               {!firebaseConfigured && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <Bell className="inline h-4 w-4 mr-2" />
-                    Для расширенных функций push-уведомлений настройте Firebase Cloud Messaging. См. FIREBASE_SETUP.md
-                  </p>
+                        <Bell className="inline h-4 w-4 mr-2" />
+                        {t.firebaseAdvancedFeatures}
+                      </p>
                 </div>
               )}
             </CardContent>
@@ -661,11 +660,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
                   <Label htmlFor="browser_notifications" className="cursor-pointer font-medium">
-                    Разрешения браузера на уведомления
+                    {t.browserPermissions}
                   </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Автоматически запрашивать и управлять разрешениями на уведомления
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t.autoRequestPermissions}</p>
                 </div>
                 <Switch
                   id="browser_notifications"
@@ -806,7 +803,7 @@ export default function SettingsPage() {
               </div>
 
               <Button onClick={handleSaveSettings} disabled={isLoading}>
-                {isLoading ? "Сохранение..." : "Сохранить настройки"}
+                {isLoading ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
           </Card>

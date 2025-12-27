@@ -285,7 +285,7 @@ export default function ProfilePage() {
                     {error && <p className="text-sm text-red-500">{error}</p>}
                     {success && <p className="text-sm text-green-500">{success}</p>}
                     <Button type="submit" disabled={isUpdatingProfile}>
-                      {isUpdatingProfile ? "Сохранение..." : t.save}
+                      {isUpdatingProfile ? t.saving : t.save}
                     </Button>
                   </form>
                 </CardContent>
@@ -293,7 +293,7 @@ export default function ProfilePage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Изменить пароль</CardTitle>
+                  <CardTitle>{t.changePassword}</CardTitle>
                   <CardDescription>Обновите ваш пароль для входа</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                     {error && <p className="text-sm text-red-500">{error}</p>}
                     {success && <p className="text-sm text-green-500">{success}</p>}
                     <Button type="submit" disabled={isUpdatingPassword}>
-                      {isUpdatingPassword ? "Сохранение..." : "Изменить пароль"}
+                      {isUpdatingPassword ? t.saving : t.changePassword}
                     </Button>
                   </form>
                 </CardContent>
