@@ -263,7 +263,6 @@ export const translations = {
     language: "Język",
     confirmDelete: "Czy na pewno chcesz usunąć tego członka?",
     close: "Zamknij",
-    uploadPhoto: "Prześlij zdjęcie",
     notificationTime: "Czas powiadomienia",
     notificationTimeDescription: "O której godzinie wysłać przypomnienie o urodzinach",
     notificationTimes: "Czasy powiadomień",
