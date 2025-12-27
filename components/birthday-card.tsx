@@ -17,7 +17,22 @@ interface BirthdayCardProps {
 }
 
 export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
+  const localeMap: Record<string, string> = {
+    ru: "ru-RU",
+    pl: "pl-PL",
+    uk: "uk-UA",
+    ua: "uk-UA",
+    en: "en-US",
+    be: "be-BY",
+  }
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString(localeMap[locale] || "ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
   const [showDetails, setShowDetails] = useState(false)
   const [timeUntil, setTimeUntil] = useState({ months: 0, days: 0, hours: 0 })
 
@@ -83,13 +98,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) 
               <h3 className="font-semibold text-lg truncate">
                 {birthday.last_name} {birthday.first_name}
               </h3>
-              <p className="text-sm text-muted-foreground">
-                {new Date(birthday.birth_date).toLocaleDateString("ru-RU", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
+              <p className="text-sm text-muted-foreground">{formatDate(birthday.birth_date)}</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {t.age}: {getAge()} {t.years}
               </p>
@@ -98,10 +107,10 @@ export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) 
               {timeData.totalDays === 1 && <p className="text-sm font-semibold text-blue-600 mt-2">{t.tomorrow}</p>}
               {timeData.totalDays > 1 && (
                 <div className="text-sm text-muted-foreground mt-2">
-                  <p className="font-medium">До дня рождения:</p>
+                  <p className="font-medium">{t.timeUntilLabel}</p>
                   <p>
-                    {timeUntil.months > 0 && `${timeUntil.months} мес. `}
-                    {timeUntil.days} дн. {timeUntil.hours} ч.
+                    {timeUntil.months > 0 && `${timeUntil.months} ${t.monthsShort} `}
+                    {timeUntil.days} {t.daysShort} {timeUntil.hours} {t.hoursShort}
                   </p>
                 </div>
               )}
@@ -183,13 +192,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) 
               </div>
               <div>
                 <Label className="text-muted-foreground">{t.birthDate}</Label>
-                <p className="text-lg font-medium">
-                  {new Date(birthday.birth_date).toLocaleDateString("ru-RU", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
+                <p className="text-lg font-medium">{formatDate(birthday.birth_date)}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground">{t.age}</Label>
