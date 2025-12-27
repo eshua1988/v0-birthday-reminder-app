@@ -142,6 +142,9 @@ export const translations = {
     currentVersion: "Текущая версия",
     lastUpdated: "Последнее обновление",
     viewChangelog: "Посмотреть список изменений",
+    settingsSaved: "Настройки сохранены",
+    notificationTimeUpdated: "Время оповещения обновлено",
+    failedToSaveSettings: "Не удалось сохранить настройки",
   },
   pl: {
     appName: "Urodziny",
@@ -284,6 +287,9 @@ export const translations = {
     currentVersion: "Aktualna wersja",
     lastUpdated: "Ostatnia aktualizacja",
     viewChangelog: "Zobacz listę zmian",
+    settingsSaved: "Ustawienia zapisane",
+    notificationTimeUpdated: "Czas powiadomienia zaktualizowany",
+    failedToSaveSettings: "Nie udało się zapisać ustawień",
   },
   uk: {
     appName: "Дні Народження",
@@ -425,6 +431,9 @@ export const translations = {
     currentVersion: "Поточна версія",
     lastUpdated: "Останнє оновлення",
     viewChangelog: "Переглянути список змін",
+    settingsSaved: "Налаштування збережено",
+    notificationTimeUpdated: "Час сповіщення оновлено",
+    failedToSaveSettings: "Не вдалося зберегти налаштування",
   },
   en: {
     appName: "Birthdays",
@@ -567,6 +576,12 @@ export const translations = {
     currentVersion: "Current Version",
     lastUpdated: "Last Updated",
     viewChangelog: "View Changelog",
+    settingsSaved: "Settings saved",
+    notificationTimeUpdated: "Notification times updated",
+    failedToSaveSettings: "Failed to save settings",
+    settingsSaved: "Settings saved",
+    notificationTimeUpdated: "Notification times updated",
+    failedToSaveSettings: "Failed to save settings",
   },
   ua: {
     appName: "Дні Народження",
@@ -708,6 +723,9 @@ export const translations = {
     currentVersion: "Current Version",
     lastUpdated: "Last Updated",
     viewChangelog: "View Changelog",
+    settingsSaved: "Settings saved",
+    notificationTimeUpdated: "Notification times updated",
+    failedToSaveSettings: "Failed to save settings",
   },
   be: {
     appName: "Дні Народжэнні",
@@ -850,6 +868,9 @@ export const translations = {
     currentVersion: "Бягучая версія",
     lastUpdated: "Апошнія абнавленні",
     viewChangelog: "Паглядзе спісу змен",
+    settingsSaved: "Налады захаваны",
+    notificationTimeUpdated: "Час апавяшчэння абноўлены",
+    failedToSaveSettings: "Не ўдалося захаваць налады",
   },
 }
 
