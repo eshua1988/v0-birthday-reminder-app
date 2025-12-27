@@ -33,7 +33,7 @@ export function initializeFirebaseAdmin() {
       credential: cert(serviceAccount),
     })
 
-    console.log("[Firebase Admin] Успешно инициализирован для проекта:", serviceAccount.project_id)
+    console.log("[Firebase Admin] Успешно инициализирован для проекта:", serviceAccount.projectId)
     return firebaseAdmin
   } catch (error) {
     console.error("[Firebase Admin] Ошибка инициализации:", error)
