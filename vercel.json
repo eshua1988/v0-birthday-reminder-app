@@ -1,8 +1,11 @@
 {
+  "buildCommand": "pnpm run build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": "nextjs",
   "crons": [
     {
       "path": "/api/cron/check-birthdays",
-      "schedule": "* * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
