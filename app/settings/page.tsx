@@ -528,18 +528,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <Header 
-        viewMode="cards" 
-        onViewModeChange={() => {}} 
-        canUndo={false}
-        canRedo={false}
-        onUndo={() => {}}
-        onRedo={() => {}}
-      />
-      <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
-        <div className="max-w-2xl mx-auto space-y-6">
+
+      <div className="flex-1 w-full">
+        <Header 
+          viewMode="cards" 
+          onViewModeChange={() => {}} 
+          canUndo={false}
+          canRedo={false}
+          onUndo={() => {}}
+          onRedo={() => {}}
+        />
+
+        <main className={cn(isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-24 md:ml-16")}>
+          <div className="max-w-2xl mx-auto space-y-6">
           <div>
             <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
             <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
@@ -819,6 +822,7 @@ export default function SettingsPage() {
           </Card>
         </div>
       </main>
+      </div>
     </div>
   )
 }
