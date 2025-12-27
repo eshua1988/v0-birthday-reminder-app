@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
 
         if (tokens && tokens.length > 0) {
-          const fcmTokens = tokens.map((t) => t.token)
+          const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
 
           console.log(
             "[v0] Cron: Sending notification for:",
