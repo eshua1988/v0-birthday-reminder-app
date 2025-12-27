@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Sidebar } from "@/components/sidebar"
+import { Header } from "@/components/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,10 +12,8 @@ import { Switch } from "@/components/ui/switch"
 import { checkNotificationSupport, requestNotificationPermission, sendNotification } from "@/lib/notifications"
 import { requestFirebaseNotificationPermission } from "@/lib/firebase"
 import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
-import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X, Languages } from "lucide-react"
+import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
-import type { Locale } from "@/lib/i18n"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -532,34 +531,21 @@ export default function SettingsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
-        <div className="max-w-2xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
-              <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <Languages className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLocale('ru')} className="cursor-pointer">
-                  🇷🇺 Русский
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale('pl')} className="cursor-pointer">
-                  🇵🇱 Polski
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale('uk')} className="cursor-pointer">
-                  🇺🇦 Українська
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale('en')} className="cursor-pointer">
-                  🇬🇧 English
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      <div className="flex-1 w-full">
+        <Header 
+          viewMode="cards" 
+          onViewModeChange={() => {}} 
+          canUndo={false}
+          canRedo={false}
+          onUndo={() => {}}
+          onRedo={() => {}}
+        />
+
+        <main className={cn(isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-24 md:ml-16")}>
+          <div className="max-w-2xl mx-auto space-y-6">
+          <div>
+            <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
+            <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
           </div>
 
           <Card>
@@ -836,6 +822,7 @@ export default function SettingsPage() {
           </Card>
         </div>
       </main>
+      </div>
     </div>
   )
 }
