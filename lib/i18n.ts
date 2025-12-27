@@ -108,7 +108,6 @@ export const translations = {
     loading: "Загрузка...",
     profilePhoto: "Фото профиля",
     profilePhotoDescription: "Загрузите или измените ваше фото",
-    uploadPhoto: "Загрузить фото",
     updatePersonalInfo: "Обновите вашу личную информацию",
     placeholderFirstName: "Имя",
     placeholderLastName: "Фамилия",
