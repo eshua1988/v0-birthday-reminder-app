@@ -4,13 +4,14 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Birthday } from "@/types/birthday"
 import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ChevronLeft, ChevronRight, Mail, Phone, Plus, Edit, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Mail, Phone, Plus, Edit, Trash2, Languages } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLocale } from "@/lib/locale-context"
+import type { Locale } from "@/lib/i18n"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BirthdayForm } from "@/components/birthday-form"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -25,7 +26,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDateBirthdays, setSelectedDateBirthdays] = useState<Birthday[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [calendarView, setCalendarView] = useState<CalendarView>("year")
+  const [calendarView, setCalendarView] = useState<CalendarView>("month")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
   const [newBirthdayDate, setNewBirthdayDate] = useState<string>("")
@@ -35,24 +36,6 @@ export default function CalendarPage() {
   useEffect(() => {
     fetchBirthdays()
   }, [])
-
-  // Load saved calendar view from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("calendarView")
-      // Validate that saved value is a valid CalendarView
-      if (saved === "month" || saved === "week" || saved === "year") {
-        setCalendarView(saved)
-      }
-    }
-  }, [])
-
-  // Save calendar view to localStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("calendarView", calendarView)
-    }
-  }, [calendarView])
 
   const fetchBirthdays = async () => {
     const { data, error } = await supabase.from("birthdays").select("*")
@@ -342,23 +325,32 @@ export default function CalendarPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <div className="flex-1 w-full">
-        <Header 
-          viewMode="cards" 
-          onViewModeChange={() => {}} 
-          canUndo={false}
-          canRedo={false}
-          onUndo={() => {}}
-          onRedo={() => {}}
-        />
-
-        <main className={cn(isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-24 md:ml-16")}>
-          <div className="max-w-7xl mx-auto space-y-6">
+      <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
+        <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>
-                {t.calendar}
-              </h1>
+              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Календарь дней рождения</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Languages className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setLocale('ru')} className="cursor-pointer">
+                    🇷🇺 Русский
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocale('pl')} className="cursor-pointer">
+                    🇵🇱 Polski
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocale('uk')} className="cursor-pointer">
+                    🇺🇦 Українська
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocale('en')} className="cursor-pointer">
+                    🇬🇧 English
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <ToggleGroup
               type="single"
@@ -420,7 +412,6 @@ export default function CalendarPage() {
           </Card>
         </div>
       </main>
-      </div>
 
       <Dialog
         open={selectedDate !== null}
