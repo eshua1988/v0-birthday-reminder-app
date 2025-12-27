@@ -78,7 +78,7 @@ export function useAutoSync(options: AutoSyncOptions = { enabled: true, debounce
       const fileName = `birthday-backup-auto-${new Date().toISOString().split("T")[0]}.json`
       console.log("[v0] Auto-sync: Uploading to Google Drive...")
 
-      await uploadToGoogleDrive(accessTokenRef.current, fileName, dataString)
+      await uploadToGoogleDrive(accessTokenRef.current!, fileName, dataString)
 
       lastSyncRef.current = dataHash
       console.log("[v0] Auto-sync: Sync completed successfully")
