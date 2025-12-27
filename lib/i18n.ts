@@ -880,6 +880,6 @@ export const translations = {
   },
 }
 
-export function getTranslation(locale: Locale) {
-  return translations[locale]
+export function getTranslation(locale: Locale): Record<string, string> {
+  return translations[locale] as unknown as Record<string, string>
 }
