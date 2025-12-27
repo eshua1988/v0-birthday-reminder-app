@@ -25,7 +25,14 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDateBirthdays, setSelectedDateBirthdays] = useState<Birthday[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [calendarView, setCalendarView] = useState<CalendarView>("month")
+  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
+    // Load saved calendar view from localStorage, default to "year"
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("calendarView")
+      return (saved as CalendarView) || "year"
+    }
+    return "year"
+  })
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
   const [newBirthdayDate, setNewBirthdayDate] = useState<string>("")
@@ -35,6 +42,13 @@ export default function CalendarPage() {
   useEffect(() => {
     fetchBirthdays()
   }, [])
+
+  // Save calendar view to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("calendarView", calendarView)
+    }
+  }, [calendarView])
 
   const fetchBirthdays = async () => {
     const { data, error } = await supabase.from("birthdays").select("*")
