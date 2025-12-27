@@ -11,6 +11,7 @@ import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { useLocale } from "@/lib/locale-context"
 import { format, parse } from "date-fns"
+import { Birthday } from "@/types/birthday"
 
 const supabase = createClient()
 
@@ -85,7 +86,7 @@ export function BackupManager() {
       doc.text(`Дата экспорта: ${format(new Date(), "dd.MM.yyyy HH:mm")}`, 14, 28)
       doc.text(`Всего записей: ${birthdays?.length || 0}`, 14, 34)
 
-      const tableData = (birthdays || []).map((b) => [
+      const tableData = (birthdays || []).map((b: Birthday) => [
         b.last_name || "",
         b.first_name || "",
         b.birth_date ? format(new Date(b.birth_date), "dd.MM.yyyy") : "",
@@ -135,7 +136,7 @@ export function BackupManager() {
       if (error) throw error
 
       // Подготовить данные для Excel
-      const excelData = (birthdays || []).map((b) => ({
+      const excelData = (birthdays || []).map((b: Birthday) => ({
         Фамилия: b.last_name || "",
         Имя: b.first_name || "",
         "Дата рождения": b.birth_date ? format(new Date(b.birth_date), "dd.MM.yyyy") : "",
