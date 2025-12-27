@@ -1,11 +1,8 @@
 {
   "buildCommand": "pnpm run build",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": "nextjs",
- copilot/update-vercel-json-configuration
-
   "outputDirectory": ".next",
- main
   "crons": [
     {
       "path": "/api/cron/check-birthdays",
