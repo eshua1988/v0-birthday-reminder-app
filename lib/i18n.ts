@@ -730,7 +730,6 @@ export const translations = {
     language: "Language",
     confirmDelete: "Are you sure you want to delete this member?",
     close: "Close",
-    uploadPhoto: "Upload Photo",
     notificationTime: "Notification Time",
     notificationTimeDescription: "When to send birthday reminder",
     notificationTimes: "Notification Times",
