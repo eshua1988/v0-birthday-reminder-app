@@ -25,14 +25,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDateBirthdays, setSelectedDateBirthdays] = useState<Birthday[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
-    // Load saved calendar view from localStorage, default to "year"
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("calendarView")
-      return (saved as CalendarView) || "year"
-    }
-    return "year"
-  })
+  const [calendarView, setCalendarView] = useState<CalendarView>("year")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
   const [newBirthdayDate, setNewBirthdayDate] = useState<string>("")
@@ -41,6 +34,17 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchBirthdays()
+  }, [])
+
+  // Load saved calendar view from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("calendarView")
+      // Validate that saved value is a valid CalendarView
+      if (saved === "month" || saved === "week" || saved === "year") {
+        setCalendarView(saved)
+      }
+    }
   }, [])
 
   // Save calendar view to localStorage whenever it changes
