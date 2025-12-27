@@ -159,22 +159,9 @@ export default function CalendarPage() {
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
   const emptyDays = Array.from({ length: firstDay }, (_, i) => i)
 
-  const monthNames = [
-    "Январь",
-    "Февраль",
-    "Март",
-    "Апрель",
-    "Май",
-    "Июнь",
-    "Июль",
-    "Август",
-    "Сентябрь",
-    "Октябрь",
-    "Ноябрь",
-    "Декабрь",
-  ]
+  const monthNames = Array.from({ length: 12 }, (_, i) => (t as Record<string, string>)[`month_${i}`])
 
-  const weekDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+  const weekDays = Array.from({ length: 7 }, (_, i) => (t as Record<string, string>)[`weekday_${i}`])
 
   const renderMonthView = () => (
     <div className="grid grid-cols-7 gap-2">
@@ -280,7 +267,7 @@ export default function CalendarPage() {
                   className="w-full p-2 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
                 >
                   <Plus className="h-3 w-3" />
-                  <span>Добавить</span>
+                  <span>{t.add}</span>
                 </button>
               </div>
             </div>
@@ -316,7 +303,7 @@ export default function CalendarPage() {
               <CardContent>
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {monthBirthdays.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Нет дней рождения</p>
+                    <p className="text-xs text-muted-foreground">{t.noBirthdays}</p>
                   ) : (
                     monthBirthdays.map((b) => {
                       const birthDate = new Date(b.birth_date)
@@ -351,8 +338,8 @@ export default function CalendarPage() {
       <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Календарь дней рождения</h1>
+              <div className="flex items-center gap-3">
+              <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.calendarTitle}</h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size={isMobile ? "icon" : "sm"} className="gap-2 bg-transparent h-9">
@@ -377,14 +364,14 @@ export default function CalendarPage() {
               onValueChange={(value) => value && setCalendarViewAndSave(value as CalendarView)}
               className={cn(isMobile && "w-full")}
             >
-              <ToggleGroupItem value="year" aria-label="Год" className={cn(isMobile && "flex-1")}>
-                Год
+              <ToggleGroupItem value="year" aria-label={t.year} className={cn(isMobile && "flex-1")}>
+                {t.year}
               </ToggleGroupItem>
-              <ToggleGroupItem value="month" aria-label="Месяц" className={cn(isMobile && "flex-1")}>
-                Месяц
+              <ToggleGroupItem value="month" aria-label={t.month} className={cn(isMobile && "flex-1")}>
+                {t.month}
               </ToggleGroupItem>
-              <ToggleGroupItem value="week" aria-label="Неделя" className={cn(isMobile && "flex-1")}>
-                Неделя
+              <ToggleGroupItem value="week" aria-label={t.week} className={cn(isMobile && "flex-1")}>
+                {t.week}
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
@@ -405,10 +392,15 @@ export default function CalendarPage() {
                 </Button>
                 <CardTitle className={cn(isMobile ? "text-base" : "text-xl")}>
                   {calendarView === "week"
-                    ? `Неделя ${currentDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`
+                    ? `${t.week} ${currentDate.toLocaleDateString(
+                        ({ ru: "ru-RU", pl: "pl-PL", uk: "uk-UA", en: "en-US", ua: "uk-UA", be: "be-BY" } as Record<Locale, string>)[
+                          locale
+                        ] || "en-US",
+                        { day: "numeric", month: "long" }
+                      )}`
                     : calendarView === "year"
-                      ? currentDate.getFullYear()
-                      : `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+                    ? currentDate.getFullYear()
+                    : `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
                 </CardTitle>
                 <Button
                   variant="outline"
@@ -443,7 +435,12 @@ export default function CalendarPage() {
           <DialogHeader>
             <DialogTitle>
               {selectedDate &&
-                `Дни рождения - ${selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`}
+                `${t.calendarTitle} - ${selectedDate.toLocaleDateString(
+                  ({ ru: "ru-RU", pl: "pl-PL", uk: "uk-UA", en: "en-US", ua: "uk-UA", be: "be-BY" } as Record<Locale, string>)[
+                    locale
+                  ] || "en-US",
+                  { day: "numeric", month: "long", year: "numeric" }
+                )}`}
             </DialogTitle>
           </DialogHeader>
 
@@ -462,13 +459,13 @@ export default function CalendarPage() {
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Добавить именинника
+              {t.addBirthday}
             </Button>
           </div>
 
           <div className="space-y-4">
             {selectedDateBirthdays.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Нет именинников на эту дату</p>
+              <p className="text-center text-muted-foreground py-8">{t.noBirthdaysOnDate}</p>
             ) : (
               selectedDateBirthdays.map((birthday) => (
                 <Card key={birthday.id}>
@@ -494,12 +491,16 @@ export default function CalendarPage() {
 
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">Дата рождения:</span>
-                            <span>{new Date(birthday.birth_date).toLocaleDateString("ru-RU")}</span>
+                            <span className="font-medium">{t.dateOfBirthLabel}</span>
+                            <span>{new Date(birthday.birth_date).toLocaleDateString(
+                              ({ ru: "ru-RU", pl: "pl-PL", uk: "uk-UA", en: "en-US", ua: "uk-UA", be: "be-BY" } as Record<Locale, string>)[
+                                locale
+                              ] || "en-US"
+                            )}</span>
                           </div>
 
                           <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">Время оповещения:</span>
+                            <span className="font-medium">{t.notificationTimeLabel}</span>
                             <span>{birthday.notification_time || "09:00"}</span>
                           </div>
 
