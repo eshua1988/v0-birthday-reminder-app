@@ -32,8 +32,10 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      # Using --no-frozen-lockfile because pnpm-lock.yaml is not committed to the repository
+      # In production environments, consider committing pnpm-lock.yaml for reproducible builds
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run ESLint
         run: pnpm lint
@@ -61,8 +63,10 @@ jobs:
           node-version:  '20'
           cache: 'pnpm'
 
+      # Using --no-frozen-lockfile because pnpm-lock.yaml is not committed to the repository
+      # In production environments, consider committing pnpm-lock.yaml for reproducible builds
       - name: Install dependencies
-        run:  pnpm install --frozen-lockfile
+        run:  pnpm install --no-frozen-lockfile
 
       - name: Build project
         run: pnpm build
