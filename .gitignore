@@ -37,6 +37,7 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
-# Lock files (если используете pnpm)
+# Lock files
 package-lock.json
+yarn.lock
 
