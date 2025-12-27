@@ -24,7 +24,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with: 
-          version: 8
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,7 +41,7 @@ jobs:
         run: pnpm lint
 
       - name: TypeScript type check
-        run: pnpm tsc --noEmit
+        run: pnpm exec tsc --noEmit
 
   # Job 2: Build Test
   build-test:
@@ -55,7 +55,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -72,36 +72,48 @@ jobs:
         run: pnpm build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets. NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   # Job 3: Deploy to Vercel (Production)
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [quality-check, build-test]
-    if: github. event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
       - name:  Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: pnpm add --global vercel
 
       - name:  Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project Artifacts
-        run: vercel build --prod --token=${{ secrets. VERCEL_TOKEN }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Deploy Project Artifacts to Vercel
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets. VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
 
       - name: Comment deployment URL
@@ -109,11 +121,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const url = '${{ steps. deploy.outputs.url }}';
+            const url = '${{ steps.deploy.outputs.url }}';
             github.rest.repos.createCommitComment({
-              owner:  context.repo.owner,
+              owner: context.repo.owner,
               repo: context.repo.repo,
-              commit_sha: context. sha,
+              commit_sha: context.sha,
               body: `✅ Production deployment successful!\n\n🔗 Deployment URL: ${url}`
             });
 
@@ -127,19 +139,31 @@ jobs:
       - name:  Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: pnpm add --global vercel
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project Artifacts
-        run: vercel build --token=${{ secrets. VERCEL_TOKEN }}
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Deploy Preview to Vercel
         id: deploy-preview
@@ -152,10 +176,10 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const url = '${{ steps. deploy-preview.outputs.url }}';
+            const url = '${{ steps.deploy-preview.outputs.url }}';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
-              owner: context.repo. owner,
-              repo: context. repo.repo,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
               body: `🚀 Preview deployment is ready!\n\n🔗 Preview URL: ${url}\n\n✅ All checks passed!`
             });
