@@ -278,7 +278,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
               {t.cancel}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "..." : t.save}
+              {isLoading ? t.saving : t.save}
             </Button>
           </div>
         </form>

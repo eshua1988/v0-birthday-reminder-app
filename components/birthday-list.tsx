@@ -13,7 +13,18 @@ interface BirthdayListProps {
 }
 
 export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
+  const localeMap: Record<string, string> = {
+    ru: "ru-RU",
+    pl: "pl-PL",
+    uk: "uk-UA",
+    ua: "uk-UA",
+    en: "en-US",
+    be: "be-BY",
+  }
+
+  const formatDate = (dateStr: string, options?: Intl.DateTimeFormatOptions) =>
+    new Date(dateStr).toLocaleDateString(localeMap[locale] || "ru-RU", options as any)
 
   const getAge = (birthDate: string) => {
     const today = new Date()
@@ -43,12 +54,7 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
                 {birthday.last_name} {birthday.first_name}
               </h3>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>
-                  {new Date(birthday.birth_date).toLocaleDateString("ru-RU", {
-                    day: "numeric",
-                    month: "long",
-                  })}
-                </span>
+                <span>{formatDate(birthday.birth_date, { day: "numeric", month: "long" })}</span>
                 <span>
                   {t.age}: {getAge(birthday.birth_date)}
                 </span>

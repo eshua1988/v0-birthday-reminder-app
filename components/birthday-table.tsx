@@ -15,8 +15,20 @@ interface BirthdayTableProps {
 }
 
 export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProps) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const isMobile = useIsMobile()
+
+  const localeMap: Record<string, string> = {
+    ru: "ru-RU",
+    pl: "pl-PL",
+    uk: "uk-UA",
+    ua: "uk-UA",
+    en: "en-US",
+    be: "be-BY",
+  }
+
+  const formatDate = (dateStr: string, options?: Intl.DateTimeFormatOptions) =>
+    new Date(dateStr).toLocaleDateString(localeMap[locale] || "ru-RU", options as any)
 
   const getAge = (birthDate: string) => {
     const today = new Date()
@@ -50,10 +62,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                     {birthday.last_name} {birthday.first_name}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {new Date(birthday.birth_date).toLocaleDateString("ru-RU", {
-                      day: "numeric",
-                      month: "long",
-                    })}{" "}
+                    {formatDate(birthday.birth_date, { day: "numeric", month: "long" })} {" "}
                     • {getAge(birthday.birth_date)} {t.years}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -69,7 +78,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                       <Button variant="outline" size="sm" className="h-7 text-xs bg-transparent" asChild>
                         <a href={`mailto:${birthday.email}`}>
                           <Mail className="h-3 w-3 mr-1" />
-                          Email
+                          {birthday.email}
                         </a>
                       </Button>
                     )}
@@ -129,11 +138,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                 <TableCell className="font-medium">{birthday.last_name}</TableCell>
                 <TableCell>{birthday.first_name}</TableCell>
                 <TableCell>
-                  {new Date(birthday.birth_date).toLocaleDateString("ru-RU", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })}
                 </TableCell>
                 <TableCell>{getAge(birthday.birth_date)}</TableCell>
                 <TableCell>
