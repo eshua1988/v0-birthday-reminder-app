@@ -499,7 +499,6 @@ export const translations = {
     language: "Мова",
     confirmDelete: "Ви впевнені, що хочете видалити цього учасника?",
     close: "Закрити",
-    uploadPhoto: "Завантажити фото",
     notificationTime: "Час сповіщення",
     notificationTimeDescription: "О котрій відправити нагадування про день народження",
     notificationTimes: "Часи сповіщень",
