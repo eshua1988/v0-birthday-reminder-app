@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, onRedo }: HeaderProps) {
-  const { locale, setLocale } = useLocale()
+  const { t, locale, setLocale } = useLocale()
   const isMobile = useIsMobile()
 
   const languages: { value: Locale; label: string; flag: string }[] = [
