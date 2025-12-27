@@ -582,10 +582,6 @@ export const translations = {
     settingsSaved: "Settings saved",
     notificationTimeUpdated: "Notification times updated",
     failedToSaveSettings: "Failed to save settings",
-    error: "Помилка",
-    settingsSaved: "Settings saved",
-    notificationTimeUpdated: "Notification times updated",
-    failedToSaveSettings: "Failed to save settings",
     error: "Error",
   },
   ua: {
