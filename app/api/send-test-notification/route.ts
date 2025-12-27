@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const fcmTokens = tokens.map((t) => t.token)
+    const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
 
     if (!isFirebaseAdminConfigured()) {
       console.log("[v0] Test notification: FIREBASE_SERVICE_ACCOUNT_KEY not configured")
