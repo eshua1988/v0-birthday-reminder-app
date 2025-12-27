@@ -12,9 +12,9 @@ interface AutoSyncOptions {
 
 export function useAutoSync(options: AutoSyncOptions = { enabled: true, debounceMs: 5000 }) {
   const { enabled, debounceMs = 5000 } = options
-  const timeoutRef = useRef<NodeJS.Timeout>()
-  const lastSyncRef = useRef<string>()
-  const accessTokenRef = useRef<string>()
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const lastSyncRef = useRef<string | undefined>(undefined)
+  const accessTokenRef = useRef<string | undefined>(undefined)
   const isInitializedRef = useRef(false)
   const supabase = createClient()
 
