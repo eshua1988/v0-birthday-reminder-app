@@ -54,10 +54,10 @@ export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, o
           </DropdownMenu>
 
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} title="Отменить">
+            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} title={t.undo}>
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} title="Повторить">
+            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} title={t.redo}>
               <Redo2 className="h-4 w-4" />
             </Button>
           </div>

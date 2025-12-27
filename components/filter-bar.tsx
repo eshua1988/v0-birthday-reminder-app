@@ -21,31 +21,31 @@ export function FilterBar({ sortBy, sortDirection, onSortChange, onSortDirection
   const getSortLabel = () => {
     switch (sortBy) {
       case "date":
-        return sortDirection === "asc" ? "По дате (ближайшие)" : "По дате (дальние)"
+        return sortDirection === "asc" ? t.sortDateNearest : t.sortDateFurthest
       case "alphabet":
-        return sortDirection === "asc" ? "По алфавиту (А-Я)" : "По алфавиту (Я-А)"
+        return sortDirection === "asc" ? t.sortAlphabetAsc : t.sortAlphabetDesc
       case "age":
-        return sortDirection === "asc" ? "По возрасту (младше)" : "По возрасту (старше)"
+        return sortDirection === "asc" ? t.sortAgeYounger : t.sortAgeOlder
       default:
-        return "Сортировка"
+        return t.sorting
     }
   }
 
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
       <Filter className="h-4 w-4 text-muted-foreground" />
-      <Label className="text-sm font-medium">Сортировка:</Label>
+      <Label className="text-sm font-medium">{t.sorting}:</Label>
       <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortOption)}>
         <SelectTrigger className="w-[180px]">
           <SelectValue>{getSortLabel()}</SelectValue>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="date">По дате рождения</SelectItem>
-          <SelectItem value="alphabet">По алфавиту</SelectItem>
-          <SelectItem value="age">По возрасту</SelectItem>
+          <SelectItem value="date">{t.sortByDate}</SelectItem>
+          <SelectItem value="alphabet">{t.sortByAlphabet}</SelectItem>
+          <SelectItem value="age">{t.sortByAge}</SelectItem>
         </SelectContent>
       </Select>
-      <Button variant="outline" size="icon" onClick={onSortDirectionToggle} title="Изменить направление сортировки">
+      <Button variant="outline" size="icon" onClick={onSortDirectionToggle} title={t.toggleSortDirection}>
         <ArrowUpDown className="h-4 w-4" />
       </Button>
     </div>

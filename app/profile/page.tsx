@@ -180,7 +180,7 @@ export default function ProfilePage() {
       <div className="flex min-h-screen bg-background">
         <Sidebar />
         <div className={cn("flex-1 flex items-center justify-center", !isMobile && "ml-16")}>
-          <p>Загрузка...</p>
+          <p>{t.loading}</p>
         </div>
       </div>
     )
@@ -207,12 +207,12 @@ export default function ProfilePage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Фото профиля</CardTitle>
-                  <CardDescription>Загрузите или измените ваше фото</CardDescription>
+                  <CardTitle>{t.profilePhoto}</CardTitle>
+                  <CardDescription>{t.profilePhotoDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
+                    <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt={t.profilePhoto} />
                     <AvatarFallback className="text-4xl">{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex gap-2">
@@ -220,7 +220,7 @@ export default function ProfilePage() {
                       <Button variant="outline" asChild>
                         <span>
                           <Upload className="mr-2 h-4 w-4" />
-                          Загрузить фото
+                          {t.uploadPhoto}
                         </span>
                       </Button>
                     </Label>
@@ -248,7 +248,7 @@ export default function ProfilePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>{t.personalInfo}</CardTitle>
-                  <CardDescription>Обновите вашу личную информацию</CardDescription>
+                  <CardDescription>{t.updatePersonalInfo}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleProfileUpdate} className="space-y-4">
@@ -259,7 +259,7 @@ export default function ProfilePage() {
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="Иван"
+                        placeholder={t.placeholderFirstName}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -269,7 +269,7 @@ export default function ProfilePage() {
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Иванов"
+                        placeholder={t.placeholderLastName}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -279,7 +279,7 @@ export default function ProfilePage() {
                         type="tel"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="+7 900 123 45 67"
+                        placeholder={t.placeholderPhone}
                       />
                     </div>
                     {error && <p className="text-sm text-red-500">{error}</p>}
@@ -294,28 +294,28 @@ export default function ProfilePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>{t.changePassword}</CardTitle>
-                  <CardDescription>Обновите ваш пароль для входа</CardDescription>
+                  <CardDescription>{t.updatePasswordDescription}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handlePasswordChange} className="space-y-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="new-password">Новый пароль</Label>
+                      <Label htmlFor="new-password">{t.newPasswordLabel}</Label>
                       <Input
                         id="new-password"
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Минимум 6 символов"
+                        placeholder={t.newPasswordPlaceholder}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="confirm-password">Подтвердите пароль</Label>
+                      <Label htmlFor="confirm-password">{t.confirmPasswordLabel}</Label>
                       <Input
                         id="confirm-password"
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Повторите новый пароль"
+                        placeholder={t.confirmPasswordPlaceholder}
                       />
                     </div>
                     {error && <p className="text-sm text-red-500">{error}</p>}
@@ -329,8 +329,8 @@ export default function ProfilePage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Управление аккаунтом</CardTitle>
-                  <CardDescription>Выйти или сменить аккаунт</CardDescription>
+                  <CardTitle>{t.manageAccount}</CardTitle>
+                  <CardDescription>{t.manageAccountDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={handleSwitchAccount}>
