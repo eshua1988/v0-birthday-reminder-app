@@ -20,13 +20,36 @@ import { cn } from "@/lib/utils"
 type CalendarView = "month" | "week" | "year"
 
 export default function CalendarPage() {
-  const { t, setLocale } = useLocale()
+  const { t, setLocale, locale } = useLocale()
   const isMobile = useIsMobile()
+  const languages: { value: Locale; label: string; flag: string }[] = [
+    { value: "ru", label: "Русский", flag: "🇷🇺" },
+    { value: "pl", label: "Polski", flag: "🇵🇱" },
+    { value: "uk", label: "Українська", flag: "🇺🇦" },
+    { value: "en", label: "English", flag: "🇬🇧" },
+  ]
+
+  const currentLanguage = languages.find((lang) => lang.value === locale)
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDateBirthdays, setSelectedDateBirthdays] = useState<Birthday[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [calendarView, setCalendarView] = useState<CalendarView>("month")
+  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("calendarView") as CalendarView | null
+      if (saved === "month" || saved === "week" || saved === "year") return saved
+    }
+    return "year"
+  })
+
+  const setCalendarViewAndSave = (value: CalendarView) => {
+    setCalendarView(value)
+    try {
+      sessionStorage.setItem("calendarView", value)
+    } catch (e) {
+      // ignore sessionStorage errors
+    }
+  }
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
   const [newBirthdayDate, setNewBirthdayDate] = useState<string>("")
@@ -332,40 +355,36 @@ export default function CalendarPage() {
               <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Календарь дней рождения</h1>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9">
+                  <Button variant="outline" size={isMobile ? "icon" : "sm"} className="gap-2 bg-transparent h-9">
                     <Languages className="h-4 w-4" />
+                    {!isMobile && <span>{currentLanguage?.label}</span>}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => setLocale('ru')} className="cursor-pointer">
-                    🇷🇺 Русский
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocale('pl')} className="cursor-pointer">
-                    🇵🇱 Polski
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocale('uk')} className="cursor-pointer">
-                    🇺🇦 Українська
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocale('en')} className="cursor-pointer">
-                    🇬🇧 English
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="start" className="min-w-[160px]">
+                  {languages.map((lang) => (
+                    <DropdownMenuItem key={lang.value} onClick={() => setLocale(lang.value)} className="cursor-pointer">
+                      <span className="mr-2 text-lg">{lang.flag}</span>
+                      <span className="flex-1">{lang.label}</span>
+                      {locale === lang.value && <span className="ml-2 text-xs">✓</span>}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
             <ToggleGroup
               type="single"
               value={calendarView}
-              onValueChange={(value) => value && setCalendarView(value as CalendarView)}
+              onValueChange={(value) => value && setCalendarViewAndSave(value as CalendarView)}
               className={cn(isMobile && "w-full")}
             >
+              <ToggleGroupItem value="year" aria-label="Год" className={cn(isMobile && "flex-1")}>
+                Год
+              </ToggleGroupItem>
               <ToggleGroupItem value="month" aria-label="Месяц" className={cn(isMobile && "flex-1")}>
                 Месяц
               </ToggleGroupItem>
               <ToggleGroupItem value="week" aria-label="Неделя" className={cn(isMobile && "flex-1")}>
                 Неделя
-              </ToggleGroupItem>
-              <ToggleGroupItem value="year" aria-label="Год" className={cn(isMobile && "flex-1")}>
-                Год
               </ToggleGroupItem>
             </ToggleGroup>
           </div>

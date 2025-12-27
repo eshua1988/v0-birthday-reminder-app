@@ -27,9 +27,17 @@ const APP_VERSION = "0.1.0"
 const LAST_UPDATED = "2025-12-22"
 
 export default function SettingsPage() {
-  const { t, setLocale } = useLocale()
+  const { t, setLocale, locale } = useLocale()
   const { toast } = useToast()
   const isMobile = useIsMobile()
+  const languages: { value: Locale; label: string; flag: string }[] = [
+    { value: "ru", label: "Русский", flag: "🇷🇺" },
+    { value: "pl", label: "Polski", flag: "🇵🇱" },
+    { value: "uk", label: "Українська", flag: "🇺🇦" },
+    { value: "en", label: "English", flag: "🇬🇧" },
+  ]
+
+  const currentLanguage = languages.find((lang) => lang.value === locale)
   const [defaultNotificationTime, setDefaultNotificationTime] = useState("09:00")
   const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(["09:00"])
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -541,23 +549,19 @@ export default function SettingsPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
+                <Button variant="outline" size={isMobile ? "icon" : "sm"} className="gap-2 bg-transparent h-9">
                   <Languages className="h-4 w-4" />
+                  {!isMobile && <span>{currentLanguage?.label}</span>}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLocale('ru')} className="cursor-pointer">
-                  🇷🇺 Русский
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale('pl')} className="cursor-pointer">
-                  🇵🇱 Polski
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale('uk')} className="cursor-pointer">
-                  🇺🇦 Українська
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale('en')} className="cursor-pointer">
-                  🇬🇧 English
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="min-w-[160px]">
+                {languages.map((lang) => (
+                  <DropdownMenuItem key={lang.value} onClick={() => setLocale(lang.value)} className="cursor-pointer">
+                    <span className="mr-2 text-lg">{lang.flag}</span>
+                    <span className="flex-1">{lang.label}</span>
+                    {locale === lang.value && <span className="ml-2 text-xs">✓</span>}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
