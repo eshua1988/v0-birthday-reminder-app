@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/check-birthdays",
-      "schedule": "* * * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

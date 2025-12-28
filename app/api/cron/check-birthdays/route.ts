@@ -34,11 +34,16 @@ export async function GET(request: NextRequest) {
 
     // Get current date and time
     const now = new Date()
-    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:00`
+    
+    // Format time as HH:MM:SS for exact matching
+    // Round to nearest minute since cron runs at :00 of each hour
+    const currentTime = `${now.getHours().toString().padStart(2, "0")}:00:00`
+    
     const currentMonth = now.getMonth()
     const currentDay = now.getDate()
 
     console.log("[v0] Cron: Checking birthdays at:", currentTime, "Date:", now.toISOString())
+    console.log("[v0] Cron: Note: Vercel Hobby plan runs cron hourly at :00 minutes")
 
     // Get all birthdays that match today and have notifications enabled
     const { data: birthdays, error } = await supabase.from("birthdays").select("*").eq("notification_enabled", true)
@@ -126,7 +131,7 @@ export async function GET(request: NextRequest) {
         shouldNotify: uniqueTimes.includes(currentTime),
       })
 
-      // Check if current time matches any notification time
+      // Check if current time matches any notification time (rounded to hour)
       if (uniqueTimes.includes(currentTime)) {
         // Get FCM tokens for this user
         const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
