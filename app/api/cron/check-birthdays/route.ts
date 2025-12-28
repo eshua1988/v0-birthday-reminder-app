@@ -215,7 +215,6 @@ export async function GET(request: NextRequest) {
       birthdaysChecked,
       birthdaysToday: birthdaysMatched,
       notificationsSent,
-      currentTime,
       timestamp: now.toISOString()
     })
 
@@ -223,11 +222,11 @@ export async function GET(request: NextRequest) {
       success: true,
       message: `Checked ${birthdaysChecked} birthdays, found ${birthdaysMatched} today, sent ${notificationsSent} notifications`,
       timestamp: now.toISOString(),
-      currentTime,
       birthdaysChecked,
       birthdaysToday: birthdaysMatched,
       notificationsSent,
       notifications,
+    })
     })
   } catch (error) {
     console.error("[v0] ========== CRON JOB ERROR ==========")
