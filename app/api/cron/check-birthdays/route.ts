@@ -35,15 +35,13 @@ export async function GET(request: NextRequest) {
     // Get current date and time
     const now = new Date()
     
-    // Format time as HH:MM:SS for exact matching
-    // Round to nearest minute since cron runs at :00 of each hour
-    const currentTime = `${now.getHours().toString().padStart(2, "0")}:00:00`
-    
+    // Vercel Hobby plan: cron runs once per day at 9:00 AM
+    // We'll send all notifications for birthdays today
     const currentMonth = now.getMonth()
     const currentDay = now.getDate()
 
-    console.log("[v0] Cron: Checking birthdays at:", currentTime, "Date:", now.toISOString())
-    console.log("[v0] Cron: Note: Vercel Hobby plan runs cron hourly at :00 minutes")
+    console.log("[v0] Cron: Daily birthday check at:", now.toISOString())
+    console.log("[v0] Cron: Vercel Hobby plan - sending all birthday notifications for today")
 
     // Get all birthdays that match today and have notifications enabled
     const { data: birthdays, error } = await supabase.from("birthdays").select("*").eq("notification_enabled", true)
@@ -102,140 +100,113 @@ export async function GET(request: NextRequest) {
 
       birthdaysMatched++
       
-      // Collect all notification times for this birthday
-      const notificationTimes: string[] = []
+      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, "- sending notification")
+      
+      // On Vercel Hobby plan, we send notifications once per day at 9 AM
+      // No need to check specific times - just send to all birthdays today
+      
+      // Get FCM tokens for this user
+      const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
 
-      // 1. Individual notification times (notification_times array)
-      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
-        notificationTimes.push(...birthday.notification_times)
-      }
+      if (tokens && tokens.length > 0) {
+        const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
 
-      // 2. Individual notification time (legacy single time)
-      if (birthday.notification_time) {
-        notificationTimes.push(birthday.notification_time)
-      }
+        console.log(
+          "[v0] Cron: Sending notification for:",
+          birthday.first_name,
+          birthday.last_name,
+          "to",
+          fcmTokens.length,
+          "devices",
+        )
 
-      // 3. Global notification times for this user
-      const globalTimes = globalTimesMap.get(birthday.user_id)
-      if (globalTimes && globalTimes.length > 0) {
-        notificationTimes.push(...globalTimes)
-      }
+        if (isFirebaseAdminConfigured()) {
+          try {
+            const messaging = getFirebaseMessaging()
+            const age = now.getFullYear() - birthDate.getFullYear()
 
-      // Remove duplicates
-      const uniqueTimes = [...new Set(notificationTimes)]
-
-      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
-        userId: birthday.user_id,
-        notificationTimes: uniqueTimes,
-        currentTime,
-        shouldNotify: uniqueTimes.includes(currentTime),
-      })
-
-      // Check if current time matches any notification time (rounded to hour)
-      if (uniqueTimes.includes(currentTime)) {
-        // Get FCM tokens for this user
-        const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
-
-        if (tokens && tokens.length > 0) {
-          const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
-
-          console.log(
-            "[v0] Cron: Sending notification for:",
-            birthday.first_name,
-            birthday.last_name,
-            "to",
-            fcmTokens.length,
-            "devices",
-          )
-
-          if (isFirebaseAdminConfigured()) {
-            try {
-              const messaging = getFirebaseMessaging()
-              const age = now.getFullYear() - birthDate.getFullYear()
-
-              const message = {
+            const message = {
+              notification: {
+                title: "🎂 День рождения!",
+                body: `${birthday.first_name} ${birthday.last_name} отмечает ${age} день рождения сегодня!`,
+              },
+              data: {
+                birthdayId: birthday.id.toString(),
+                firstName: birthday.first_name,
+                lastName: birthday.last_name,
+                age: age.toString(),
+                type: "birthday_reminder",
+              },
+              webpush: {
                 notification: {
-                  title: "🎂 День рождения!",
-                  body: `${birthday.first_name} ${birthday.last_name} отмечает ${age} день рождения сегодня!`,
+                  icon: "/icon-192x192.png",
+                  badge: "/badge-72x72.png",
+                  vibrate: [200, 100, 200],
+                  tag: `birthday-${birthday.id}`,
+                  requireInteraction: true,
                 },
-                data: {
-                  birthdayId: birthday.id.toString(),
-                  firstName: birthday.first_name,
-                  lastName: birthday.last_name,
-                  age: age.toString(),
-                  type: "birthday_reminder",
+                fcmOptions: {
+                  link: "/",
                 },
-                webpush: {
-                  notification: {
-                    icon: "/icon-192x192.png",
-                    badge: "/badge-72x72.png",
-                    vibrate: [200, 100, 200],
-                    tag: `birthday-${birthday.id}`,
-                    requireInteraction: true,
-                  },
-                  fcmOptions: {
-                    link: "/",
-                  },
-                },
-                tokens: fcmTokens,
-              }
+              },
+              tokens: fcmTokens,
+            }
 
-              const response = await messaging.sendEachForMulticast(message)
+            const response = await messaging.sendEachForMulticast(message)
 
-              console.log("[v0] Cron: FCM sent successfully:", {
-                birthday: `${birthday.first_name} ${birthday.last_name}`,
-                successCount: response.successCount,
-                failureCount: response.failureCount,
-              })
+            console.log("[v0] Cron: FCM sent successfully:", {
+              birthday: `${birthday.first_name} ${birthday.last_name}`,
+              successCount: response.successCount,
+              failureCount: response.failureCount,
+            })
 
-              // Handle failed tokens
-              if (response.failureCount > 0) {
-                response.responses.forEach((resp: any, idx: number) => {
-                  if (!resp.success) {
-                    console.error(`[v0] Cron: Failed token ${idx}:`, resp.error?.message)
+            // Handle failed tokens
+            if (response.failureCount > 0) {
+              response.responses.forEach((resp: any, idx: number) => {
+                if (!resp.success) {
+                  console.error(`[v0] Cron: Failed token ${idx}:`, resp.error?.message)
 
-                    // Remove invalid tokens from database
-                    if (
-                      resp.error?.code === "messaging/invalid-registration-token" ||
-                      resp.error?.code === "messaging/registration-token-not-registered"
-                    ) {
-                      supabase
-                        .from("fcm_tokens")
-                        .delete()
-                        .eq("token", fcmTokens[idx])
-                        .then(() => console.log(`[v0] Cron: Removed invalid FCM token`))
-                    }
+                  // Remove invalid tokens from database
+                  if (
+                    resp.error?.code === "messaging/invalid-registration-token" ||
+                    resp.error?.code === "messaging/registration-token-not-registered"
+                  ) {
+                    supabase
+                      .from("fcm_tokens")
+                      .delete()
+                      .eq("token", fcmTokens[idx])
+                      .then(() => console.log(`[v0] Cron: Removed invalid FCM token`))
                   }
-                })
-              }
-
-              notificationsSent += response.successCount
-              notifications.push({
-                birthday: `${birthday.first_name} ${birthday.last_name}`,
-                sent: response.successCount,
-                failed: response.failureCount,
-              })
-            } catch (firebaseError) {
-              console.error("[v0] Cron: Firebase error:", firebaseError)
-              notifications.push({
-                birthday: `${birthday.first_name} ${birthday.last_name}`,
-                error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+                }
               })
             }
-          } else {
-            console.log("[v0] Cron: Firebase Admin SDK not configured, skipping")
+
+            notificationsSent += response.successCount
             notifications.push({
               birthday: `${birthday.first_name} ${birthday.last_name}`,
-              status: "Firebase not configured",
+              sent: response.successCount,
+              failed: response.failureCount,
+            })
+          } catch (firebaseError) {
+            console.error("[v0] Cron: Firebase error:", firebaseError)
+            notifications.push({
+              birthday: `${birthday.first_name} ${birthday.last_name}`,
+              error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
             })
           }
         } else {
-          console.log("[v0] Cron: No FCM tokens found for user:", birthday.user_id)
+          console.log("[v0] Cron: Firebase Admin SDK not configured, skipping")
           notifications.push({
             birthday: `${birthday.first_name} ${birthday.last_name}`,
-            status: "No FCM tokens",
+            status: "Firebase not configured",
           })
         }
+      } else {
+        console.log("[v0] Cron: No FCM tokens found for user:", birthday.user_id)
+        notifications.push({
+          birthday: `${birthday.first_name} ${birthday.last_name}`,
+          status: "No FCM tokens",
+        })
       }
     }
 
