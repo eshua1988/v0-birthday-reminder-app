@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
 
 // This endpoint should be called by a cron job (e.g., Vercel Cron)
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const supabase = await createServerClient()
+    const supabase = createServiceRoleClient()
 
     // Get current date and time
     const now = new Date()

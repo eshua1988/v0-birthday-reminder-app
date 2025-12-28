@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { isFirebaseAdminConfigured } from "@/lib/firebase-admin"
 
 /**
@@ -8,7 +8,7 @@ import { isFirebaseAdminConfigured } from "@/lib/firebase-admin"
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = createServiceRoleClient()
     const now = new Date()
     const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:00`
     const currentMonth = now.getMonth()

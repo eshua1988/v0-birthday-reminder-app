@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
 
 /**
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log("[v0] ========== PUBLIC CRON JOB STARTED ==========")
     
-    const supabase = await createServerClient()
+    const supabase = createServiceRoleClient()
 
     // Get current date and time
     const now = new Date()
