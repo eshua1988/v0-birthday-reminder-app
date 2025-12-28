@@ -35,13 +35,13 @@ export async function GET(request: NextRequest) {
     // Get current date and time
     const now = new Date()
     
-    // Vercel Hobby plan: cron runs once per day at 9:00 AM
-    // We'll send all notifications for birthdays today
+    // Format time as HH:MM:SS for exact matching
+    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:00`
     const currentMonth = now.getMonth()
     const currentDay = now.getDate()
 
-    console.log("[v0] Cron: Daily birthday check at:", now.toISOString())
-    console.log("[v0] Cron: Vercel Hobby plan - sending all birthday notifications for today")
+    console.log("[v0] Cron: Checking birthdays at:", currentTime, "Date:", now.toISOString())
+    console.log("[v0] Cron: Using external cron for minute-by-minute checks")
 
     // Get all birthdays that match today and have notifications enabled
     const { data: birthdays, error } = await supabase.from("birthdays").select("*").eq("notification_enabled", true)
@@ -100,10 +100,41 @@ export async function GET(request: NextRequest) {
 
       birthdaysMatched++
       
-      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, "- sending notification")
+      // Collect all notification times for this birthday
+      const notificationTimes: string[] = []
+
+      // 1. Individual notification times (notification_times array)
+      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
+        notificationTimes.push(...birthday.notification_times)
+      }
+
+      // 2. Individual notification time (legacy single time)
+      if (birthday.notification_time) {
+        notificationTimes.push(birthday.notification_time)
+      }
+
+      // 3. Global notification times for this user
+      const globalTimes = globalTimesMap.get(birthday.user_id)
+      if (globalTimes && globalTimes.length > 0) {
+        notificationTimes.push(...globalTimes)
+      }
+
+      // Remove duplicates
+      const uniqueTimes = [...new Set(notificationTimes)]
+
+      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
+        notificationTimes: uniqueTimes,
+        currentTime,
+        shouldNotify: uniqueTimes.includes(currentTime),
+      })
+
+      // Check if current time matches any notification time
+      if (!uniqueTimes.includes(currentTime)) {
+        console.log("[v0] Cron: Skipping - time doesn't match")
+        continue
+      }
       
-      // On Vercel Hobby plan, we send notifications once per day at 9 AM
-      // No need to check specific times - just send to all birthdays today
+      console.log("[v0] Cron: TIME MATCH! Sending notification")
       
       // Get FCM tokens for this user
       const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
@@ -215,6 +246,7 @@ export async function GET(request: NextRequest) {
       birthdaysChecked,
       birthdaysToday: birthdaysMatched,
       notificationsSent,
+      currentTime,
       timestamp: now.toISOString()
     })
 
@@ -222,6 +254,7 @@ export async function GET(request: NextRequest) {
       success: true,
       message: `Checked ${birthdaysChecked} birthdays, found ${birthdaysMatched} today, sent ${notificationsSent} notifications`,
       timestamp: now.toISOString(),
+      currentTime,
       birthdaysChecked,
       birthdaysToday: birthdaysMatched,
       notificationsSent,
