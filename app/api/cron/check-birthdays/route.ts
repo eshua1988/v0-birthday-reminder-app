@@ -105,7 +105,10 @@ export async function GET(request: NextRequest) {
 
       // 1. Individual notification times (notification_times array)
       if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
-        notificationTimes.push(...birthday.notification_times)
+        // Normalize to HH:MM:SS format
+        notificationTimes.push(...birthday.notification_times.map((t: string) => 
+          t.length === 5 ? `${t}:00` : t
+        ))
       }
 
       // 2. Individual notification time (legacy single time)
@@ -116,7 +119,10 @@ export async function GET(request: NextRequest) {
       // 3. Global notification times for this user
       const globalTimes = globalTimesMap.get(birthday.user_id)
       if (globalTimes && globalTimes.length > 0) {
-        notificationTimes.push(...globalTimes)
+        // Normalize to HH:MM:SS format
+        notificationTimes.push(...globalTimes.map(t => 
+          t.length === 5 ? `${t}:00` : t
+        ))
       }
 
       // Remove duplicates
