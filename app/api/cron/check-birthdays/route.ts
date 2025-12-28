@@ -40,6 +40,37 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Cron: Found", birthdays?.length || 0, "birthdays with notifications enabled")
 
+    // Get all global notification time settings
+    const { data: globalSettings } = await supabase
+      .from("settings")
+      .select("*")
+      .in("key", ["default_notification_time", "default_notification_times"])
+
+    const globalTimesMap = new Map<string, string[]>()
+    
+    if (globalSettings) {
+      for (const setting of globalSettings) {
+        if (!globalTimesMap.has(setting.user_id)) {
+          globalTimesMap.set(setting.user_id, [])
+        }
+        
+        if (setting.key === "default_notification_time") {
+          globalTimesMap.get(setting.user_id)!.push(setting.value)
+        } else if (setting.key === "default_notification_times") {
+          try {
+            const times = JSON.parse(setting.value)
+            if (Array.isArray(times)) {
+              globalTimesMap.get(setting.user_id)!.push(...times)
+            }
+          } catch (e) {
+            console.error("[v0] Cron: Error parsing default_notification_times:", e)
+          }
+        }
+      }
+    }
+
+    console.log("[v0] Cron: Loaded global notification times for", globalTimesMap.size, "users")
+
     let notificationsSent = 0
     const notifications: any[] = []
 
@@ -47,14 +78,41 @@ export async function GET(request: NextRequest) {
       const birthDate = new Date(birthday.birth_date)
       const isBirthdayToday = birthDate.getMonth() === currentMonth && birthDate.getDate() === currentDay
 
+      if (!isBirthdayToday) {
+        continue
+      }
+
+      // Collect all notification times for this birthday
+      const notificationTimes: string[] = []
+
+      // 1. Individual notification times (notification_times array)
+      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
+        notificationTimes.push(...birthday.notification_times)
+      }
+
+      // 2. Individual notification time (legacy single time)
+      if (birthday.notification_time) {
+        notificationTimes.push(birthday.notification_time)
+      }
+
+      // 3. Global notification times for this user
+      const globalTimes = globalTimesMap.get(birthday.user_id)
+      if (globalTimes && globalTimes.length > 0) {
+        notificationTimes.push(...globalTimes)
+      }
+
+      // Remove duplicates
+      const uniqueTimes = [...new Set(notificationTimes)]
+
       console.log("[v0] Cron: Checking", birthday.first_name, birthday.last_name, {
         isBirthdayToday,
-        birthdayTime: birthday.notification_time,
+        notificationTimes: uniqueTimes,
         currentTime,
-        match: birthday.notification_time === currentTime,
+        shouldNotify: uniqueTimes.includes(currentTime),
       })
 
-      if (isBirthdayToday && birthday.notification_time === currentTime) {
+      // Check if current time matches any notification time
+      if (uniqueTimes.includes(currentTime)) {
         // Get FCM tokens for this user
         const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
 
