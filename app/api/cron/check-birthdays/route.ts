@@ -227,7 +227,6 @@ export async function GET(request: NextRequest) {
       notificationsSent,
       notifications,
     })
-    })
   } catch (error) {
     console.error("[v0] ========== CRON JOB ERROR ==========")
     console.error("[v0] Cron: Error in cron job:", error)
