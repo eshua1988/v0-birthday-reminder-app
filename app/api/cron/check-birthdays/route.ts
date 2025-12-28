@@ -13,10 +13,20 @@ import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("[v0] ========== CRON JOB STARTED ==========")
+    
     // Verify the request is from Vercel Cron
     const authHeader = request.headers.get("authorization")
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.log("[v0] Cron: Unauthorized request")
+    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
+    
+    console.log("[v0] Cron: Auth check:", {
+      hasAuthHeader: !!authHeader,
+      hasCronSecret: !!process.env.CRON_SECRET,
+      authMatch: authHeader === expectedAuth
+    })
+    
+    if (authHeader !== expectedAuth) {
+      console.log("[v0] Cron: Unauthorized request - auth mismatch")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -72,9 +82,12 @@ export async function GET(request: NextRequest) {
     console.log("[v0] Cron: Loaded global notification times for", globalTimesMap.size, "users")
 
     let notificationsSent = 0
+    let birthdaysChecked = 0
+    let birthdaysMatched = 0
     const notifications: any[] = []
 
     for (const birthday of birthdays || []) {
+      birthdaysChecked++
       const birthDate = new Date(birthday.birth_date)
       const isBirthdayToday = birthDate.getMonth() === currentMonth && birthDate.getDate() === currentDay
 
@@ -82,6 +95,8 @@ export async function GET(request: NextRequest) {
         continue
       }
 
+      birthdaysMatched++
+      
       // Collect all notification times for this birthday
       const notificationTimes: string[] = []
 
@@ -104,8 +119,8 @@ export async function GET(request: NextRequest) {
       // Remove duplicates
       const uniqueTimes = [...new Set(notificationTimes)]
 
-      console.log("[v0] Cron: Checking", birthday.first_name, birthday.last_name, {
-        isBirthdayToday,
+      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
+        userId: birthday.user_id,
         notificationTimes: uniqueTimes,
         currentTime,
         shouldNotify: uniqueTimes.includes(currentTime),
@@ -219,14 +234,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log("[v0] ========== CRON JOB COMPLETED ==========")
+    console.log("[v0] Summary:", {
+      birthdaysChecked,
+      birthdaysToday: birthdaysMatched,
+      notificationsSent,
+      currentTime,
+      timestamp: now.toISOString()
+    })
+
     return NextResponse.json({
       success: true,
-      message: `Checked ${birthdays?.length || 0} birthdays, sent ${notificationsSent} notifications`,
+      message: `Checked ${birthdaysChecked} birthdays, found ${birthdaysMatched} today, sent ${notificationsSent} notifications`,
       timestamp: now.toISOString(),
       currentTime,
+      birthdaysChecked,
+      birthdaysToday: birthdaysMatched,
+      notificationsSent,
       notifications,
     })
   } catch (error) {
+    console.error("[v0] ========== CRON JOB ERROR ==========")
     console.error("[v0] Cron: Error in cron job:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
