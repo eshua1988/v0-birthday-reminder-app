@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   title: "Дни Рождения - Church Birthday Reminder",
   description: "Приложение для напоминания дней рождений в церкви",
   generator: "v0.app",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Birthdays",
+  },
   icons: {
     icon: [
       {
@@ -35,6 +41,12 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  },
 }
 
 export default function RootLayout({
@@ -44,6 +56,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
+      <head>
+        <meta name="application-name" content="Birthday Reminder" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Birthdays" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#000000" />
+        <link rel="manifest" href="/manifest.json" />
+        <script src="/sw-register.js" defer />
+      </head>
       <body className={`font-sans antialiased`}>
         <LocaleProvider>
           {children}
