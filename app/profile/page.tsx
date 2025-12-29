@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   useEffect(() => {
@@ -133,34 +134,86 @@ export default function ProfilePage() {
 
     setError(null)
     setSuccess(null)
+    setIsUploadingAvatar(true)
 
     try {
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${user.id}/avatar.${fileExt}`
-
-      if (profile?.avatar_url) {
-        const oldPath = profile.avatar_url.split("/").pop()
-        await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`])
+      console.log("[v0] Starting avatar upload for user:", user.id)
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error("Файл слишком большой. Максимальный размер: 5MB")
       }
 
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
-        upsert: true,
-      })
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Пожалуйста, выберите изображение")
+      }
 
-      if (uploadError) throw uploadError
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`
 
+      console.log("[v0] Uploading to:", fileName)
+
+      // Delete old avatar if exists
+      if (profile?.avatar_url) {
+        try {
+          const oldPath = profile.avatar_url.split("/avatars/")[1]
+          if (oldPath) {
+            console.log("[v0] Removing old avatar:", oldPath)
+            await supabase.storage.from("avatars").remove([oldPath])
+          }
+        } catch (err) {
+          console.warn("[v0] Could not delete old avatar:", err)
+        }
+      }
+
+      // Upload new avatar
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, {
+          upsert: true,
+          contentType: file.type,
+        })
+
+      if (uploadError) {
+        console.error("[v0] Upload error:", uploadError)
+        throw uploadError
+      }
+
+      console.log("[v0] Upload successful:", uploadData)
+
+      // Get public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(fileName)
 
-      const { error: updateError } = await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id)
+      console.log("[v0] Public URL:", publicUrl)
 
-      if (updateError) throw updateError
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ 
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", user.id)
 
+      if (updateError) {
+        console.error("[v0] Update error:", updateError)
+        throw updateError
+      }
+
+      // Update local state
       setProfile({ ...profile, avatar_url: publicUrl })
-      setSuccess("Фото профиля обновлено")
+      setSuccess("Фото профиля успешно обновлено")
+      
+      // Clear the file input
+      e.target.value = ""
     } catch (error: any) {
+      console.error("[v0] Avatar upload error:", error)
       setError(error.message || "Ошибка при загрузке фото")
+    } finally {
+      setIsUploadingAvatar(false)
     }
   }
 
@@ -215,12 +268,23 @@ export default function ProfilePage() {
                     <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt={t.profilePhoto} />
                     <AvatarFallback className="text-4xl">{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                  {success && <p className="text-sm text-green-500">{success}</p>}
                   <div className="flex gap-2">
                     <Label htmlFor="avatar-upload" className="cursor-pointer">
-                      <Button variant="outline" asChild>
+                      <Button variant="outline" asChild disabled={isUploadingAvatar}>
                         <span>
-                          <Upload className="mr-2 h-4 w-4" />
-                          {t.uploadPhoto}
+                          {isUploadingAvatar ? (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                              {t.uploading}
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              {t.uploadPhoto}
+                            </>
+                          )}
                         </span>
                       </Button>
                     </Label>
@@ -230,6 +294,7 @@ export default function ProfilePage() {
                       accept="image/*"
                       className="hidden"
                       onChange={handleAvatarUpload}
+                      disabled={isUploadingAvatar}
                     />
                   </div>
                 </CardContent>
