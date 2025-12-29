@@ -3,6 +3,44 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
 
 /**
+ * Convert local time to UTC based on user's timezone
+ * @param localTime - Time in HH:MM or HH:MM:SS format
+ * @param timezone - IANA timezone string (e.g., "Europe/Warsaw")
+ * @returns UTC time in HH:MM:SS format
+ */
+function convertLocalTimeToUTC(localTime: string, timezone: string): string {
+  try {
+    // Parse local time
+    const [hours, minutes] = localTime.split(':').map(Number)
+    
+    // Create a date object for today in the user's timezone
+    const now = new Date()
+    const localDateStr = now.toLocaleDateString('en-CA') // YYYY-MM-DD format
+    
+    // Create a date with the local time in the user's timezone
+    const localDateTime = `${localDateStr}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
+    
+    // Parse as if it were in the user's timezone
+    // Use Intl.DateTimeFormat to get the offset
+    const localDate = new Date(localDateTime)
+    const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }))
+    const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }))
+    
+    // Calculate the offset
+    const offset = tzDate.getTime() - utcDate.getTime()
+    
+    // Apply offset to get UTC time
+    const utcTime = new Date(localDate.getTime() - offset)
+    
+    return `${utcTime.getUTCHours().toString().padStart(2, '0')}:${utcTime.getUTCMinutes().toString().padStart(2, '0')}:00`
+  } catch (error) {
+    console.error('[v0] Cron: Error converting time:', error)
+    // Fallback to original time if conversion fails
+    return localTime.length === 5 ? `${localTime}:00` : localTime
+  }
+}
+
+/**
  * Public endpoint for testing birthday notifications
  * Can be called from any cron service without authorization
  * Use this URL in cron-job.org: /api/cron/check-birthdays-public
@@ -33,36 +71,42 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Cron: Found", birthdays?.length || 0, "birthdays with notifications enabled")
 
-    // Get all global notification time settings
+    // Get all global notification time settings AND user timezones
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times"])
+      .in("key", ["default_notification_time", "default_notification_times", "timezone"])
 
     const globalTimesMap = new Map<string, string[]>()
+    const userTimezonesMap = new Map<string, string>()
     
     if (globalSettings) {
       for (const setting of globalSettings) {
-        if (!globalTimesMap.has(setting.user_id)) {
-          globalTimesMap.set(setting.user_id, [])
-        }
-        
-        if (setting.key === "default_notification_time") {
-          globalTimesMap.get(setting.user_id)!.push(setting.value)
-        } else if (setting.key === "default_notification_times") {
-          try {
-            const times = JSON.parse(setting.value)
-            if (Array.isArray(times)) {
-              globalTimesMap.get(setting.user_id)!.push(...times)
+        if (setting.key === "timezone") {
+          userTimezonesMap.set(setting.user_id, setting.value)
+        } else {
+          if (!globalTimesMap.has(setting.user_id)) {
+            globalTimesMap.set(setting.user_id, [])
+          }
+          
+          if (setting.key === "default_notification_time") {
+            globalTimesMap.get(setting.user_id)!.push(setting.value)
+          } else if (setting.key === "default_notification_times") {
+            try {
+              const times = JSON.parse(setting.value)
+              if (Array.isArray(times)) {
+                globalTimesMap.get(setting.user_id)!.push(...times)
+              }
+            } catch (e) {
+              console.error("[v0] Cron: Error parsing default_notification_times:", e)
             }
-          } catch (e) {
-            console.error("[v0] Cron: Error parsing default_notification_times:", e)
           }
         }
       }
     }
 
     console.log("[v0] Cron: Loaded global notification times for", globalTimesMap.size, "users")
+    console.log("[v0] Cron: Loaded timezones for", userTimezonesMap.size, "users")
 
     let notificationsSent = 0
     let birthdaysChecked = 0
@@ -80,41 +124,47 @@ export async function GET(request: NextRequest) {
 
       birthdaysMatched++
       
+      // Get user's timezone (default to UTC if not set)
+      const userTimezone = userTimezonesMap.get(birthday.user_id) || 'UTC'
+      
       // Collect all notification times for this birthday
       const notificationTimes: string[] = []
 
       // 1. Individual notification times (notification_times array)
       if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
-        // Normalize to HH:MM:SS format
-        notificationTimes.push(...birthday.notification_times.map((t: string) => 
-          t.length === 5 ? `${t}:00` : t
-        ))
+        // Convert each time from user's local timezone to UTC
+        notificationTimes.push(...birthday.notification_times.map((t: string) => {
+          const normalizedTime = t.length === 5 ? `${t}:00` : t
+          return convertLocalTimeToUTC(normalizedTime, userTimezone)
+        }))
       }
 
       // 2. Individual notification time (legacy single time)
       if (birthday.notification_time) {
-        notificationTimes.push(birthday.notification_time)
+        notificationTimes.push(convertLocalTimeToUTC(birthday.notification_time, userTimezone))
       }
 
       // 3. Global notification times for this user
       const globalTimes = globalTimesMap.get(birthday.user_id)
       if (globalTimes && globalTimes.length > 0) {
-        // Normalize to HH:MM:SS format
-        notificationTimes.push(...globalTimes.map(t => 
-          t.length === 5 ? `${t}:00` : t
-        ))
+        // Convert each time from user's local timezone to UTC
+        notificationTimes.push(...globalTimes.map(t => {
+          const normalizedTime = t.length === 5 ? `${t}:00` : t
+          return convertLocalTimeToUTC(normalizedTime, userTimezone)
+        }))
       }
 
       // Remove duplicates
       const uniqueTimes = [...new Set(notificationTimes)]
 
       console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
-        notificationTimes: uniqueTimes,
-        currentTime,
+        userTimezone,
+        notificationTimesUTC: uniqueTimes,
+        currentTimeUTC: currentTime,
         shouldNotify: uniqueTimes.includes(currentTime),
       })
 
-      // Check if current time matches any notification time
+      // Check if current time matches any notification time (now in UTC)
       if (!uniqueTimes.includes(currentTime)) {
         console.log("[v0] Cron: Skipping - time doesn't match")
         continue
