@@ -53,9 +53,13 @@ export async function GET(request: NextRequest) {
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times"])
+      .in("key", ["default_notification_time", "default_notification_times", "timezone"])
 
     console.log("[Diagnostic] Global notification settings:", globalSettings?.length || 0)
+    
+    // Check 7: User timezones
+    const userTimezones = globalSettings?.filter(s => s.key === "timezone") || []
+    console.log("[Diagnostic] User timezones:", userTimezones.length, userTimezones.map(t => ({ userId: t.user_id, timezone: t.value })))
 
     // Detailed analysis
     const analysis = {
@@ -98,6 +102,7 @@ export async function GET(request: NextRequest) {
       
       settings: {
         total: globalSettings?.length || 0,
+        timezones: userTimezones.map(t => ({ userId: t.user_id, timezone: t.value })),
         details: globalSettings?.map((s: any) => ({
           userId: s.user_id,
           key: s.key,
