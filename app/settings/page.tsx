@@ -38,8 +38,16 @@ export default function SettingsPage() {
   ]
 
   const currentLanguage = languages.find((lang) => lang.value === locale)
-  const [defaultNotificationTime, setDefaultNotificationTime] = useState("09:00")
-  const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(["09:00"])
+  const [defaultNotificationTime, setDefaultNotificationTime] = useState(() => {
+    // Get current time as default
+    const now = new Date()
+    return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+  })
+  const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(() => {
+    const now = new Date()
+    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    return [currentTime]
+  })
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -47,6 +55,30 @@ export default function SettingsPage() {
   const [firebaseConfigured, setFirebaseConfigured] = useState(false)
   const [fcmToken, setFcmToken] = useState<string | null>(null)
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false)
+  const [timezone, setTimezone] = useState(() => {
+    // Auto-detect timezone on initial load
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch (e) {
+      console.error("[v0] Error detecting timezone:", e)
+      return "Europe/Warsaw"
+    }
+  })
+
+  const timezones = [
+    { value: "Europe/Warsaw", label: "Warsaw (UTC+1)", offset: "+01:00" },
+    { value: "Europe/Moscow", label: "Moscow (UTC+3)", offset: "+03:00" },
+    { value: "Europe/Kiev", label: "Kyiv (UTC+2)", offset: "+02:00" },
+    { value: "Europe/London", label: "London (UTC+0)", offset: "+00:00" },
+    { value: "Europe/Berlin", label: "Berlin (UTC+1)", offset: "+01:00" },
+    { value: "Europe/Paris", label: "Paris (UTC+1)", offset: "+01:00" },
+    { value: "America/New_York", label: "New York (UTC-5)", offset: "-05:00" },
+    { value: "America/Los_Angeles", label: "Los Angeles (UTC-8)", offset: "-08:00" },
+    { value: "America/Chicago", label: "Chicago (UTC-6)", offset: "-06:00" },
+    { value: "Asia/Dubai", label: "Dubai (UTC+4)", offset: "+04:00" },
+    { value: "Asia/Tokyo", label: "Tokyo (UTC+9)", offset: "+09:00" },
+    { value: "Australia/Sydney", label: "Sydney (UTC+11)", offset: "+11:00" },
+  ]
 
   useEffect(() => {
     loadSettings()
@@ -228,6 +260,22 @@ export default function SettingsPage() {
           console.error("[v0] Error parsing default notification times:", e)
         }
       }
+
+      // Load timezone from settings
+      const { data: timezoneData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("user_id", user.id)
+        .eq("key", "timezone")
+        .maybeSingle()
+
+      if (timezoneData && timezoneData.value) {
+        setTimezone(timezoneData.value)
+      } else {
+        // Auto-detect timezone if not set
+        const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        setTimezone(detectedTimezone)
+      }
     }
   }
 
@@ -244,6 +292,7 @@ export default function SettingsPage() {
         defaultNotificationTime,
         notificationsEnabled,
         browserNotificationsEnabled,
+        timezone,
       })
 
       // Save default notification time
@@ -395,6 +444,16 @@ export default function SettingsPage() {
           throw insertTimesError
         }
       }
+
+      // Save timezone
+      await supabase.from("settings").upsert(
+        {
+          user_id: user.id,
+          key: "timezone",
+          value: timezone,
+        },
+        { onConflict: "user_id,key" },
+      )
 
       console.log("[v0] Settings saved successfully")
 
@@ -801,6 +860,45 @@ export default function SettingsPage() {
                   {t.notificationTimeDescription} ({t.maxNotificationTimes})
                 </p>
               </div>
+
+              <Button onClick={handleSaveSettings} disabled={isLoading}>
+                {isLoading ? t.saving : t.saveSettings}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.timezoneSettings}</CardTitle>
+              <CardDescription>{t.timezoneSettingsDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="timezone">{t.selectTimezone}</Label>
+                <select
+                  id="timezone"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {timezones.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {t.currentTimezone}: {timezone}
+                </p>
+              </div>
+
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>{t.timezoneInfo}</AlertTitle>
+                <AlertDescription>
+                  {t.timezoneInfoDescription}
+                </AlertDescription>
+              </Alert>
 
               <Button onClick={handleSaveSettings} disabled={isLoading}>
                 {isLoading ? t.saving : t.saveSettings}
