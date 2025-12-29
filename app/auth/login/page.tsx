@@ -213,8 +213,8 @@ export default function LoginPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">{t("login")}</CardTitle>
-            <CardDescription>{t("enterCredentials")}</CardDescription>
+            <CardTitle className="text-2xl">{t.login}</CardTitle>
+            <CardDescription>{t.enterCredentials}</CardDescription>
           </CardHeader>
           <CardContent>
             {registered && (

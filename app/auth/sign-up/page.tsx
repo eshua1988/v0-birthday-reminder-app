@@ -216,8 +216,8 @@ export default function SignUpPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">{t("signUp")}</CardTitle>
-            <CardDescription>{t("createAccount")}</CardDescription>
+            <CardTitle className="text-2xl">{t.signUp}</CardTitle>
+            <CardDescription>{t.createAccount}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignUp}>
