@@ -192,7 +192,14 @@ export default function CalendarPage() {
             }`}
           >
             <div className="flex h-full flex-col">
-              <span className="font-semibold mb-1">{day}</span>
+              <div className="flex items-start justify-between mb-1">
+                <span className="font-semibold">{day}</span>
+                {hasEvents && (
+                  <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {dayBirthdays.length}
+                  </span>
+                )}
+              </div>
               {hasEvents && (
                 <div className="flex-1 overflow-hidden text-xs space-y-0.5">
                   {dayBirthdays.slice(0, 3).map((b) => (
