@@ -11,32 +11,72 @@ import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-
 function convertLocalTimeToUTC(localTime: string, timezone: string): string {
   try {
     // Parse local time
-    const [hours, minutes] = localTime.split(':').map(Number)
+    const parts = localTime.split(':')
+    const hours = parseInt(parts[0], 10)
+    const minutes = parseInt(parts[1], 10)
     
-    // Create a date object for today in the user's timezone
+    // Get current date in user's timezone
     const now = new Date()
-    const localDateStr = now.toLocaleDateString('en-CA') // YYYY-MM-DD format
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
     
-    // Create a date with the local time in the user's timezone
-    const localDateTime = `${localDateStr}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
+    const dateParts = formatter.formatToParts(now)
+    const year = dateParts.find(p => p.type === 'year')?.value
+    const month = dateParts.find(p => p.type === 'month')?.value
+    const day = dateParts.find(p => p.type === 'day')?.value
     
-    // Parse as if it were in the user's timezone
-    // Use Intl.DateTimeFormat to get the offset
-    const localDate = new Date(localDateTime)
-    const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }))
-    const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }))
+    // Create ISO string representing the local time in the user's timezone
+    // This is the trick: we format it as ISO string and explicitly tell Date it's in that timezone
+    const localISOString = `${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
     
-    // Calculate the offset
-    const offset = tzDate.getTime() - utcDate.getTime()
+    console.log('[v0] Cron: Converting', localTime, 'in', timezone, 'to UTC. Local ISO:', localISOString)
     
-    // Apply offset to get UTC time
-    const utcTime = new Date(localDate.getTime() - offset)
+    // Create formatter that will give us the UTC equivalent
+    const utcFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
     
-    return `${utcTime.getUTCHours().toString().padStart(2, '0')}:${utcTime.getUTCMinutes().toString().padStart(2, '0')}:00`
+    // Create a test date to figure out the offset
+    // We create a date with the desired local time
+    const testDate = new Date(`${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00Z`)
+    
+    // Format it in the user's timezone to see what local time corresponds to this UTC
+    const localParts = utcFormatter.formatToParts(testDate)
+    const localHour = parseInt(localParts.find(p => p.type === 'hour')?.value || '0', 10)
+    const localMinute = parseInt(localParts.find(p => p.type === 'minute')?.value || '0', 10)
+    
+    // Calculate the difference
+    const targetMinutes = hours * 60 + minutes
+    const actualMinutes = localHour * 60 + localMinute
+    const offsetMinutes = targetMinutes - actualMinutes
+    
+    // Apply offset to UTC time
+    const utcMinutes = testDate.getUTCHours() * 60 + testDate.getUTCMinutes() + offsetMinutes
+    const utcHours = Math.floor(utcMinutes / 60) % 24
+    const utcMins = utcMinutes % 60
+    
+    const result = `${(utcHours >= 0 ? utcHours : utcHours + 24).toString().padStart(2, '0')}:${(utcMins >= 0 ? utcMins : utcMins + 60).toString().padStart(2, '0')}:00`
+    
+    console.log('[v0] Cron: Result:', result, '(offset:', offsetMinutes, 'minutes)')
+    
+    return result
   } catch (error) {
-    console.error('[v0] Cron: Error converting time:', error)
+    console.error('[v0] Cron: Error converting time from', timezone, ':', error)
     // Fallback to original time if conversion fails
-    return localTime.length === 5 ? `${localTime}:00` : localTime
+    const normalized = localTime.length === 5 ? `${localTime}:00` : localTime
+    console.log('[v0] Cron: Using fallback time:', normalized)
+    return normalized
   }
 }
 
