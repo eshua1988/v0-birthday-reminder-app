@@ -15,60 +15,37 @@ function convertLocalTimeToUTC(localTime: string, timezone: string): string {
     const hours = parseInt(parts[0], 10)
     const minutes = parseInt(parts[1], 10)
     
-    // Get current date in user's timezone
+    // Get current date
     const now = new Date()
+    
+    // Create a date string in the user's timezone
+    // Format: "2025-12-29 23:10" in timezone "Europe/Warsaw"
+    const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
+    
+    // Parse this as a date in UTC, then adjust for timezone offset
+    // This is a workaround: we create a Date as if it's in the user's timezone
     const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-    
-    const dateParts = formatter.formatToParts(now)
-    const year = dateParts.find(p => p.type === 'year')?.value
-    const month = dateParts.find(p => p.type === 'month')?.value
-    const day = dateParts.find(p => p.type === 'day')?.value
-    
-    // Create ISO string representing the local time in the user's timezone
-    // This is the trick: we format it as ISO string and explicitly tell Date it's in that timezone
-    const localISOString = `${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
-    
-    console.log('[v0] Cron: Converting', localTime, 'in', timezone, 'to UTC. Local ISO:', localISOString)
-    
-    // Create formatter that will give us the UTC equivalent
-    const utcFormatter = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
+      hour12: false
     })
     
-    // Create a test date to figure out the offset
-    // We create a date with the desired local time
-    const testDate = new Date(`${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00Z`)
+    // Get timezone offset by comparing same moment in UTC and local timezone
+    const nowUTC = new Date()
+    const nowLocal = new Date(nowUTC.toLocaleString('en-US', { timeZone: timezone }))
+    const offsetMs = nowUTC.getTime() - nowLocal.getTime()
     
-    // Format it in the user's timezone to see what local time corresponds to this UTC
-    const localParts = utcFormatter.formatToParts(testDate)
-    const localHour = parseInt(localParts.find(p => p.type === 'hour')?.value || '0', 10)
-    const localMinute = parseInt(localParts.find(p => p.type === 'minute')?.value || '0', 10)
+    // Create target time in UTC
+    const targetLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
+    const targetUTC = new Date(targetLocal.getTime() - offsetMs)
     
-    // Calculate the difference
-    const targetMinutes = hours * 60 + minutes
-    const actualMinutes = localHour * 60 + localMinute
-    const offsetMinutes = targetMinutes - actualMinutes
+    const result = `${targetUTC.getUTCHours().toString().padStart(2, '0')}:${targetUTC.getUTCMinutes().toString().padStart(2, '0')}:00`
     
-    // Apply offset to UTC time
-    const utcMinutes = testDate.getUTCHours() * 60 + testDate.getUTCMinutes() + offsetMinutes
-    const utcHours = Math.floor(utcMinutes / 60) % 24
-    const utcMins = utcMinutes % 60
-    
-    const result = `${(utcHours >= 0 ? utcHours : utcHours + 24).toString().padStart(2, '0')}:${(utcMins >= 0 ? utcMins : utcMins + 60).toString().padStart(2, '0')}:00`
-    
-    console.log('[v0] Cron: Result:', result, '(offset:', offsetMinutes, 'minutes)')
+    console.log('[v0] Cron: Converting', localTime, 'in', timezone, 'to UTC:', result, '| Offset:', Math.floor(offsetMs / 60000), 'min')
     
     return result
   } catch (error) {

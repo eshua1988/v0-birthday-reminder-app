@@ -187,19 +187,17 @@ export default function CalendarPage() {
               setSelectedDate(clickedDate)
               setSelectedDateBirthdays(dayBirthdays)
             }}
-            className={`aspect-square rounded-lg border p-2 text-sm transition-colors hover:bg-muted ${
+            className={`aspect-square rounded-lg border p-2 text-sm transition-colors hover:bg-muted relative ${
               hasEvents ? "border-primary bg-primary/5" : "border-border"
             }`}
           >
+            {hasEvents && (
+              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10">
+                {dayBirthdays.length}
+              </span>
+            )}
             <div className="flex h-full flex-col">
-              <div className="flex items-start justify-between mb-1">
-                <span className="font-semibold">{day}</span>
-                {hasEvents && (
-                  <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {dayBirthdays.length}
-                  </span>
-                )}
-              </div>
+              <span className="font-semibold mb-1">{day}</span>
               {hasEvents && (
                 <div className="flex-1 overflow-hidden text-xs space-y-0.5">
                   {dayBirthdays.slice(0, 3).map((b) => (
