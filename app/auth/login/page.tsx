@@ -11,7 +11,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-import { CheckCircle2, Clock, Eye, EyeOff } from "lucide-react"
+import { CheckCircle2, Clock, Eye, EyeOff, Languages } from "lucide-react"
+import { useLocale } from "@/lib/locale-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const EMAIL_DOMAINS = ["@gmail.com", "@mail.ru", "@yandex.ru", "@outlook.com", "@yahoo.com", "@icloud.com"]
 
@@ -24,6 +31,7 @@ export default function LoginPage() {
   const [showEmailSuggestions, setShowEmailSuggestions] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t, locale, setLocale } = useLocale()
 
   const registered = searchParams.get("registered")
   const timeout = searchParams.get("timeout")
@@ -183,10 +191,30 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
+        {/* Language Selector */}
+        <div className="mb-4 flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Languages className="h-4 w-4" />
+                {locale === "ru" ? "RU" : "EN"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setLocale("ru")}>
+                Русский
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocale("en")}>
+                English
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Вход</CardTitle>
-            <CardDescription>Введите email и пароль для входа</CardDescription>
+            <CardTitle className="text-2xl">{t("login")}</CardTitle>
+            <CardDescription>{t("enterCredentials")}</CardDescription>
           </CardHeader>
           <CardContent>
             {registered && (

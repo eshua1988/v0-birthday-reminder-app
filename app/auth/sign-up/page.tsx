@@ -10,7 +10,14 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Languages } from "lucide-react"
+import { useLocale } from "@/lib/locale-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const EMAIL_DOMAINS = ["@gmail.com", "@mail.ru", "@yandex.ru", "@outlook.com", "@yahoo.com", "@icloud.com"]
 
@@ -24,6 +31,7 @@ export default function SignUpPage() {
   const [showRepeatPassword, setShowRepeatPassword] = useState(false)
   const [showEmailSuggestions, setShowEmailSuggestions] = useState(false)
   const router = useRouter()
+  const { t, locale, setLocale } = useLocale()
 
   const handleEmailChange = (value: string) => {
     setEmail(value)
@@ -186,10 +194,30 @@ export default function SignUpPage() {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
+        {/* Language Selector */}
+        <div className="mb-4 flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Languages className="h-4 w-4" />
+                {locale === "ru" ? "RU" : "EN"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setLocale("ru")}>
+                Русский
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocale("en")}>
+                English
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Регистрация</CardTitle>
-            <CardDescription>Создайте новый аккаунт</CardDescription>
+            <CardTitle className="text-2xl">{t("signUp")}</CardTitle>
+            <CardDescription>{t("createAccount")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignUp}>

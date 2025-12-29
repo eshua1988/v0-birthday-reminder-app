@@ -9,6 +9,7 @@ import { InactivityLogout } from "@/components/inactivity-logout"
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseNotificationManager } from "@/components/firebase-notification-manager"
 import { NotificationPermissionAutoRequest } from "@/components/notification-permission-auto-request"
+import { TimezoneDetector } from "@/components/timezone-detector"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -68,6 +69,7 @@ export default function RootLayout({
       </head>
       <body className={`font-sans antialiased`}>
         <LocaleProvider>
+          <TimezoneDetector />
           {children}
           <NotificationPermissionAutoRequest />
           <FirebaseNotificationManager />
