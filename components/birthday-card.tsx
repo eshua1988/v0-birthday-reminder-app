@@ -123,7 +123,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
                 {birthday.last_name} {birthday.first_name}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })}
+                {formatDate(birthday.birth_date)}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {t.age}: {getAge()} {t.years}
