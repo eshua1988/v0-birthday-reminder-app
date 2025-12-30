@@ -41,22 +41,43 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
     return new Date(birthDate).getFullYear()
   }
 
+  const isBirthdayToday = (birthDate: string) => {
+    const today = new Date()
+    const birth = new Date(birthDate)
+    return today.getDate() === birth.getDate() && today.getMonth() === birth.getMonth()
+  }
+
   return (
     <div className="divide-y rounded-lg border bg-card">
       {birthdays.map((birthday) => {
         const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
+        const isToday = isBirthdayToday(birthday.birth_date)
 
         return (
-          <div key={birthday.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+          <div 
+            key={birthday.id} 
+            className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors relative"
+            style={isToday ? { borderLeft: '4px solid #34C924' } : {}}
+          >
             <Avatar className="h-12 w-12">
               <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold truncate">
-                {birthday.last_name} {birthday.first_name}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold truncate">
+                  {birthday.last_name} {birthday.first_name}
+                </h3>
+                {isToday && (
+                  <span 
+                    className="px-2 py-0.5 text-xs font-bold text-white rounded-md"
+                    style={{ backgroundColor: '#34C924' }}
+                  >
+                    {t.today}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>{formatDate(birthday.birth_date, { day: "numeric", month: "long" })}</span>
                 <span>

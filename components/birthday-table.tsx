@@ -45,14 +45,25 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
     return new Date(birthDate).getFullYear()
   }
 
+  const isBirthdayToday = (birthDate: string) => {
+    const today = new Date()
+    const birth = new Date(birthDate)
+    return today.getDate() === birth.getDate() && today.getMonth() === birth.getMonth()
+  }
+
   if (isMobile) {
     return (
       <div className="space-y-3">
         {birthdays.map((birthday) => {
           const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
+          const isToday = isBirthdayToday(birthday.birth_date)
 
           return (
-            <div key={birthday.id} className="rounded-lg border bg-card p-4">
+            <div 
+              key={birthday.id} 
+              className="rounded-lg border bg-card p-4 relative"
+              style={isToday ? { borderLeft: '4px solid #34C924' } : {}}
+            >
               <div className="flex items-start gap-3">
                 <Avatar className="h-12 w-12">
                   <AvatarImage
@@ -62,8 +73,18 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold">
-                    {birthday.last_name} {birthday.first_name}
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold">
+                      {birthday.last_name} {birthday.first_name}
+                    </div>
+                    {isToday && (
+                      <span 
+                        className="px-2 py-0.5 text-xs font-bold text-white rounded-md"
+                        style={{ backgroundColor: '#34C924' }}
+                      >
+                        {t.today}
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {formatDate(birthday.birth_date, { day: "numeric", month: "long" })} {" "}
@@ -129,9 +150,13 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
         <TableBody>
           {birthdays.map((birthday) => {
             const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
+            const isToday = isBirthdayToday(birthday.birth_date)
 
             return (
-              <TableRow key={birthday.id}>
+              <TableRow 
+                key={birthday.id}
+                style={isToday ? { borderLeft: '4px solid #34C924' } : {}}
+              >
                 <TableCell>
                   <Avatar className="h-10 w-10">
                     <AvatarImage
@@ -142,7 +167,19 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                   </Avatar>
                 </TableCell>
                 <TableCell className="font-medium">{birthday.last_name}</TableCell>
-                <TableCell>{birthday.first_name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {birthday.first_name}
+                    {isToday && (
+                      <span 
+                        className="px-2 py-0.5 text-xs font-bold text-white rounded-md"
+                        style={{ backgroundColor: '#34C924' }}
+                      >
+                        {t.today}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   {formatDate(birthday.birth_date, { day: "numeric", month: "long" })}
                 </TableCell>
