@@ -37,6 +37,10 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
     return age
   }
 
+  const getBirthYear = (birthDate: string) => {
+    return new Date(birthDate).getFullYear()
+  }
+
   return (
     <div className="divide-y rounded-lg border bg-card">
       {birthdays.map((birthday) => {
@@ -57,6 +61,9 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
                 <span>{formatDate(birthday.birth_date, { day: "numeric", month: "long" })}</span>
                 <span>
                   {t.age}: {getAge(birthday.birth_date)}
+                </span>
+                <span className="text-xs">
+                  (г.р.: {getBirthYear(birthday.birth_date)})
                 </span>
               </div>
             </div>

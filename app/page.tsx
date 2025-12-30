@@ -41,6 +41,8 @@ export default function HomePage() {
 
   const [history, setHistory] = useState<HistoryState[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
+  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
 
   const supabase = createClient()
   const { scheduleSync } = useAutoSync({ enabled: autoSyncEnabled })
@@ -319,6 +321,64 @@ export default function HomePage() {
     setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
   }
 
+  const toggleCardSelection = (id: string) => {
+    const newSelection = new Set(selectedCards)
+    if (newSelection.has(id)) {
+      newSelection.delete(id)
+    } else {
+      newSelection.add(id)
+    }
+    setSelectedCards(newSelection)
+    if (newSelection.size === 0) {
+      setIsSelectionMode(false)
+    }
+  }
+
+  const selectAllCards = () => {
+    const allIds = new Set(filteredBirthdays.map(b => b.id))
+    setSelectedCards(allIds)
+    setIsSelectionMode(true)
+  }
+
+  const deselectAllCards = () => {
+    setSelectedCards(new Set())
+    setIsSelectionMode(false)
+  }
+
+  const copySelectedToClipboard = () => {
+    const selectedBirthdays = birthdays.filter(b => selectedCards.has(b.id))
+    const text = selectedBirthdays.map(b => {
+      const date = new Date(b.birth_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+      const age = new Date().getFullYear() - new Date(b.birth_date).getFullYear()
+      return `${b.last_name} ${b.first_name} - ${date} (${age} ${t.years})`
+    }).join('\n')
+    
+    navigator.clipboard.writeText(text)
+    alert(`Скопировано ${selectedCards.size} записей`)
+  }
+
+  const shareSelected = async () => {
+    const selectedBirthdays = birthdays.filter(b => selectedCards.has(b.id))
+    const text = selectedBirthdays.map(b => {
+      const date = new Date(b.birth_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+      const age = new Date().getFullYear() - new Date(b.birth_date).getFullYear()
+      return `${b.last_name} ${b.first_name} - ${date} (${age} ${t.years})`
+    }).join('\n')
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Дни рождения',
+          text: text
+        })
+      } catch (err) {
+        console.log('Share canceled')
+      }
+    } else {
+      copySelectedToClipboard()
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -374,6 +434,26 @@ export default function HomePage() {
               />
             </div>
 
+            {isSelectionMode && selectedCards.size > 0 && (
+              <div className="flex items-center gap-2 p-4 bg-primary/10 rounded-lg border border-primary/20">
+                <span className="text-sm font-medium">Выбрано: {selectedCards.size}</span>
+                <div className="flex gap-2 ml-auto">
+                  <Button size="sm" variant="outline" onClick={selectAllCards}>
+                    Выбрать все
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={copySelectedToClipboard}>
+                    Копировать
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={shareSelected}>
+                    Поделиться
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={deselectAllCards}>
+                    Отменить
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-muted-foreground">Загрузка...</div>
@@ -389,7 +469,18 @@ export default function HomePage() {
                 {viewMode === "cards" && (
                   <div className={cn("grid gap-4", isMobile ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3")}>
                     {filteredBirthdays.map((birthday) => (
-                      <BirthdayCard key={birthday.id} birthday={birthday} onEdit={handleEdit} onDelete={handleDelete} />
+                      <BirthdayCard 
+                        key={birthday.id} 
+                        birthday={birthday} 
+                        onEdit={handleEdit} 
+                        onDelete={handleDelete}
+                        isSelected={selectedCards.has(birthday.id)}
+                        onToggleSelect={() => {
+                          toggleCardSelection(birthday.id)
+                          if (!isSelectionMode) setIsSelectionMode(true)
+                        }}
+                        selectionMode={isSelectionMode}
+                      />
                     ))}
                   </div>
                 )}

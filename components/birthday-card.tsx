@@ -9,14 +9,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useLocale } from "@/lib/locale-context"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface BirthdayCardProps {
   birthday: Birthday
   onEdit: (birthday: Birthday) => void
   onDelete: (id: string) => void
+  isSelected?: boolean
+  onToggleSelect?: () => void
+  selectionMode?: boolean
 }
 
-export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) {
+export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, onToggleSelect, selectionMode = false }: BirthdayCardProps) {
   const { t, locale } = useLocale()
   const localeMap: Record<string, string> = {
     ru: "ru-RU",
@@ -80,13 +84,41 @@ export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) 
 
   const timeData = getTimeUntilBirthday()
   const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
+  const isToday = timeData.totalDays === 0
 
   return (
     <>
       <Card
-        className="overflow-hidden transition-shadow hover:shadow-lg cursor-pointer"
-        onClick={() => setShowDetails(true)}
+        className={`overflow-hidden transition-shadow hover:shadow-lg cursor-pointer relative ${
+          isToday ? 'border-2' : ''
+        }`}
+        style={isToday ? { borderColor: '#34C924' } : {}}
+        onClick={(e) => {
+          if (selectionMode && onToggleSelect) {
+            e.stopPropagation()
+            onToggleSelect()
+          } else {
+            setShowDetails(true)
+          }
+        }}
       >
+        {selectionMode && onToggleSelect && (
+          <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+            <Checkbox 
+              checked={isSelected} 
+              onCheckedChange={onToggleSelect}
+              className="h-5 w-5 bg-white border-2"
+            />
+          </div>
+        )}
+        {isToday && (
+          <div 
+            className="absolute top-2 right-2 px-2 py-1 text-xs font-bold text-white rounded-md shadow-sm"
+            style={{ backgroundColor: '#34C924' }}
+          >
+            {t.today}
+          </div>
+        )}
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16">
@@ -103,7 +135,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete }: BirthdayCardProps) 
                 {t.age}: {getAge()} {t.years}
               </p>
 
-              {timeData.totalDays === 0 && <p className="text-sm font-semibold text-green-600 mt-2">🎉 {t.today}!</p>}
+              {timeData.totalDays === 0 && <p className="text-sm font-semibold mt-2" style={{ color: '#34C924' }}>🎉 {t.today}!</p>}
               {timeData.totalDays === 1 && <p className="text-sm font-semibold text-blue-600 mt-2">{t.tomorrow}</p>}
               {timeData.totalDays > 1 && (
                 <div className="text-sm text-muted-foreground mt-2">

@@ -41,6 +41,10 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
     return age
   }
 
+  const getBirthYear = (birthDate: string) => {
+    return new Date(birthDate).getFullYear()
+  }
+
   if (isMobile) {
     return (
       <div className="space-y-3">
@@ -64,6 +68,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                   <div className="text-sm text-muted-foreground">
                     {formatDate(birthday.birth_date, { day: "numeric", month: "long" })} {" "}
                     • {getAge(birthday.birth_date)} {t.years}
+                    {" "}• г.р.: {getBirthYear(birthday.birth_date)}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {birthday.phone && (
@@ -115,6 +120,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
             <TableHead>{t.firstName}</TableHead>
             <TableHead>{t.birthDate}</TableHead>
             <TableHead>{t.age}</TableHead>
+            <TableHead>Год рождения</TableHead>
             <TableHead>{t.phone}</TableHead>
             <TableHead>{t.email}</TableHead>
             <TableHead className="w-[100px]"></TableHead>
@@ -138,9 +144,10 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                 <TableCell className="font-medium">{birthday.last_name}</TableCell>
                 <TableCell>{birthday.first_name}</TableCell>
                 <TableCell>
-                  {formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })}
+                  {formatDate(birthday.birth_date, { day: "numeric", month: "long" })}
                 </TableCell>
                 <TableCell>{getAge(birthday.birth_date)}</TableCell>
+                <TableCell>{getBirthYear(birthday.birth_date)}</TableCell>
                 <TableCell>
                   {birthday.phone && (
                     <Button variant="ghost" size="sm" className="h-7 px-2" asChild>
