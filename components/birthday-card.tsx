@@ -92,7 +92,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
         className={`overflow-hidden transition-shadow hover:shadow-lg cursor-pointer relative ${
           isToday ? 'border-2' : ''
         }`}
-        style={isToday ? { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
+        style={isToday ? { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.15)' } : {}}
         onClick={(e) => {
           if (selectionMode && onToggleSelect) {
             e.stopPropagation()

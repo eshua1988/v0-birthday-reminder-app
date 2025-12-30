@@ -57,7 +57,7 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
           <div 
             key={birthday.id} 
             className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors relative"
-            style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
+            style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.15)' } : {}}
           >
             <Avatar className="h-12 w-12">
               <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
