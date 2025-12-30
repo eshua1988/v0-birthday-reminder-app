@@ -284,8 +284,15 @@ export function BackupManager() {
           console.log(`[v0] Processing row ${i + 1}:`, row)
 
           try {
-            // Извлечь ФИО из колонки "Члены"
-            let fullName = row["Члены"] || row["Members"] || row["Name"] || row["ФИО"]
+            // Извлечь ФИО - ищем в первой доступной колонке с текстом
+            let fullName = 
+              row["Члены"] || 
+              row["Members"] || 
+              row["Name"] || 
+              row["ФИО"] || 
+              row["Имя"] ||
+              row["Имена"] ||
+              Object.values(row).find(val => typeof val === 'string' && val.trim().length > 0)
 
             if (!fullName || fullName === "") {
               console.log(`[v0] Row ${i + 1} skipped: no name found`)
@@ -302,15 +309,32 @@ export function BackupManager() {
 
             console.log(`[v0] Row ${i + 1} name: lastName="${lastName}", firstName="${firstName}"`)
 
-            // Искать дату рождения в колонках месяцев
+            // Искать дату рождения в колонках месяцев или любой колонке с датой
             let birthDate = null
             let birthDateStr = null
 
+            // Сначала проверяем стандартные колонки
             for (const monthCol of monthColumns) {
               if (row[monthCol] !== undefined && row[monthCol] !== null && row[monthCol] !== "") {
                 birthDateStr = row[monthCol]
                 console.log(`[v0] Row ${i + 1} found date in ${monthCol}:`, birthDateStr)
                 break
+              }
+            }
+
+            // Если не нашли в месяцах, ищем в любой колонке кроме первой (имя)
+            if (!birthDateStr) {
+              const keys = Object.keys(row)
+              for (let j = 1; j < keys.length; j++) {
+                const value = row[keys[j]]
+                if (value !== undefined && value !== null && value !== "" && value !== fullName) {
+                  // Проверяем что это похоже на дату
+                  if (typeof value === 'number' || (typeof value === 'string' && /\d/.test(value))) {
+                    birthDateStr = value
+                    console.log(`[v0] Row ${i + 1} found date in column ${keys[j]}:`, birthDateStr)
+                    break
+                  }
+                }
               }
             }
 
@@ -323,12 +347,12 @@ export function BackupManager() {
             try {
               // Если это Excel date serial number
               if (typeof birthDateStr === "number") {
-                const excelEpoch = new Date(1900, 0, 1)
-                const days = birthDateStr - 2 // Excel считает 1900 високосным, корректировка
+                const excelEpoch = new Date(1899, 11, 30) // Excel epoch правильный
+                const days = birthDateStr
                 birthDate = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000)
-                console.log(`[v0] Row ${i + 1} parsed serial date:`, birthDate)
+                console.log(`[v0] Row ${i + 1} parsed serial date:`, birthDate, 'from', birthDateStr)
               } else {
-                const dateStr = String(birthDateStr)
+                const dateStr = String(birthDateStr).trim()
                 // Попробовать разные форматы
                 const formats = ["dd.MM.yyyy", "dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd.MM."]
                 for (const fmt of formats) {
@@ -337,15 +361,15 @@ export function BackupManager() {
                     let fullDateStr = dateStr
                     if (
                       fmt === "dd.MM." &&
-                      dateStr.endsWith(".") &&
+                      (dateStr.endsWith(".") || dateStr.match(/^\d{2}\.\d{2}$/)) &&
                       !dateStr.includes("19") &&
                       !dateStr.includes("20")
                     ) {
-                      fullDateStr = dateStr + new Date().getFullYear()
+                      fullDateStr = dateStr.replace(/\.$/, '') + "." + new Date().getFullYear()
                     }
 
                     const parsed = parse(fullDateStr, fmt === "dd.MM." ? "dd.MM.yyyy" : fmt, new Date())
-                    if (!isNaN(parsed.getTime())) {
+                    if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900 && parsed.getFullYear() < 2100) {
                       birthDate = parsed
                       console.log(`[v0] Row ${i + 1} parsed date with format ${fmt}:`, birthDate)
                       break
@@ -355,7 +379,7 @@ export function BackupManager() {
                 // Если не удалось распарсить, попробовать встроенный парсер
                 if (!birthDate) {
                   const parsed = new Date(dateStr)
-                  if (!isNaN(parsed.getTime())) {
+                  if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
                     birthDate = parsed
                     console.log(`[v0] Row ${i + 1} parsed date with native parser:`, birthDate)
                   }
@@ -396,7 +420,7 @@ export function BackupManager() {
 
         if (birthdaysToImport.length === 0) {
           throw new Error(
-            'Не найдено валидных записей в Excel файле. Пожалуйста, убедитесь, что файл содержит колонку "Члены" с именами и колонки с месяцами (Январь, Февраль и т.д.) с датами рождения.',
+            'Не найдено валидных записей в Excel файле. Пожалуйста, убедитесь, что файл содержит имена в первой колонке и даты рождения в остальных колонках.',
           )
         }
 
