@@ -111,7 +111,6 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
             />
           </div>
         )}
-        )}
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16">
