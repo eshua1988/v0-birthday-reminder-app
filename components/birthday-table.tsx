@@ -62,7 +62,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
             <div 
               key={birthday.id} 
               className="rounded-lg border bg-card p-4 relative"
-              style={isToday ? { borderLeft: '4px solid #34C924' } : {}}
+              style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
             >
               <div className="flex items-start gap-3">
                 <Avatar className="h-12 w-12">
@@ -77,20 +77,12 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                     <div className="font-semibold">
                       {birthday.last_name} {birthday.first_name}
                     </div>
-                    {isToday && (
-                      <span 
-                        className="px-2 py-0.5 text-xs font-bold text-white rounded-md"
-                        style={{ backgroundColor: '#34C924' }}
-                      >
-                        {t.today}
-                      </span>
-                    )}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {formatDate(birthday.birth_date, { day: "numeric", month: "long" })} {" "}
+                    {formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })} {" "}
                     • {getAge(birthday.birth_date)} {t.years}
-                    {" "}• г.р.: {getBirthYear(birthday.birth_date)}
                   </div>
+                  {isToday && <p className="text-sm font-semibold mt-1" style={{ color: '#34C924' }}>{t.today}</p>}
                   <div className="flex flex-wrap gap-2 mt-2">
                     {birthday.phone && (
                       <Button variant="outline" size="sm" className="h-7 text-xs bg-transparent" asChild>
@@ -141,7 +133,6 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
             <TableHead>{t.firstName}</TableHead>
             <TableHead>{t.birthDate}</TableHead>
             <TableHead>{t.age}</TableHead>
-            <TableHead>Год рождения</TableHead>
             <TableHead>{t.phone}</TableHead>
             <TableHead>{t.email}</TableHead>
             <TableHead className="w-[100px]"></TableHead>
@@ -155,7 +146,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
             return (
               <TableRow 
                 key={birthday.id}
-                style={isToday ? { borderLeft: '4px solid #34C924' } : {}}
+                style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
               >
                 <TableCell>
                   <Avatar className="h-10 w-10">
@@ -168,23 +159,15 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
                 </TableCell>
                 <TableCell className="font-medium">{birthday.last_name}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    {birthday.first_name}
-                    {isToday && (
-                      <span 
-                        className="px-2 py-0.5 text-xs font-bold text-white rounded-md"
-                        style={{ backgroundColor: '#34C924' }}
-                      >
-                        {t.today}
-                      </span>
-                    )}
+                  <div className="flex flex-col">
+                    <span>{birthday.first_name}</span>
+                    {isToday && <span className="text-sm font-semibold mt-1" style={{ color: '#34C924' }}>{t.today}</span>}
                   </div>
                 </TableCell>
                 <TableCell>
-                  {formatDate(birthday.birth_date, { day: "numeric", month: "long" })}
+                  {formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })}
                 </TableCell>
-                <TableCell>{getAge(birthday.birth_date)}</TableCell>
-                <TableCell>{getBirthYear(birthday.birth_date)}</TableCell>
+                <TableCell>{getAge(birthday.birth_date)} {t.years}</TableCell>
                 <TableCell>
                   {birthday.phone && (
                     <Button variant="ghost" size="sm" className="h-7 px-2" asChild>

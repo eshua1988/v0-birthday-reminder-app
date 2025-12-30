@@ -92,7 +92,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
         className={`overflow-hidden transition-shadow hover:shadow-lg cursor-pointer relative ${
           isToday ? 'border-2' : ''
         }`}
-        style={isToday ? { borderColor: '#34C924' } : {}}
+        style={isToday ? { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
         onClick={(e) => {
           if (selectionMode && onToggleSelect) {
             e.stopPropagation()
@@ -111,13 +111,6 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
             />
           </div>
         )}
-        {isToday && (
-          <div 
-            className="absolute top-2 right-2 px-2 py-1 text-xs font-bold text-white rounded-md shadow-sm"
-            style={{ backgroundColor: '#34C924' }}
-          >
-            {t.today}
-          </div>
         )}
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
@@ -130,12 +123,14 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
               <h3 className="font-semibold text-lg truncate">
                 {birthday.last_name} {birthday.first_name}
               </h3>
-              <p className="text-sm text-muted-foreground">{formatDate(birthday.birth_date)}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })}
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {t.age}: {getAge()} {t.years}
               </p>
 
-              {timeData.totalDays === 0 && <p className="text-sm font-semibold mt-2" style={{ color: '#34C924' }}>🎉 {t.today}!</p>}
+              {timeData.totalDays === 0 && <p className="text-sm font-semibold mt-2" style={{ color: '#34C924' }}>{t.today}</p>}
               {timeData.totalDays === 1 && <p className="text-sm font-semibold text-blue-600 mt-2">{t.tomorrow}</p>}
               {timeData.totalDays > 1 && (
                 <div className="text-sm text-muted-foreground mt-2">

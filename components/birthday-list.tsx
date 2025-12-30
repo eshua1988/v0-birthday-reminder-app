@@ -57,7 +57,7 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
           <div 
             key={birthday.id} 
             className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors relative"
-            style={isToday ? { borderLeft: '4px solid #34C924' } : {}}
+            style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
           >
             <Avatar className="h-12 w-12">
               <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
@@ -69,24 +69,14 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
                 <h3 className="font-semibold truncate">
                   {birthday.last_name} {birthday.first_name}
                 </h3>
-                {isToday && (
-                  <span 
-                    className="px-2 py-0.5 text-xs font-bold text-white rounded-md"
-                    style={{ backgroundColor: '#34C924' }}
-                  >
-                    {t.today}
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{formatDate(birthday.birth_date, { day: "numeric", month: "long" })}</span>
+                <span>{formatDate(birthday.birth_date, { day: "numeric", month: "long", year: "numeric" })}</span>
                 <span>
-                  {t.age}: {getAge(birthday.birth_date)}
-                </span>
-                <span className="text-xs">
-                  (г.р.: {getBirthYear(birthday.birth_date)})
+                  {t.age}: {getAge(birthday.birth_date)} {t.years}
                 </span>
               </div>
+              {isToday && <p className="text-sm font-semibold mt-1" style={{ color: '#34C924' }}>{t.today}</p>}
             </div>
 
             <div className="flex items-center gap-2">
