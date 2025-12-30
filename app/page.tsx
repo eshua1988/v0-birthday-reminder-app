@@ -295,20 +295,18 @@ export default function HomePage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm(t.confirmDelete)) {
-      console.log("[v0] Deleting birthday, id:", id)
-      const { error } = await supabase.from("birthdays").delete().eq("id", id)
+    console.log("[v0] Deleting birthday, id:", id)
+    const { error } = await supabase.from("birthdays").delete().eq("id", id)
 
-      if (error) {
-        console.error("[v0] Error deleting birthday:", error)
-        alert(`Ошибка при удалении: ${error.message}`)
-      } else {
-        console.log("[v0] Birthday deleted successfully")
-        const newBirthdays = birthdays.filter((b) => b.id !== id)
-        setBirthdays(newBirthdays)
-        saveToHistory(newBirthdays)
-        scheduleSync()
-      }
+    if (error) {
+      console.error("[v0] Error deleting birthday:", error)
+      alert(`Ошибка при удалении: ${error.message}`)
+    } else {
+      console.log("[v0] Birthday deleted successfully")
+      const newBirthdays = birthdays.filter((b) => b.id !== id)
+      setBirthdays(newBirthdays)
+      saveToHistory(newBirthdays)
+      scheduleSync()
     }
   }
 
