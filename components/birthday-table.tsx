@@ -62,7 +62,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
             <div 
               key={birthday.id} 
               className="rounded-lg border bg-card p-4 relative"
-              style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.15)' } : {}}
+              style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
             >
               <div className="flex items-start gap-3">
                 <Avatar className="h-12 w-12">
@@ -146,7 +146,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
             return (
               <TableRow 
                 key={birthday.id}
-                style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.15)' } : {}}
+                style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
               >
                 <TableCell>
                   <Avatar className="h-10 w-10">
