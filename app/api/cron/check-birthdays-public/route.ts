@@ -132,17 +132,23 @@ export async function GET(request: NextRequest) {
 
     for (const birthday of birthdays || []) {
       birthdaysChecked++
+      
+      // Get user's timezone (default to UTC if not set)
+      const userTimezone = userTimezonesMap.get(birthday.user_id) || 'UTC'
+      
+      // Get current date in user's timezone
+      const nowInUserTimezone = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }))
+      const userMonth = nowInUserTimezone.getMonth()
+      const userDay = nowInUserTimezone.getDate()
+      
       const birthDate = new Date(birthday.birth_date)
-      const isBirthdayToday = birthDate.getMonth() === currentMonth && birthDate.getDate() === currentDay
+      const isBirthdayToday = birthDate.getMonth() === userMonth && birthDate.getDate() === userDay
 
       if (!isBirthdayToday) {
         continue
       }
 
       birthdaysMatched++
-      
-      // Get user's timezone (default to UTC if not set)
-      const userTimezone = userTimezonesMap.get(birthday.user_id) || 'UTC'
       
       // Collect all notification times for this birthday
       const notificationTimes: string[] = []
