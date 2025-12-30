@@ -86,28 +86,38 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
   const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
   const isToday = timeData.totalDays === 0
 
+  const getCardStyle = () => {
+    if (isToday) {
+      return { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.2)' }
+    }
+    if (isSelected) {
+      return { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }
+    }
+    return {}
+  }
+
   return (
     <>
       <Card
-        className={`overflow-hidden transition-shadow hover:shadow-lg cursor-pointer relative ${
-          isToday ? 'border-2' : ''
+        className={`overflow-hidden transition-all hover:shadow-lg cursor-pointer relative ${
+          isToday ? 'border-2' : isSelected ? 'border-2' : ''
         }`}
-        style={isToday ? { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.2)' } : {}}
+        style={getCardStyle()}
         onClick={(e) => {
           if (selectionMode && onToggleSelect) {
             e.stopPropagation()
             onToggleSelect()
-          } else {
+          } else if (!selectionMode) {
             setShowDetails(true)
           }
         }}
       >
-        {selectionMode && onToggleSelect && (
+        {(selectionMode || isSelected) && onToggleSelect && (
           <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
             <Checkbox 
               checked={isSelected} 
               onCheckedChange={onToggleSelect}
-              className="h-5 w-5 bg-white border-2"
+              className="h-5 w-5 bg-white border-2 shadow-md"
             />
           </div>
         )}

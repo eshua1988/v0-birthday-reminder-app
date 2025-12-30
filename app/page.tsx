@@ -379,6 +379,21 @@ export default function HomePage() {
     }
   }
 
+  const deleteSelected = async () => {
+    if (!confirm(`Удалить ${selectedCards.size} записей?`)) {
+      return
+    }
+
+    const idsToDelete = Array.from(selectedCards)
+    
+    for (const id of idsToDelete) {
+      await handleDelete(id)
+    }
+    
+    setSelectedCards(new Set())
+    setIsSelectionMode(false)
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -435,9 +450,9 @@ export default function HomePage() {
             </div>
 
             {isSelectionMode && selectedCards.size > 0 && (
-              <div className="flex items-center gap-2 p-4 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-4 bg-primary/10 rounded-lg border border-primary/20">
                 <span className="text-sm font-medium">Выбрано: {selectedCards.size}</span>
-                <div className="flex gap-2 ml-auto">
+                <div className="flex flex-wrap gap-2 sm:ml-auto">
                   <Button size="sm" variant="outline" onClick={selectAllCards}>
                     Выбрать все
                   </Button>
@@ -446,6 +461,9 @@ export default function HomePage() {
                   </Button>
                   <Button size="sm" variant="outline" onClick={shareSelected}>
                     Поделиться
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={deleteSelected}>
+                    Удалить
                   </Button>
                   <Button size="sm" variant="ghost" onClick={deselectAllCards}>
                     Отменить
