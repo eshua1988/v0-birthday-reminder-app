@@ -378,14 +378,20 @@ export default function HomePage() {
   }
 
   const deleteSelected = async () => {
-    if (!confirm(`Удалить ${selectedCards.size} записей?`)) {
-      return
-    }
-
     const idsToDelete = Array.from(selectedCards)
     
-    for (const id of idsToDelete) {
-      await handleDelete(id)
+    console.log("[v0] Deleting multiple birthdays, ids:", idsToDelete)
+    const { error } = await supabase.from("birthdays").delete().in("id", idsToDelete)
+
+    if (error) {
+      console.error("[v0] Error deleting birthdays:", error)
+      alert(`Ошибка при удалении: ${error.message}`)
+    } else {
+      console.log("[v0] Birthdays deleted successfully")
+      const newBirthdays = birthdays.filter((b) => !idsToDelete.includes(b.id))
+      setBirthdays(newBirthdays)
+      saveToHistory(newBirthdays)
+      scheduleSync()
     }
     
     setSelectedCards(new Set())
