@@ -104,16 +104,14 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
         }`}
         style={getCardStyle()}
         onClick={(e) => {
-          if (onToggleSelect) {
-            e.stopPropagation()
-            onToggleSelect()
-          } else {
-            setShowDetails(true)
-          }
+          setShowDetails(true)
         }}
       >
         {onToggleSelect && (
-          <div className="absolute top-2 left-2 z-10 opacity-100" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute top-2 left-2 z-10 opacity-100" onClick={(e) => {
+            e.stopPropagation()
+            onToggleSelect()
+          }}>
             <Checkbox 
               checked={isSelected} 
               onCheckedChange={onToggleSelect}
