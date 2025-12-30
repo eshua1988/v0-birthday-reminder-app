@@ -7,14 +7,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface BirthdayTableProps {
   birthdays: Birthday[]
   onEdit: (birthday: Birthday) => void
   onDelete: (id: string) => void
+  isSelected?: (id: string) => boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProps) {
+export function BirthdayTable({ birthdays, onEdit, onDelete, isSelected, onToggleSelect }: BirthdayTableProps) {
   const { t, locale } = useLocale()
   const isMobile = useIsMobile()
 
@@ -57,14 +60,30 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
         {birthdays.map((birthday) => {
           const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
           const isToday = isBirthdayToday(birthday.birth_date)
+          const selected = isSelected ? isSelected(birthday.id) : false
 
           return (
             <div 
               key={birthday.id} 
               className="rounded-lg border bg-card p-4 relative"
-              style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
+              style={
+                isToday 
+                  ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' }
+                  : selected
+                  ? { borderLeft: '4px solid #3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }
+                  : {}
+              }
             >
               <div className="flex items-start gap-3">
+                {onToggleSelect && (
+                  <div className="flex items-center pt-1" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={selected}
+                      onCheckedChange={() => onToggleSelect(birthday.id)}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                )}
                 <Avatar className="h-12 w-12">
                   <AvatarImage
                     src={birthday.photo_url || undefined}
@@ -128,6 +147,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
       <Table>
         <TableHeader>
           <TableRow>
+            {onToggleSelect && <TableHead className="w-[50px]"></TableHead>}
             <TableHead>{t.photo}</TableHead>
             <TableHead>{t.lastName}</TableHead>
             <TableHead>{t.firstName}</TableHead>
@@ -142,12 +162,28 @@ export function BirthdayTable({ birthdays, onEdit, onDelete }: BirthdayTableProp
           {birthdays.map((birthday) => {
             const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
             const isToday = isBirthdayToday(birthday.birth_date)
+            const selected = isSelected ? isSelected(birthday.id) : false
 
             return (
               <TableRow 
                 key={birthday.id}
-                style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
+                style={
+                  isToday 
+                    ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' }
+                    : selected
+                    ? { borderLeft: '4px solid #3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }
+                    : {}
+                }
               >
+                {onToggleSelect && (
+                  <TableCell>
+                    <Checkbox 
+                      checked={selected}
+                      onCheckedChange={() => onToggleSelect(birthday.id)}
+                      className="h-4 w-4"
+                    />
+                  </TableCell>
+                )}
                 <TableCell>
                   <Avatar className="h-10 w-10">
                     <AvatarImage

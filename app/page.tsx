@@ -504,11 +504,29 @@ export default function HomePage() {
                 )}
 
                 {viewMode === "list" && (
-                  <BirthdayList birthdays={filteredBirthdays} onEdit={handleEdit} onDelete={handleDelete} />
+                  <BirthdayList 
+                    birthdays={filteredBirthdays} 
+                    onEdit={handleEdit} 
+                    onDelete={handleDelete}
+                    isSelected={(id) => selectedCards.has(id)}
+                    onToggleSelect={(id) => {
+                      toggleCardSelection(id)
+                      if (!isSelectionMode) setIsSelectionMode(true)
+                    }}
+                  />
                 )}
 
                 {viewMode === "table" && (
-                  <BirthdayTable birthdays={filteredBirthdays} onEdit={handleEdit} onDelete={handleDelete} />
+                  <BirthdayTable 
+                    birthdays={filteredBirthdays} 
+                    onEdit={handleEdit} 
+                    onDelete={handleDelete}
+                    isSelected={(id) => selectedCards.has(id)}
+                    onToggleSelect={(id) => {
+                      toggleCardSelection(id)
+                      if (!isSelectionMode) setIsSelectionMode(true)
+                    }}
+                  />
                 )}
               </>
             )}

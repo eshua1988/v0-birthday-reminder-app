@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Edit, Trash2, Mail, Phone } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useLocale } from "@/lib/locale-context"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface BirthdayListProps {
   birthdays: Birthday[]
   onEdit: (birthday: Birthday) => void
   onDelete: (id: string) => void
+  isSelected?: (id: string) => boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps) {
+export function BirthdayList({ birthdays, onEdit, onDelete, isSelected, onToggleSelect }: BirthdayListProps) {
   const { t, locale } = useLocale()
   const localeMap: Record<string, string> = {
     ru: "ru-RU",
@@ -52,13 +55,29 @@ export function BirthdayList({ birthdays, onEdit, onDelete }: BirthdayListProps)
       {birthdays.map((birthday) => {
         const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
         const isToday = isBirthdayToday(birthday.birth_date)
+        const selected = isSelected ? isSelected(birthday.id) : false
 
         return (
           <div 
             key={birthday.id} 
-            className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors relative"
-            style={isToday ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' } : {}}
+            className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors relative group"
+            style={
+              isToday 
+                ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' }
+                : selected
+                ? { borderLeft: '4px solid #3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }
+                : {}
+            }
           >
+            {onToggleSelect && (
+              <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                <Checkbox 
+                  checked={selected}
+                  onCheckedChange={() => onToggleSelect(birthday.id)}
+                  className="h-4 w-4"
+                />
+              </div>
+            )}
             <Avatar className="h-12 w-12">
               <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
               <AvatarFallback>{initials}</AvatarFallback>

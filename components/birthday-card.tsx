@@ -99,21 +99,21 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
   return (
     <>
       <Card
-        className={`overflow-hidden transition-all hover:shadow-lg cursor-pointer relative ${
+        className={`overflow-hidden transition-all hover:shadow-lg cursor-pointer relative group ${
           isToday ? 'border-2' : isSelected ? 'border-2' : ''
         }`}
         style={getCardStyle()}
         onClick={(e) => {
-          if (selectionMode && onToggleSelect) {
+          if (onToggleSelect) {
             e.stopPropagation()
             onToggleSelect()
-          } else if (!selectionMode) {
+          } else {
             setShowDetails(true)
           }
         }}
       >
-        {(selectionMode || isSelected) && onToggleSelect && (
-          <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+        {onToggleSelect && (
+          <div className="absolute top-2 left-2 z-10 opacity-100" onClick={(e) => e.stopPropagation()}>
             <Checkbox 
               checked={isSelected} 
               onCheckedChange={onToggleSelect}
