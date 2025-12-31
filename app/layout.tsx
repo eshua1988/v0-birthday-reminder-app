@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseNotificationManager } from "@/components/firebase-notification-manager"
 import { NotificationPermissionAutoRequest } from "@/components/notification-permission-auto-request"
 import { TimezoneDetector } from "@/components/timezone-detector"
+import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -69,16 +70,23 @@ export default function RootLayout({
         <script src="/sw-register.js" defer />
       </head>
       <body className={`font-sans antialiased`}>
-        <LocaleProvider>
-          <TimezoneDetector />
-          {children}
-          <NotificationPermissionAutoRequest />
-          <FirebaseNotificationManager />
-          <NotificationManager />
-          <NotificationPermissionPrompt />
-          <InactivityLogout />
-          <Toaster />
-        </LocaleProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <LocaleProvider>
+            <TimezoneDetector />
+            {children}
+            <NotificationPermissionAutoRequest />
+            <FirebaseNotificationManager />
+            <NotificationManager />
+            <NotificationPermissionPrompt />
+            <InactivityLogout />
+            <Toaster />
+          </LocaleProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

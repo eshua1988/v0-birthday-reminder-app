@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { checkNotificationSupport, requestNotificationPermission, sendNotification } from "@/lib/notifications"
 import { requestFirebaseNotificationPermission } from "@/lib/firebase"
 import { getFirebaseVapidKey } from "@/app/actions/firebase-config"
-import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X, Languages } from "lucide-react"
+import { Bell, BellOff, CheckCircle2, XCircle, AlertCircle, Info, Plus, X, Languages, Moon, Sun, Clock } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import type { Locale } from "@/lib/i18n"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -20,6 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useTheme } from "next-themes"
 
 const supabase = createClient()
 
@@ -30,6 +31,11 @@ export default function SettingsPage() {
   const { t, setLocale, locale } = useLocale()
   const { toast } = useToast()
   const isMobile = useIsMobile()
+  const { theme, setTheme } = useTheme()
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system' | 'scheduled'>('system')
+  const [scheduledThemeStart, setScheduledThemeStart] = useState('18:00')
+  const [scheduledThemeEnd, setScheduledThemeEnd] = useState('08:00')
+  
   const languages: { value: Locale; label: string; flag: string }[] = [
     { value: "ru", label: "Русский", flag: "🇷🇺" },
     { value: "pl", label: "Polski", flag: "🇵🇱" },
@@ -85,6 +91,41 @@ export default function SettingsPage() {
     checkFirebaseConfiguration()
     setBrowserPermission(checkNotificationSupport())
   }, [])
+
+  useEffect(() => {
+    // Apply theme based on mode
+    if (themeMode === 'scheduled') {
+      applyScheduledTheme()
+      const interval = setInterval(applyScheduledTheme, 60000) // Check every minute
+      return () => clearInterval(interval)
+    } else {
+      setTheme(themeMode)
+    }
+  }, [themeMode, scheduledThemeStart, scheduledThemeEnd, setTheme])
+
+  const applyScheduledTheme = () => {
+    const now = new Date()
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    
+    const [startHour, startMin] = scheduledThemeStart.split(':').map(Number)
+    const [endHour, endMin] = scheduledThemeEnd.split(':').map(Number)
+    const [currentHour, currentMin] = currentTime.split(':').map(Number)
+    
+    const currentMinutes = currentHour * 60 + currentMin
+    const startMinutes = startHour * 60 + startMin
+    const endMinutes = endHour * 60 + endMin
+    
+    let isDarkTime = false
+    if (startMinutes < endMinutes) {
+      // Normal case: e.g., 18:00 to 23:00
+      isDarkTime = currentMinutes >= startMinutes && currentMinutes < endMinutes
+    } else {
+      // Overnight case: e.g., 18:00 to 08:00
+      isDarkTime = currentMinutes >= startMinutes || currentMinutes < endMinutes
+    }
+    
+    setTheme(isDarkTime ? 'dark' : 'light')
+  }
 
   const checkFirebaseConfiguration = () => {
     const hasFirebaseConfig =
@@ -276,6 +317,40 @@ export default function SettingsPage() {
         const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
         setTimezone(detectedTimezone)
       }
+
+      // Load theme settings
+      const { data: themeData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("user_id", user.id)
+        .eq("key", "theme_mode")
+        .maybeSingle()
+
+      if (themeData && themeData.value) {
+        setThemeMode(themeData.value as 'light' | 'dark' | 'system' | 'scheduled')
+      }
+
+      const { data: themeStartData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("user_id", user.id)
+        .eq("key", "theme_scheduled_start")
+        .maybeSingle()
+
+      if (themeStartData && themeStartData.value) {
+        setScheduledThemeStart(themeStartData.value)
+      }
+
+      const { data: themeEndData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("user_id", user.id)
+        .eq("key", "theme_scheduled_end")
+        .maybeSingle()
+
+      if (themeEndData && themeEndData.value) {
+        setScheduledThemeEnd(themeEndData.value)
+      }
     }
   }
 
@@ -451,6 +526,34 @@ export default function SettingsPage() {
           user_id: user.id,
           key: "timezone",
           value: timezone,
+        },
+        { onConflict: "user_id,key" },
+      )
+
+      // Save theme settings
+      await supabase.from("settings").upsert(
+        {
+          user_id: user.id,
+          key: "theme_mode",
+          value: themeMode,
+        },
+        { onConflict: "user_id,key" },
+      )
+
+      await supabase.from("settings").upsert(
+        {
+          user_id: user.id,
+          key: "theme_scheduled_start",
+          value: scheduledThemeStart,
+        },
+        { onConflict: "user_id,key" },
+      )
+
+      await supabase.from("settings").upsert(
+        {
+          user_id: user.id,
+          key: "theme_scheduled_end",
+          value: scheduledThemeEnd,
         },
         { onConflict: "user_id,key" },
       )
@@ -859,6 +962,122 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   {t.notificationTimeDescription} ({t.maxNotificationTimes})
                 </p>
+              </div>
+
+              <Button onClick={handleSaveSettings} disabled={isLoading}>
+                {isLoading ? t.saving : t.saveSettings}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Moon className="h-5 w-5" />
+                Тема оформления
+              </CardTitle>
+              <CardDescription>
+                Выберите цветовую тему приложения
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setThemeMode('light')}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
+                      themeMode === 'light'
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Sun className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">Светлая</p>
+                      <p className="text-xs text-muted-foreground">Всегда светлая тема</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setThemeMode('dark')}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
+                      themeMode === 'dark'
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Moon className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">Темная</p>
+                      <p className="text-xs text-muted-foreground">Всегда темная тема</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setThemeMode('system')}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
+                      themeMode === 'system'
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <AlertCircle className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">Системная</p>
+                      <p className="text-xs text-muted-foreground">Как в системе</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setThemeMode('scheduled')}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
+                      themeMode === 'scheduled'
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Clock className="h-5 w-5" />
+                    <div className="text-left">
+                      <p className="font-medium">По времени</p>
+                      <p className="text-xs text-muted-foreground">Автоматически</p>
+                    </div>
+                  </button>
+                </div>
+
+                {themeMode === 'scheduled' && (
+                  <div className="space-y-4 p-4 rounded-lg border bg-muted/50">
+                    <div className="space-y-2">
+                      <Label htmlFor="theme-start">
+                        Темная тема с:
+                      </Label>
+                      <Input
+                        id="theme-start"
+                        type="time"
+                        value={scheduledThemeStart}
+                        onChange={(e) => setScheduledThemeStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="theme-end">
+                        До:
+                      </Label>
+                      <Input
+                        id="theme-end"
+                        type="time"
+                        value={scheduledThemeEnd}
+                        onChange={(e) => setScheduledThemeEnd(e.target.value)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Темная тема будет включаться автоматически в указанное время.
+                      {scheduledThemeStart > scheduledThemeEnd && ' (через полночь)'}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Button onClick={handleSaveSettings} disabled={isLoading}>
