@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Sidebar } from "@/components/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -92,20 +92,12 @@ export default function SettingsPage() {
     setBrowserPermission(checkNotificationSupport())
   }, [])
 
-  useEffect(() => {
-    // Apply theme based on mode
-    if (themeMode === 'scheduled') {
-      applyScheduledTheme()
-      const interval = setInterval(applyScheduledTheme, 60000) // Check every minute
-      return () => clearInterval(interval)
-    } else {
-      setTheme(themeMode)
-    }
-  }, [themeMode, scheduledThemeStart, scheduledThemeEnd, setTheme])
-
-  const applyScheduledTheme = () => {
+  const applyScheduledTheme = useCallback(() => {
     const now = new Date()
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    
+    // Use user's timezone from settings for theme scheduling
+    const timeInUserTimezone = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+    const currentTime = `${timeInUserTimezone.getHours().toString().padStart(2, '0')}:${timeInUserTimezone.getMinutes().toString().padStart(2, '0')}`
     
     const [startHour, startMin] = scheduledThemeStart.split(':').map(Number)
     const [endHour, endMin] = scheduledThemeEnd.split(':').map(Number)
@@ -124,8 +116,28 @@ export default function SettingsPage() {
       isDarkTime = currentMinutes >= startMinutes || currentMinutes < endMinutes
     }
     
+    console.log('[Theme] Scheduled theme check:', {
+      timezone,
+      currentTime,
+      scheduledThemeStart,
+      scheduledThemeEnd,
+      isDarkTime,
+      willApply: isDarkTime ? 'dark' : 'light'
+    })
+    
     setTheme(isDarkTime ? 'dark' : 'light')
-  }
+  }, [timezone, scheduledThemeStart, scheduledThemeEnd, setTheme])
+
+  useEffect(() => {
+    // Apply theme based on mode
+    if (themeMode === 'scheduled') {
+      applyScheduledTheme()
+      const interval = setInterval(applyScheduledTheme, 60000) // Check every minute
+      return () => clearInterval(interval)
+    } else {
+      setTheme(themeMode)
+    }
+  }, [themeMode, applyScheduledTheme, setTheme])
 
   const checkFirebaseConfiguration = () => {
     const hasFirebaseConfig =
