@@ -54,13 +54,26 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
   const getTimeUntilBirthday = () => {
     const today = new Date()
     const birthDate = new Date(birthday.birth_date)
+    
+    // Create next birthday date
     const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate(), 0, 0, 0, 0)
 
-    if (nextBirthday < today) {
+    // Check if birthday is today by comparing year, month, and day
+    const isBirthdayToday = today.getFullYear() === nextBirthday.getFullYear() &&
+                            today.getMonth() === nextBirthday.getMonth() &&
+                            today.getDate() === nextBirthday.getDate()
+
+    // If birthday already passed this year (but not today), move to next year
+    if (nextBirthday < today && !isBirthdayToday) {
       nextBirthday.setFullYear(today.getFullYear() + 1)
     }
 
     const diffTime = nextBirthday.getTime() - today.getTime()
+
+    // If birthday is today, return 0 days
+    if (isBirthdayToday) {
+      return { months: 0, days: 0, hours: 0, totalDays: 0 }
+    }
 
     // Расчет месяцев, дней и часов
     const months = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44))
