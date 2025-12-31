@@ -4,7 +4,7 @@ import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-
 
 /**
  * Convert local time to UTC based on user's timezone
- * @param localTime - Time in HH:MM or HH:MM:SS format
+ * @param localTime - Time in HH:MM or HH:MM:SS format (in user's timezone)
  * @param timezone - IANA timezone string (e.g., "Europe/Warsaw")
  * @returns UTC time in HH:MM:SS format
  */
@@ -17,35 +17,27 @@ function convertLocalTimeToUTC(localTime: string, timezone: string): string {
     
     // Get current date
     const now = new Date()
+    const year = now.getUTCFullYear()
+    const month = now.getUTCMonth()
+    const day = now.getUTCDate()
     
-    // Create a date string in the user's timezone
-    // Format: "2025-12-29 23:10" in timezone "Europe/Warsaw"
-    const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`
+    // Create a date string that will be interpreted as being in the user's timezone
+    // We use toLocaleString to create the date in user's timezone
+    const dateInTimezone = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+    const dateInUTC = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }))
     
-    // Parse this as a date in UTC, then adjust for timezone offset
-    // This is a workaround: we create a Date as if it's in the user's timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })
+    // Calculate offset in milliseconds
+    const offset = dateInUTC.getTime() - dateInTimezone.getTime()
     
-    // Get timezone offset by comparing same moment in UTC and local timezone
-    const nowUTC = new Date()
-    const nowLocal = new Date(nowUTC.toLocaleString('en-US', { timeZone: timezone }))
-    const offsetMs = nowUTC.getTime() - nowLocal.getTime()
+    // Create target time in user's timezone (as if it's UTC, then we'll adjust)
+    const targetDate = new Date(Date.UTC(year, month, day, hours, minutes, 0))
     
-    // Create target time in UTC
-    const targetLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
-    const targetUTC = new Date(targetLocal.getTime() - offsetMs)
+    // Add offset to convert to actual UTC
+    const utcDate = new Date(targetDate.getTime() + offset)
     
-    const result = `${targetUTC.getUTCHours().toString().padStart(2, '0')}:${targetUTC.getUTCMinutes().toString().padStart(2, '0')}:00`
+    const result = `${utcDate.getUTCHours().toString().padStart(2, '0')}:${utcDate.getUTCMinutes().toString().padStart(2, '0')}:00`
     
-    console.log('[v0] Cron: Converting', localTime, 'in', timezone, 'to UTC:', result, '| Offset:', Math.floor(offsetMs / 60000), 'min')
+    console.log('[v0] Cron: Converting', localTime, 'in', timezone, 'to UTC:', result, '| Offset:', Math.floor(offset / 60000), 'min')
     
     return result
   } catch (error) {
