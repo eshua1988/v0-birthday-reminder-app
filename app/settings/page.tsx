@@ -327,21 +327,10 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (timezoneData && timezoneData.value) {
-        const savedTimezone = timezoneData.value
-        if (savedTimezone === 'auto') {
-          // Auto-detect timezone
-          const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-          setTimezone(detectedTimezone)
-        } else if (savedTimezone === 'disabled') {
-          // Use UTC
-          setTimezone('UTC')
-        } else {
-          setTimezone(savedTimezone)
-        }
+        setTimezone(timezoneData.value)
       } else {
         // Auto-detect timezone if not set
-        const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-        setTimezone(detectedTimezone)
+        setTimezone('auto')
       }
 
       // Load theme settings
@@ -903,26 +892,38 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {firebaseConfigured && browserPermission.granted && fcmToken && (
+          {browserPermission.granted && (
             <Card>
               <CardHeader>
                 <CardTitle>{t.firebasePushNotifications}</CardTitle>
                 <CardDescription>{t.testingServerPush}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-                  <p className="text-sm text-green-800 dark:text-green-200 mb-4">
-                    <Bell className="inline h-4 w-4 mr-2" />
-                    {t.firebaseConfiguredReady}
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={handleSendTestFirebaseNotification}
-                    disabled={isSendingTestNotification}
-                  >
-                    {isSendingTestNotification ? "Отправка..." : t.sendTestFirebaseNotification}
-                  </Button>
-                </div>
+                {fcmToken ? (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
+                    <p className="text-sm text-green-800 dark:text-green-200 mb-4">
+                      <Bell className="inline h-4 w-4 mr-2" />
+                      {t.firebaseConfiguredReady}
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={handleSendTestFirebaseNotification}
+                      disabled={isSendingTestNotification}
+                    >
+                      {isSendingTestNotification ? "Отправка..." : t.sendTestFirebaseNotification}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
+                      <Info className="inline h-4 w-4 mr-2" />
+                      Firebase токен не получен. Нажмите кнопку ниже для регистрации.
+                    </p>
+                    <Button variant="default" onClick={handleRequestPermission}>
+                      Получить Firebase токен
+                    </Button>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Тестовое уведомление будет отправлено через Firebase Cloud Messaging и придет даже если приложение
                   закрыто
