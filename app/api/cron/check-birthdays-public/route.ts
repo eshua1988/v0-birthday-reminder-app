@@ -237,6 +237,13 @@ export async function GET(request: NextRequest) {
             const messaging = getFirebaseMessaging()
             const age = now.getFullYear() - birthDate.getFullYear()
 
+            console.log("[v0] Cron: Preparing notification:", {
+              name: `${birthday.first_name} ${birthday.last_name}`,
+              age,
+              birthDate: birthday.birth_date,
+              fcmTokensCount: fcmTokens.length,
+            })
+
             const message = {
               notification: {
                 title: "🎂 День рождения!",
@@ -265,6 +272,23 @@ export async function GET(request: NextRequest) {
             }
 
             const response = await messaging.sendEachForMulticast(message)
+
+            console.log("[v0] Cron: FCM response received:", {
+              successCount: response.successCount,
+              failureCount: response.failureCount,
+            })
+
+            // Log detailed errors if any
+            if (response.failureCount > 0) {
+              response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                  console.error("[v0] Cron: FCM error for token", idx, ":", {
+                    code: resp.error?.code,
+                    message: resp.error?.message,
+                  })
+                }
+              })
+            }
 
             console.log("[v0] Cron: FCM sent successfully:", {
               birthday: `${birthday.first_name} ${birthday.last_name}`,
