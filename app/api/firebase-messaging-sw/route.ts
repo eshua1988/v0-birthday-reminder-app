@@ -101,6 +101,7 @@ self.addEventListener("install", (event) => {
   return new NextResponse(swContent, {
     headers: {
       "Content-Type": "application/javascript",
+      "Service-Worker-Allowed": "/",
       "Cache-Control": "no-cache",
     },
   })
