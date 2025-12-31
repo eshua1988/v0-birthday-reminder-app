@@ -58,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" suppressHydrationWarning>
       <head>
         <meta name="application-name" content="Birthday Reminder" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
