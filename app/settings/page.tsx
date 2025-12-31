@@ -72,6 +72,8 @@ export default function SettingsPage() {
   })
 
   const timezones = [
+    { value: "auto", label: "🌍 Автоматически (определить)", offset: "auto" },
+    { value: "disabled", label: "❌ Отключить часовой пояс (UTC)", offset: "+00:00" },
     { value: "Europe/Warsaw", label: "Warsaw (UTC+1)", offset: "+01:00" },
     { value: "Europe/Moscow", label: "Moscow (UTC+3)", offset: "+03:00" },
     { value: "Europe/Kiev", label: "Kyiv (UTC+2)", offset: "+02:00" },
@@ -323,7 +325,17 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (timezoneData && timezoneData.value) {
-        setTimezone(timezoneData.value)
+        const savedTimezone = timezoneData.value
+        if (savedTimezone === 'auto') {
+          // Auto-detect timezone
+          const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+          setTimezone(detectedTimezone)
+        } else if (savedTimezone === 'disabled') {
+          // Use UTC
+          setTimezone('UTC')
+        } else {
+          setTimezone(savedTimezone)
+        }
       } else {
         // Auto-detect timezone if not set
         const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
