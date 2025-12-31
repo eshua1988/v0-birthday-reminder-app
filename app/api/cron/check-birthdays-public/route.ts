@@ -183,6 +183,7 @@ export async function GET(request: NextRequest) {
         notificationTimesUTC: uniqueTimes,
         currentTimeUTC: currentTime,
         shouldNotify: uniqueTimes.includes(currentTime),
+        userId: birthday.user_id,
       })
 
       console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
@@ -205,7 +206,19 @@ export async function GET(request: NextRequest) {
       console.log("[v0] Cron: TIME MATCH! Sending notification")
       
       // Get FCM tokens for this user
-      const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
+      const { data: tokens, error: tokensError } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
+
+      console.log("[v0] Cron: FCM tokens check:", {
+        userId: birthday.user_id,
+        tokensFound: tokens?.length || 0,
+        tokensError,
+        firebaseConfigured: isFirebaseAdminConfigured(),
+      })
+
+      if (!tokens || tokens.length === 0) {
+        console.log("[v0] Cron: No FCM tokens found for user", birthday.user_id, "- skipping notification")
+        continue
+      }
 
       if (tokens && tokens.length > 0) {
         const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
