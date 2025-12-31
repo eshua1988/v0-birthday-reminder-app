@@ -2,8 +2,8 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      // Register Firebase Messaging Service Worker
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+      // Register Firebase Messaging Service Worker from API endpoint with real config
+      const registration = await navigator.serviceWorker.register('/api/firebase-messaging-sw', {
         scope: '/'
       });
       
