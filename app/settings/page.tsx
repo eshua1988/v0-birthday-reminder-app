@@ -988,7 +988,7 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <Button onClick={handleSaveSettings} disabled={isLoading}>
+              <Button type="button" onClick={handleSaveSettings} disabled={isLoading}>
                 {isLoading ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
@@ -1104,7 +1104,7 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <Button onClick={handleSaveSettings} disabled={isLoading}>
+              <Button type="button" onClick={handleSaveSettings} disabled={isLoading}>
                 {isLoading ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
@@ -1143,7 +1143,7 @@ export default function SettingsPage() {
                 </AlertDescription>
               </Alert>
 
-              <Button onClick={handleSaveSettings} disabled={isLoading}>
+              <Button type="button" onClick={handleSaveSettings} disabled={isLoading}>
                 {isLoading ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
