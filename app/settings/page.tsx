@@ -56,7 +56,9 @@ export default function SettingsPage() {
   })
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
+  const [isLoadingTheme, setIsLoadingTheme] = useState(false)
+  const [isLoadingTimezone, setIsLoadingTimezone] = useState(false)
   const [browserPermission, setBrowserPermission] = useState(checkNotificationSupport())
   const [firebaseConfigured, setFirebaseConfigured] = useState(false)
   const [fcmToken, setFcmToken] = useState<string | null>(null)
@@ -378,8 +380,18 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSaveSettings = async () => {
-    setIsLoading(true)
+  const handleSaveSettings = async (e?: React.MouseEvent<HTMLButtonElement>, section?: 'notifications' | 'theme' | 'timezone') => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
+    // Set loading state based on section
+    if (section === 'notifications') {
+      setIsLoadingNotifications(true)
+    } else if (section === 'theme') {
+      setIsLoadingTheme(true)
+    } else if (section === 'timezone') {
+      setIsLoadingTimezone(true)
+    }
 
     try {
       const {
@@ -596,7 +608,9 @@ export default function SettingsPage() {
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsLoadingNotifications(false)
+      setIsLoadingTheme(false)
+      setIsLoadingTimezone(false)
     }
   }
 
@@ -988,8 +1002,8 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <Button type="button" onClick={handleSaveSettings} disabled={isLoading}>
-                {isLoading ? t.saving : t.saveSettings}
+              <Button type="button" onClick={(e) => handleSaveSettings(e, 'notifications')} disabled={isLoadingNotifications}>
+                {isLoadingNotifications ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
           </Card>
@@ -1104,8 +1118,8 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <Button type="button" onClick={handleSaveSettings} disabled={isLoading}>
-                {isLoading ? t.saving : t.saveSettings}
+              <Button type="button" onClick={(e) => handleSaveSettings(e, 'theme')} disabled={isLoadingTheme}>
+                {isLoadingTheme ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
           </Card>
@@ -1143,8 +1157,8 @@ export default function SettingsPage() {
                 </AlertDescription>
               </Alert>
 
-              <Button type="button" onClick={handleSaveSettings} disabled={isLoading}>
-                {isLoading ? t.saving : t.saveSettings}
+              <Button type="button" onClick={(e) => handleSaveSettings(e, 'timezone')} disabled={isLoadingTimezone}>
+                {isLoadingTimezone ? t.saving : t.saveSettings}
               </Button>
             </CardContent>
           </Card>
