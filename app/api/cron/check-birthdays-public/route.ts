@@ -181,7 +181,11 @@ export async function GET(request: NextRequest) {
       const uniqueTimes = [...new Set(notificationTimes)]
 
       console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
+        birthDate: birthday.birth_date,
         userTimezone,
+        individualTimes: birthday.notification_times || [],
+        individualTimeLegacy: birthday.notification_time || null,
+        globalTimes: globalTimes || [],
         notificationTimesUTC: uniqueTimes,
         currentTimeUTC: currentTime,
         shouldNotify: uniqueTimes.includes(currentTime),
@@ -189,7 +193,7 @@ export async function GET(request: NextRequest) {
 
       // Check if current time matches any notification time (now in UTC)
       if (!uniqueTimes.includes(currentTime)) {
-        console.log("[v0] Cron: Skipping - time doesn't match")
+        console.log("[v0] Cron: Skipping - time doesn't match. Current:", currentTime, "Expected one of:", uniqueTimes)
         continue
       }
       
