@@ -180,7 +180,9 @@ export async function GET(request: NextRequest) {
       // Remove duplicates
       const uniqueTimes = [...new Set(notificationTimes)]
 
-      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
+      // Add to notifications array for debugging (BEFORE checking time match)
+      notifications.push({
+        name: `${birthday.first_name} ${birthday.last_name}`,
         birthDate: birthday.birth_date,
         userTimezone,
         individualTimes: birthday.notification_times || [],
@@ -191,9 +193,7 @@ export async function GET(request: NextRequest) {
         shouldNotify: uniqueTimes.includes(currentTime),
       })
 
-      // Add to notifications array for debugging
-      notifications.push({
-        name: `${birthday.first_name} ${birthday.last_name}`,
+      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
         birthDate: birthday.birth_date,
         userTimezone,
         individualTimes: birthday.notification_times || [],
