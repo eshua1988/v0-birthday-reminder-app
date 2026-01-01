@@ -72,23 +72,22 @@ export default function SettingsPage() {
       return "Europe/Warsaw"
     }
   })
-
-  const timezones = [
-    { value: "auto", label: "🌍 Автоматически (определить)", offset: "auto" },
-    { value: "disabled", label: "❌ Отключить часовой пояс (UTC)", offset: "+00:00" },
-    { value: "Europe/Warsaw", label: "Warsaw (UTC+1)", offset: "+01:00" },
-    { value: "Europe/Moscow", label: "Moscow (UTC+3)", offset: "+03:00" },
-    { value: "Europe/Kiev", label: "Kyiv (UTC+2)", offset: "+02:00" },
-    { value: "Europe/London", label: "London (UTC+0)", offset: "+00:00" },
-    { value: "Europe/Berlin", label: "Berlin (UTC+1)", offset: "+01:00" },
-    { value: "Europe/Paris", label: "Paris (UTC+1)", offset: "+01:00" },
-    { value: "America/New_York", label: "New York (UTC-5)", offset: "-05:00" },
-    { value: "America/Los_Angeles", label: "Los Angeles (UTC-8)", offset: "-08:00" },
-    { value: "America/Chicago", label: "Chicago (UTC-6)", offset: "-06:00" },
-    { value: "Asia/Dubai", label: "Dubai (UTC+4)", offset: "+04:00" },
-    { value: "Asia/Tokyo", label: "Tokyo (UTC+9)", offset: "+09:00" },
-    { value: "Australia/Sydney", label: "Sydney (UTC+11)", offset: "+11:00" },
-  ]
+  const [timezones, setTimezones] = useState([
+    { value: "auto", label: "🌍 Автоматически (определить)", offset: "auto", currentTime: "" },
+    { value: "disabled", label: "❌ Отключить часовой пояс (UTC)", offset: "+00:00", currentTime: "" },
+    { value: "Europe/Warsaw", label: "Warsaw (UTC+1)", offset: "+01:00", currentTime: "" },
+    { value: "Europe/Moscow", label: "Moscow (UTC+3)", offset: "+03:00", currentTime: "" },
+    { value: "Europe/Kiev", label: "Kyiv (UTC+2)", offset: "+02:00", currentTime: "" },
+    { value: "Europe/London", label: "London (UTC+0)", offset: "+00:00", currentTime: "" },
+    { value: "Europe/Berlin", label: "Berlin (UTC+1)", offset: "+01:00", currentTime: "" },
+    { value: "Europe/Paris", label: "Paris (UTC+1)", offset: "+01:00", currentTime: "" },
+    { value: "America/New_York", label: "New York (UTC-5)", offset: "-05:00", currentTime: "" },
+    { value: "America/Los_Angeles", label: "Los Angeles (UTC-8)", offset: "-08:00", currentTime: "" },
+    { value: "America/Chicago", label: "Chicago (UTC-6)", offset: "-06:00", currentTime: "" },
+    { value: "Asia/Dubai", label: "Dubai (UTC+4)", offset: "+04:00", currentTime: "" },
+    { value: "Asia/Tokyo", label: "Tokyo (UTC+9)", offset: "+09:00", currentTime: "" },
+    { value: "Australia/Sydney", label: "Sydney (UTC+11)", offset: "+11:00", currentTime: "" },
+  ])
 
   useEffect(() => {
     loadSettings()
@@ -135,11 +134,11 @@ export default function SettingsPage() {
   useEffect(() => {
     // Apply theme based on mode
     if (themeMode === 'scheduled') {
-      applyScheduledTheme()
-      const interval = setInterval(applyScheduledTheme, 60000) // Check every minute
-      return () => clearInterval(interval)
+      applyScheduledTheme();
+      const interval = setInterval(applyScheduledTheme, 60000); // Check every minute
+      return () => clearInterval(interval);
     } else {
-      setTheme(themeMode)
+      setTheme(themeMode);
     }
   }, [themeMode, applyScheduledTheme, setTheme])
 
@@ -725,6 +724,25 @@ export default function SettingsPage() {
     }
   }
 
+  useEffect(() => {
+    const updateTimezoneTimes = () => {
+      const now = new Date();
+      const updatedTimezones = timezones.map((tz) => {
+        if (tz.value === "auto" || tz.value === "disabled") {
+          return { ...tz, currentTime: "" };
+        }
+        const timeInZone = new Date(now.toLocaleString("en-US", { timeZone: tz.value }));
+        const formattedTime = `${timeInZone.getHours().toString().padStart(2, "0")}:${timeInZone.getMinutes().toString().padStart(2, "0")}`;
+        return { ...tz, currentTime: formattedTime };
+      });
+      setTimezones(updatedTimezones);
+    };
+
+    updateTimezoneTimes();
+    const interval = setInterval(updateTimezoneTimes, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -1141,7 +1159,7 @@ export default function SettingsPage() {
                 >
                   {timezones.map((tz) => (
                     <option key={tz.value} value={tz.value}>
-                      {tz.label}
+                      {tz.label} {tz.currentTime && `(${tz.currentTime})`}
                     </option>
                   ))}
                 </select>
