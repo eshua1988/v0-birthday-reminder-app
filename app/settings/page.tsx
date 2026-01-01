@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [firebaseConfigured, setFirebaseConfigured] = useState(false)
   const [fcmToken, setFcmToken] = useState<string | null>(null)
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false)
+  const [cronTestResult, setCronTestResult] = useState<any>(null)
+  const [isLoadingCronTest, setIsLoadingCronTest] = useState(false)
   const [timezone, setTimezone] = useState(() => {
     // Auto-detect timezone on initial load
     try {
@@ -277,7 +279,63 @@ export default function SettingsPage() {
         if (!user) {
         toast({
           title: t.error,
-          description: t.notAuthenticated,
+          description: "Требуется авторизация",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch("/api/send-test-notification", {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: t.success,
+          description: data.message || "Тестовое уведомление отправлено",
+        })
+      } else {
+        toast({
+          title: t.error,
+          description: data.error || "Не удалось отправить уведомление",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error sending test notification:", error)
+      toast({
+        title: t.error,
+        description: t.failedToSaveSettings,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSendingTestNotification(false)
+    }
+  }
+
+  const handleTestCron = async () => {
+    setIsLoadingCronTest(true)
+    try {
+      const response = await fetch("/api/test-cron-now")
+      const data = await response.json()
+      setCronTestResult(data)
+      console.log("[v0] Cron test result:", data)
+    } catch (error) {
+      console.error("[v0] Test error:", error)
+      setCronTestResult({ error: String(error) })
+      toast({
+        title: t.error,
+        description: "Ошибка тестирования",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingCronTest(false)
+    }
+  }
+
+  const loadSettings = async () => {
           variant: "destructive",
         })
         return
@@ -1006,6 +1064,114 @@ export default function SettingsPage() {
                   Тестовое уведомление будет отправлено через Firebase Cloud Messaging и придет даже если приложение
                   закрыто
                 </p>
+
+                <div className="pt-4 border-t">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleTestCron}
+                    disabled={isLoadingCronTest}
+                    className="w-full"
+                  >
+                    {isLoadingCronTest ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2 animate-spin" />
+                        Проверка...
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="h-4 w-4 mr-2" />
+                        Проверить логику уведомлений сейчас
+                      </>
+                    )}
+                  </Button>
+
+                  {cronTestResult && (
+                    <div className="mt-4 space-y-3">
+                      {cronTestResult.error ? (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Ошибка</AlertTitle>
+                          <AlertDescription className="text-xs">{cronTestResult.error}</AlertDescription>
+                        </Alert>
+                      ) : (
+                        <>
+                          <div className="p-3 border rounded bg-muted/50">
+                            <p className="text-xs font-medium mb-2">Серверное время</p>
+                            <p className="text-sm"><code className="font-bold">{cronTestResult.server_time?.formatted}</code></p>
+                            <p className="text-xs text-muted-foreground">{cronTestResult.server_time?.iso}</p>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="p-2 border rounded">
+                              <div className="text-lg font-bold">{cronTestResult.total_birthdays}</div>
+                              <p className="text-xs text-muted-foreground">Всего</p>
+                            </div>
+                            <div className="p-2 border rounded">
+                              <div className="text-lg font-bold">{cronTestResult.birthdays_today}</div>
+                              <p className="text-xs text-muted-foreground">Сегодня</p>
+                            </div>
+                            <div className="p-2 border rounded bg-green-50 dark:bg-green-950">
+                              <div className="text-lg font-bold text-green-600">{cronTestResult.should_notify_now}</div>
+                              <p className="text-xs text-muted-foreground">Сработает</p>
+                            </div>
+                          </div>
+
+                          {cronTestResult.results && cronTestResult.results.length > 0 && (
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                              {cronTestResult.results.map((birthday: any, idx: number) => (
+                                <div 
+                                  key={idx}
+                                  className={`p-3 border rounded text-xs space-y-2 ${
+                                    birthday.should_notify_now ? 'border-green-500 bg-green-50 dark:bg-green-950' : ''
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <p className="font-medium">{birthday.name}</p>
+                                    {birthday.should_notify_now && (
+                                      <Badge className="bg-green-500 text-xs">Сработает!</Badge>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-1 text-xs">
+                                    <div>
+                                      <span className="text-muted-foreground">Timezone:</span>
+                                      <br />
+                                      <code className="text-xs">{birthday.user_timezone}</code>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Время:</span>
+                                      <br />
+                                      <code className="text-xs font-bold">{birthday.user_current_time}</code>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-muted-foreground">Времена уведомлений:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {birthday.all_notification_times?.length === 0 ? (
+                                        <Badge variant="outline" className="text-xs text-yellow-600">Не установлены</Badge>
+                                      ) : (
+                                        birthday.all_notification_times?.map((time: string, tidx: number) => (
+                                          <Badge 
+                                            key={tidx}
+                                            variant={time === birthday.user_current_time ? "default" : "outline"}
+                                            className={`text-xs ${time === birthday.user_current_time ? "bg-green-500" : ""}`}
+                                          >
+                                            {time}
+                                          </Badge>
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}
