@@ -142,6 +142,66 @@ export default function SettingsPage() {
     }
   }, [themeMode, applyScheduledTheme, setTheme])
 
+  // Auto-save theme settings when changed
+  const saveThemeSettings = async (mode: 'light' | 'dark' | 'system' | 'scheduled') => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      await supabase.from("settings").upsert(
+        {
+          user_id: user.id,
+          key: "theme_mode",
+          value: mode,
+        },
+        { onConflict: "user_id,key" },
+      )
+
+      console.log("[v0] Theme mode saved:", mode)
+    } catch (error) {
+      console.error("[v0] Error saving theme mode:", error)
+    }
+  }
+
+  const saveScheduledThemeTime = async (key: 'theme_scheduled_start' | 'theme_scheduled_end', value: string) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      await supabase.from("settings").upsert(
+        {
+          user_id: user.id,
+          key,
+          value,
+        },
+        { onConflict: "user_id,key" },
+      )
+
+      console.log("[v0] Scheduled theme time saved:", key, value)
+    } catch (error) {
+      console.error("[v0] Error saving scheduled theme time:", error)
+    }
+  }
+
+  const handleThemeModeChange = (mode: 'light' | 'dark' | 'system' | 'scheduled') => {
+    setThemeMode(mode)
+    saveThemeSettings(mode)
+  }
+
+  const handleScheduledThemeStartChange = (time: string) => {
+    setScheduledThemeStart(time)
+    saveScheduledThemeTime('theme_scheduled_start', time)
+  }
+
+  const handleScheduledThemeEndChange = (time: string) => {
+    setScheduledThemeEnd(time)
+    saveScheduledThemeTime('theme_scheduled_end', time)
+  }
+
   const checkFirebaseConfiguration = () => {
     const hasFirebaseConfig =
       !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
@@ -1041,7 +1101,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
-                    onClick={() => setThemeMode('light')}
+                    onClick={() => handleThemeModeChange('light')}
                     className={cn(
                       "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
                       themeMode === 'light'
@@ -1057,7 +1117,7 @@ export default function SettingsPage() {
                   </button>
 
                   <button
-                    onClick={() => setThemeMode('dark')}
+                    onClick={() => handleThemeModeChange('dark')}
                     className={cn(
                       "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
                       themeMode === 'dark'
@@ -1073,7 +1133,7 @@ export default function SettingsPage() {
                   </button>
 
                   <button
-                    onClick={() => setThemeMode('system')}
+                    onClick={() => handleThemeModeChange('system')}
                     className={cn(
                       "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
                       themeMode === 'system'
@@ -1089,7 +1149,7 @@ export default function SettingsPage() {
                   </button>
 
                   <button
-                    onClick={() => setThemeMode('scheduled')}
+                    onClick={() => handleThemeModeChange('scheduled')}
                     className={cn(
                       "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
                       themeMode === 'scheduled'
@@ -1115,7 +1175,7 @@ export default function SettingsPage() {
                         id="theme-start"
                         type="time"
                         value={scheduledThemeStart}
-                        onChange={(e) => setScheduledThemeStart(e.target.value)}
+                        onChange={(e) => handleScheduledThemeStartChange(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1126,7 +1186,7 @@ export default function SettingsPage() {
                         id="theme-end"
                         type="time"
                         value={scheduledThemeEnd}
-                        onChange={(e) => setScheduledThemeEnd(e.target.value)}
+                        onChange={(e) => handleScheduledThemeEndChange(e.target.value)}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -1137,9 +1197,9 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <Button type="button" onClick={(e) => handleSaveSettings(e, 'theme')} disabled={isLoadingTheme}>
-                {isLoadingTheme ? t.saving : t.saveSettings}
-              </Button>
+              <div className="text-sm text-muted-foreground">
+                Настройки темы сохраняются автоматически
+              </div>
             </CardContent>
           </Card>
 
