@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Upload, Plus, X } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
@@ -145,6 +145,9 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
       <DialogContent className={cn("max-h-[90vh] overflow-y-auto", isMobile ? "max-w-[95vw]" : "max-w-md")}>
         <DialogHeader>
           <DialogTitle>{birthday ? t.edit : t.addMember}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {birthday ? t.edit : t.addMember}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

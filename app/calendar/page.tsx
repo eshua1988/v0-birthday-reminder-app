@@ -6,7 +6,7 @@ import type { Birthday } from "@/types/birthday"
 import { Sidebar } from "@/components/sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ChevronLeft, ChevronRight, Mail, Phone, Plus, Edit, Trash2, Languages } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLocale } from "@/lib/locale-context"
@@ -447,6 +447,9 @@ export default function CalendarPage() {
                   { day: "numeric", month: "long", year: "numeric" }
                 )}`}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t.calendarTitle}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex justify-end mb-4">
