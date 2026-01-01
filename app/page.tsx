@@ -238,8 +238,11 @@ export default function HomePage() {
 
   const handleSave = async (data: Partial<Birthday>) => {
     console.log("[v0] Saving birthday data:", data)
+    console.log("[v0] notification_times:", data.notification_times)
+    console.log("[v0] notification_time:", data.notification_time)
 
     const birthdayData = { ...data, user_id: userId }
+    console.log("[v0] Final birthdayData to save:", birthdayData)
 
     if (editingBirthday) {
       console.log("[v0] Updating existing birthday, id:", editingBirthday.id)

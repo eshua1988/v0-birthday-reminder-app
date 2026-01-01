@@ -130,12 +130,21 @@ export async function GET(request: NextRequest) {
       // Collect all notification times for this birthday
       const notificationTimes: string[] = []
 
+      console.log("[v0] Cron: Processing birthday:", {
+        id: birthday.id,
+        name: `${birthday.first_name} ${birthday.last_name}`,
+        notification_times_raw: birthday.notification_times,
+        notification_time_raw: birthday.notification_time,
+        notification_enabled: birthday.notification_enabled,
+      })
+
       // 1. Individual notification times (notification_times array)
       if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
         // Normalize to HH:MM:SS format
         notificationTimes.push(...birthday.notification_times.map((t: string) => 
           t.length === 5 ? `${t}:00` : t
         ))
+        console.log("[v0] Cron: Added notification_times array:", birthday.notification_times)
       }
 
       // 2. Individual notification time (legacy single time)
@@ -143,6 +152,7 @@ export async function GET(request: NextRequest) {
         // Normalize to HH:MM:SS format
         const time = birthday.notification_time
         notificationTimes.push(time.length === 5 ? `${time}:00` : time)
+        console.log("[v0] Cron: Added notification_time:", birthday.notification_time)
       }
 
       // 3. Global notification times for this user
@@ -152,6 +162,7 @@ export async function GET(request: NextRequest) {
         notificationTimes.push(...globalTimes.map(t => 
           t.length === 5 ? `${t}:00` : t
         ))
+        console.log("[v0] Cron: Added global times:", globalTimes)
       }
 
       // Remove duplicates

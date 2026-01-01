@@ -76,11 +76,16 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
     setIsLoading(true)
 
     try {
-      await onSave({
+      const dataToSave = {
         ...formData,
         notification_times: notificationTimes,
+        notification_time: notificationTimes[0] || "09:00", // Первое время для legacy
         notification_repeat_count: notificationTimes.length,
-      })
+      }
+      
+      console.log("[v0] BirthdayForm: Submitting data:", dataToSave)
+      
+      await onSave(dataToSave)
       onOpenChange(false)
       setNotificationTimes(["09:00"])
       setFormData({
