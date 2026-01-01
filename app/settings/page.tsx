@@ -336,45 +336,6 @@ export default function SettingsPage() {
   }
 
   const loadSettings = async () => {
-          variant: "destructive",
-        })
-        return
-      }
-
-      const response = await fetch("/api/send-test-notification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      const data = await response.json()
-
-        if (response.ok) {
-        toast({
-          title: t.sendTestNotification,
-          description: data.message || t.checkYourDevices,
-        })
-      } else {
-        toast({
-          title: t.error,
-          description: data.error || t.failedToSaveSettings,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("[v0] Error sending test notification:", error)
-      toast({
-        title: t.error,
-        description: t.failedToSaveSettings,
-        variant: "destructive",
-      })
-    } finally {
-      setIsSendingTestNotification(false)
-    }
-  }
-
-  const loadSettings = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
