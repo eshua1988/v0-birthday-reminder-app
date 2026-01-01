@@ -53,36 +53,42 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Cron: Found", birthdays?.length || 0, "birthdays with notifications enabled")
 
-    // Get all global notification time settings
+    // Get all global notification time settings and timezones
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times"])
+      .in("key", ["default_notification_time", "default_notification_times", "timezone"])
 
     const globalTimesMap = new Map<string, string[]>()
+    const userTimezonesMap = new Map<string, string>()
     
     if (globalSettings) {
       for (const setting of globalSettings) {
-        if (!globalTimesMap.has(setting.user_id)) {
-          globalTimesMap.set(setting.user_id, [])
-        }
-        
-        if (setting.key === "default_notification_time") {
-          globalTimesMap.get(setting.user_id)!.push(setting.value)
-        } else if (setting.key === "default_notification_times") {
-          try {
-            const times = JSON.parse(setting.value)
-            if (Array.isArray(times)) {
-              globalTimesMap.get(setting.user_id)!.push(...times)
+        if (setting.key === "timezone") {
+          userTimezonesMap.set(setting.user_id, setting.value)
+        } else {
+          if (!globalTimesMap.has(setting.user_id)) {
+            globalTimesMap.set(setting.user_id, [])
+          }
+          
+          if (setting.key === "default_notification_time") {
+            globalTimesMap.get(setting.user_id)!.push(setting.value)
+          } else if (setting.key === "default_notification_times") {
+            try {
+              const times = JSON.parse(setting.value)
+              if (Array.isArray(times)) {
+                globalTimesMap.get(setting.user_id)!.push(...times)
+              }
+            } catch (e) {
+              console.error("[v0] Cron: Error parsing default_notification_times:", e)
             }
-          } catch (e) {
-            console.error("[v0] Cron: Error parsing default_notification_times:", e)
           }
         }
       }
     }
 
     console.log("[v0] Cron: Loaded global notification times for", globalTimesMap.size, "users")
+    console.log("[v0] Cron: Loaded timezones for", userTimezonesMap.size, "users")
 
     let notificationsSent = 0
     let birthdaysChecked = 0
@@ -92,7 +98,28 @@ export async function GET(request: NextRequest) {
     for (const birthday of birthdays || []) {
       birthdaysChecked++
       const birthDate = new Date(birthday.birth_date)
-      const isBirthdayToday = birthDate.getMonth() === currentMonth && birthDate.getDate() === currentDay
+      
+      // Get user's timezone, default to UTC if not set or 'auto'
+      let userTimezone = userTimezonesMap.get(birthday.user_id) || "UTC"
+      if (userTimezone === "auto" || userTimezone === "disabled") {
+        userTimezone = "UTC"
+      }
+      
+      // Get current time in user's timezone
+      let userNow: Date
+      try {
+        userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }))
+      } catch (e) {
+        console.error("[v0] Cron: Invalid timezone", userTimezone, "for user", birthday.user_id, "using UTC")
+        userNow = now
+        userTimezone = "UTC"
+      }
+      
+      const userCurrentTime = `${userNow.getHours().toString().padStart(2, "0")}:${userNow.getMinutes().toString().padStart(2, "0")}:00`
+      const userCurrentMonth = userNow.getMonth()
+      const userCurrentDay = userNow.getDate()
+      
+      const isBirthdayToday = birthDate.getMonth() === userCurrentMonth && birthDate.getDate() === userCurrentDay
 
       if (!isBirthdayToday) {
         continue
@@ -113,7 +140,9 @@ export async function GET(request: NextRequest) {
 
       // 2. Individual notification time (legacy single time)
       if (birthday.notification_time) {
-        notificationTimes.push(birthday.notification_time)
+        // Normalize to HH:MM:SS format
+        const time = birthday.notification_time
+        notificationTimes.push(time.length === 5 ? `${time}:00` : time)
       }
 
       // 3. Global notification times for this user
@@ -129,13 +158,14 @@ export async function GET(request: NextRequest) {
       const uniqueTimes = [...new Set(notificationTimes)]
 
       console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
+        userTimezone,
+        userCurrentTime,
         notificationTimes: uniqueTimes,
-        currentTime,
-        shouldNotify: uniqueTimes.includes(currentTime),
+        shouldNotify: uniqueTimes.includes(userCurrentTime),
       })
 
-      // Check if current time matches any notification time
-      if (!uniqueTimes.includes(currentTime)) {
+      // Check if current time matches any notification time (in user's timezone)
+      if (!uniqueTimes.includes(userCurrentTime)) {
         console.log("[v0] Cron: Skipping - time doesn't match")
         continue
       }
@@ -160,7 +190,7 @@ export async function GET(request: NextRequest) {
         if (isFirebaseAdminConfigured()) {
           try {
             const messaging = getFirebaseMessaging()
-            const age = now.getFullYear() - birthDate.getFullYear()
+            const age = userNow.getFullYear() - birthDate.getFullYear()
 
             const message = {
               notification: {
