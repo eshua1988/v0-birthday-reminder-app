@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useTheme } from "next-themes"
 
 const supabase = createClient()
@@ -68,6 +69,7 @@ export default function SettingsPage() {
   const [isLoadingCronTest, setIsLoadingCronTest] = useState(false)
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null)
   const [isLoadingDiagnostic, setIsLoadingDiagnostic] = useState(false)
+  const [diagnosticFilter, setDiagnosticFilter] = useState<'all' | 'today' | 'willFire'>('today')
   const [timezone, setTimezone] = useState(() => {
     // Auto-detect timezone on initial load
     try {
@@ -1073,18 +1075,46 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="mt-4">
-                          <h4 className="font-medium mb-2">
-                            🎂 Именинники сегодня ({diagnosticInfo.totalBirthdays})
-                          </h4>
-                          {diagnosticInfo.birthdays && diagnosticInfo.birthdays.length > 0 ? (
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium">
+                              Фильтр именинников
+                            </h4>
+                            <ToggleGroup type="single" value={diagnosticFilter} onValueChange={(value) => value && setDiagnosticFilter(value as 'all' | 'today' | 'willFire')}>
+                              <ToggleGroupItem value="all" aria-label="Все" className="text-xs px-3">
+                                Все ({diagnosticInfo.totalBirthdays})
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value="today" aria-label="Сегодня" className="text-xs px-3">
+                                Сегодня ({diagnosticInfo.todayBirthdays})
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value="willFire" aria-label="Сработает" className="text-xs px-3">
+                                Сработает ({diagnosticInfo.willFireNow})
+                              </ToggleGroupItem>
+                            </ToggleGroup>
+                          </div>
+                          
+                          {(() => {
+                            const filteredBirthdays = diagnosticInfo.birthdays.filter((birthday: any) => {
+                              if (diagnosticFilter === 'today') return birthday.isBirthdayToday
+                              if (diagnosticFilter === 'willFire') return birthday.shouldFireNow
+                              return true // 'all'
+                            })
+                            
+                            return filteredBirthdays.length > 0 ? (
                             <div className="space-y-2">
-                              {diagnosticInfo.birthdays.map((birthday: any) => (
+                              {filteredBirthdays.map((birthday: any) => (
                                 <div 
                                   key={birthday.id} 
                                   className="border rounded p-3 space-y-2 bg-background"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium">{birthday.name}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{birthday.name}</span>
+                                      {birthday.isBirthdayToday && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          🎂 Сегодня
+                                        </Badge>
+                                      )}
+                                    </div>
                                     {birthday.shouldFireNow && (
                                       <Badge className="bg-green-500 hover:bg-green-600">
                                         Сработает! ✓
@@ -1114,10 +1144,13 @@ export default function SettingsPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-muted-foreground text-sm">
-                              Сегодня нет именинников с включенными уведомлениями
+                            <p className="text-muted-foreground text-sm mt-2">
+                              {diagnosticFilter === 'today' && 'Сегодня нет именинников'}
+                              {diagnosticFilter === 'willFire' && 'Сейчас нет уведомлений, которые сработают'}
+                              {diagnosticFilter === 'all' && 'Нет именинников с включенными уведомлениями'}
                             </p>
-                          )}
+                          )
+                          })()}
                         </div>
                       </div>
 

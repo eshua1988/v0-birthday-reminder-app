@@ -48,16 +48,14 @@ export async function GET() {
 
     // Process each birthday with notification info
     const birthdaysWithDiagnostics = (birthdays || [])
-      .filter((birthday: any) => {
-        // Filter only today's birthdays
-        const birthDate = new Date(birthday.date || birthday.birth_date)
-        const birthdayMonth = birthDate.getMonth() + 1
-        const birthdayDay = birthDate.getDate()
-        
-        return birthdayMonth === currentMonth && birthdayDay === currentDay
-      })
       .map((birthday: any) => {
       const birthdayTimezone = birthday.timezone || userTimezone
+      
+      // Check if it's birthday today
+      const birthDate = new Date(birthday.date || birthday.birth_date)
+      const birthdayMonth = birthDate.getMonth() + 1
+      const birthdayDay = birthDate.getDate()
+      const isBirthdayToday = birthdayMonth === currentMonth && birthdayDay === currentDay
       
       // Get current time in the birthday's timezone
       const currentTimeInBirthdayTZ = new Date().toLocaleTimeString("en-US", {
@@ -89,6 +87,7 @@ export async function GET() {
         currentTimeInTZ: currentTimeInBirthdayTZ,
         notificationTimes: notificationTimes,
         shouldFireNow: shouldFireNow,
+        isBirthdayToday: isBirthdayToday,
         date: birthday.date,
       }
     })
@@ -99,6 +98,8 @@ export async function GET() {
       userTimezone: userTimezone,
       birthdays: birthdaysWithDiagnostics,
       totalBirthdays: birthdaysWithDiagnostics.length,
+      todayBirthdays: birthdaysWithDiagnostics.filter((b: any) => b.isBirthdayToday).length,
+      willFireNow: birthdaysWithDiagnostics.filter((b: any) => b.shouldFireNow).length,
     })
   } catch (error) {
     console.error("Error in firebase-diagnostic:", error)
