@@ -55,11 +55,16 @@ export async function GET() {
       })
 
       // Get notification times for this birthday
-      const notificationTimes = birthday.notification_times || settings?.default_notification_times || ["09:00"]
+      let notificationTimes = birthday.notification_times || settings?.default_notification_times || []
+      
+      // If still empty, this birthday has no notification times configured
+      if (!Array.isArray(notificationTimes) || notificationTimes.length === 0) {
+        notificationTimes = []
+      }
       
       // Check if any notification should fire right now
       const currentTimeHHMM = currentTimeInBirthdayTZ.substring(0, 5) // Get HH:MM
-      const shouldFireNow = notificationTimes.some((time: string) => {
+      const shouldFireNow = notificationTimes.length > 0 && notificationTimes.some((time: string) => {
         return time === currentTimeHHMM
       })
 

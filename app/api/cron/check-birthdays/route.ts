@@ -89,6 +89,10 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Cron: Loaded global notification times for", globalTimesMap.size, "users")
     console.log("[v0] Cron: Loaded timezones for", userTimezonesMap.size, "users")
+    
+    // Debug: log all loaded settings
+    console.log("[v0] Cron: All global times map:", Array.from(globalTimesMap.entries()))
+    console.log("[v0] Cron: All timezones map:", Array.from(userTimezonesMap.entries()))
 
     let notificationsSent = 0
     let birthdaysChecked = 0
@@ -139,6 +143,7 @@ export async function GET(request: NextRequest) {
         notification_times_raw: birthday.notification_times,
         notification_time_raw: birthday.notification_time,
         notification_enabled: birthday.notification_enabled,
+        user_id: birthday.user_id,
       })
 
       // 1. Individual notification times (notification_times array)
@@ -147,7 +152,7 @@ export async function GET(request: NextRequest) {
         notificationTimes.push(...birthday.notification_times.map((t: string) => 
           t.length === 5 ? `${t}:00` : t
         ))
-        console.log("[v0] Cron: Added notification_times array:", birthday.notification_times)
+        console.log("[v0] Cron: Added individual notification_times array:", birthday.notification_times)
       }
 
       // 2. Individual notification time (legacy single time)
@@ -155,17 +160,25 @@ export async function GET(request: NextRequest) {
         // Normalize to HH:MM:SS format
         const time = birthday.notification_time
         notificationTimes.push(time.length === 5 ? `${time}:00` : time)
-        console.log("[v0] Cron: Added notification_time:", birthday.notification_time)
+        console.log("[v0] Cron: Added individual notification_time:", birthday.notification_time)
       }
 
       // 3. Global notification times for this user
       const globalTimes = globalTimesMap.get(birthday.user_id)
+      console.log("[v0] Cron: Global times for user", birthday.user_id, ":", globalTimes)
+      
       if (globalTimes && globalTimes.length > 0) {
         // Normalize to HH:MM:SS format
         notificationTimes.push(...globalTimes.map(t => 
           t.length === 5 ? `${t}:00` : t
         ))
         console.log("[v0] Cron: Added global times:", globalTimes)
+      }
+
+      // 4. If no notification times found anywhere, skip this birthday
+      if (notificationTimes.length === 0) {
+        console.log("[v0] Cron: No notification times configured for this birthday, skipping")
+        continue
       }
 
       // Remove duplicates
