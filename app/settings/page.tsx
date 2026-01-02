@@ -70,31 +70,6 @@ export default function SettingsPage() {
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null)
   const [isLoadingDiagnostic, setIsLoadingDiagnostic] = useState(false)
   const [diagnosticFilter, setDiagnosticFilter] = useState<'all' | 'today' | 'willFire'>('today')
-  const [timezone, setTimezone] = useState(() => {
-    // Auto-detect timezone on initial load
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone
-    } catch (e) {
-      console.error("[v0] Error detecting timezone:", e)
-      return "Europe/Warsaw"
-    }
-  })
-  const [timezones, setTimezones] = useState([
-    { value: "auto", label: "🌍 Автоматически (определить)", offset: "auto", currentTime: "" },
-    { value: "disabled", label: "❌ Отключить часовой пояс (UTC)", offset: "+00:00", currentTime: "" },
-    { value: "Europe/Warsaw", label: "Warsaw (UTC+1)", offset: "+01:00", currentTime: "" },
-    { value: "Europe/Moscow", label: "Moscow (UTC+3)", offset: "+03:00", currentTime: "" },
-    { value: "Europe/Kiev", label: "Kyiv (UTC+2)", offset: "+02:00", currentTime: "" },
-    { value: "Europe/London", label: "London (UTC+0)", offset: "+00:00", currentTime: "" },
-    { value: "Europe/Berlin", label: "Berlin (UTC+1)", offset: "+01:00", currentTime: "" },
-    { value: "Europe/Paris", label: "Paris (UTC+1)", offset: "+01:00", currentTime: "" },
-    { value: "America/New_York", label: "New York (UTC-5)", offset: "-05:00", currentTime: "" },
-    { value: "America/Los_Angeles", label: "Los Angeles (UTC-8)", offset: "-08:00", currentTime: "" },
-    { value: "America/Chicago", label: "Chicago (UTC-6)", offset: "-06:00", currentTime: "" },
-    { value: "Asia/Dubai", label: "Dubai (UTC+4)", offset: "+04:00", currentTime: "" },
-    { value: "Asia/Tokyo", label: "Tokyo (UTC+9)", offset: "+09:00", currentTime: "" },
-    { value: "Australia/Sydney", label: "Sydney (UTC+11)", offset: "+11:00", currentTime: "" },
-  ])
 
   useEffect(() => {
     loadSettings()
@@ -104,10 +79,7 @@ export default function SettingsPage() {
 
   const applyScheduledTheme = useCallback(() => {
     const now = new Date()
-    
-    // Use user's timezone from settings for theme scheduling
-    const timeInUserTimezone = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
-    const currentTime = `${timeInUserTimezone.getHours().toString().padStart(2, '0')}:${timeInUserTimezone.getMinutes().toString().padStart(2, '0')}`
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
     
     const [startHour, startMin] = scheduledThemeStart.split(':').map(Number)
     const [endHour, endMin] = scheduledThemeEnd.split(':').map(Number)
@@ -119,24 +91,13 @@ export default function SettingsPage() {
     
     let isDarkTime = false
     if (startMinutes < endMinutes) {
-      // Normal case: e.g., 18:00 to 23:00
       isDarkTime = currentMinutes >= startMinutes && currentMinutes < endMinutes
     } else {
-      // Overnight case: e.g., 18:00 to 08:00
       isDarkTime = currentMinutes >= startMinutes || currentMinutes < endMinutes
     }
     
-    console.log('[Theme] Scheduled theme check:', {
-      timezone,
-      currentTime,
-      scheduledThemeStart,
-      scheduledThemeEnd,
-      isDarkTime,
-      willApply: isDarkTime ? 'dark' : 'light'
-    })
-    
     setTheme(isDarkTime ? 'dark' : 'light')
-  }, [timezone, scheduledThemeStart, scheduledThemeEnd, setTheme])
+  }, [scheduledThemeStart, scheduledThemeEnd, setTheme])
 
   useEffect(() => {
     // Apply theme based on mode
@@ -418,21 +379,6 @@ export default function SettingsPage() {
         }
       }
 
-      // Load timezone from settings
-      const { data: timezoneData } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("user_id", user.id)
-        .eq("key", "timezone")
-        .maybeSingle()
-
-      if (timezoneData && timezoneData.value) {
-        setTimezone(timezoneData.value)
-      } else {
-        // Auto-detect timezone if not set
-        setTimezone('auto')
-      }
-
       // Load theme settings
       const { data: themeData } = await supabase
         .from("settings")
@@ -492,7 +438,6 @@ export default function SettingsPage() {
         defaultNotificationTime,
         notificationsEnabled,
         browserNotificationsEnabled,
-        timezone,
       })
 
       // Save default notification time
@@ -644,16 +589,6 @@ export default function SettingsPage() {
           throw insertTimesError
         }
       }
-
-      // Save timezone
-      await supabase.from("settings").upsert(
-        {
-          user_id: user.id,
-          key: "timezone",
-          value: timezone,
-        },
-        { onConflict: "user_id,key" },
-      )
 
       // Save theme settings
       await supabase.from("settings").upsert(
@@ -824,25 +759,6 @@ export default function SettingsPage() {
       setDefaultNotificationTime(time)
     }
   }
-
-  useEffect(() => {
-    const updateTimezoneTimes = () => {
-      const now = new Date();
-      const updatedTimezones = timezones.map((tz) => {
-        if (tz.value === "auto" || tz.value === "disabled") {
-          return { ...tz, currentTime: "" };
-        }
-        const timeInZone = new Date(now.toLocaleString("en-US", { timeZone: tz.value }));
-        const formattedTime = `${timeInZone.getHours().toString().padStart(2, "0")}:${timeInZone.getMinutes().toString().padStart(2, "0")}`;
-        return { ...tz, currentTime: formattedTime };
-      });
-      setTimezones(updatedTimezones);
-    };
-
-    updateTimezoneTimes();
-    const interval = setInterval(updateTimezoneTimes, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -1514,45 +1430,6 @@ export default function SettingsPage() {
               <div className="text-sm text-muted-foreground">
                 Настройки темы сохраняются автоматически
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.timezoneSettings}</CardTitle>
-              <CardDescription>{t.timezoneSettingsDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="timezone">{t.selectTimezone}</Label>
-                <select
-                  id="timezone"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  {timezones.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label} {tz.currentTime && `(${tz.currentTime})`}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  {t.currentTimezone}: {timezone}
-                </p>
-              </div>
-
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>{t.timezoneInfo}</AlertTitle>
-                <AlertDescription>
-                  {t.timezoneInfoDescription}
-                </AlertDescription>
-              </Alert>
-
-              <Button type="button" onClick={(e) => handleSaveSettings(e, 'timezone')} disabled={isLoadingTimezone}>
-                {isLoadingTimezone ? t.saving : t.saveSettings}
-              </Button>
             </CardContent>
           </Card>
 
