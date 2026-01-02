@@ -20,6 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { useTheme } from "next-themes"
 
 const supabase = createClient()
@@ -65,6 +66,8 @@ export default function SettingsPage() {
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false)
   const [cronTestResult, setCronTestResult] = useState<any>(null)
   const [isLoadingCronTest, setIsLoadingCronTest] = useState(false)
+  const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null)
+  const [isLoadingDiagnostic, setIsLoadingDiagnostic] = useState(false)
   const [timezone, setTimezone] = useState(() => {
     // Auto-detect timezone on initial load
     try {
@@ -332,6 +335,23 @@ export default function SettingsPage() {
       })
     } finally {
       setIsLoadingCronTest(false)
+    }
+  }
+
+  const loadDiagnosticInfo = async () => {
+    setIsLoadingDiagnostic(true)
+    try {
+      const response = await fetch("/api/firebase-diagnostic")
+      if (response.ok) {
+        const data = await response.json()
+        setDiagnosticInfo(data)
+      } else {
+        console.error("Failed to load diagnostic info")
+      }
+    } catch (error) {
+      console.error("Error loading diagnostic info:", error)
+    } finally {
+      setIsLoadingDiagnostic(false)
     }
   }
 
@@ -1002,13 +1022,22 @@ export default function SettingsPage() {
                       <Bell className="inline h-4 w-4 mr-2" />
                       {t.firebaseConfiguredReady}
                     </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleSendTestFirebaseNotification}
-                      disabled={isSendingTestNotification}
-                    >
-                      {isSendingTestNotification ? "Отправка..." : t.sendTestFirebaseNotification}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleSendTestFirebaseNotification}
+                        disabled={isSendingTestNotification}
+                      >
+                        {isSendingTestNotification ? "Отправка..." : t.sendTestFirebaseNotification}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={loadDiagnosticInfo}
+                        disabled={isLoadingDiagnostic}
+                      >
+                        {isLoadingDiagnostic ? "Загрузка..." : "Показать диагностику"}
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
@@ -1016,11 +1045,93 @@ export default function SettingsPage() {
                       <Info className="inline h-4 w-4 mr-2" />
                       Firebase токен не получен. Нажмите кнопку ниже для регистрации.
                     </p>
-                    <Button variant="default" onClick={handleRequestPermission}>
-                      Получить Firebase токен
+                    <Button 
+                      variant="default" 
+                      onClick={async () => {
+                        await handleRequestPermission()
+                        await loadDiagnosticInfo()
+                      }}
+                      disabled={isLoadingDiagnostic}
+                    >
+                      {isLoadingDiagnostic ? "Загрузка..." : "Получить Firebase токен"}
                     </Button>
                   </div>
                 )}
+
+                {diagnosticInfo && (
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-lg border bg-card p-4">
+                      <h3 className="font-semibold mb-2 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Диагностическая информация
+                      </h3>
+                      
+                      <div className="space-y-3 text-sm">
+                        <div className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span className="text-muted-foreground">Текущее серверное время:</span>
+                          <span className="font-mono font-semibold">{diagnosticInfo.serverTime}</span>
+                        </div>
+
+                        <div className="mt-4">
+                          <h4 className="font-medium mb-2">
+                            Именинники с включенными уведомлениями ({diagnosticInfo.totalBirthdays})
+                          </h4>
+                          {diagnosticInfo.birthdays && diagnosticInfo.birthdays.length > 0 ? (
+                            <div className="space-y-2">
+                              {diagnosticInfo.birthdays.map((birthday: any) => (
+                                <div 
+                                  key={birthday.id} 
+                                  className="border rounded p-3 space-y-2 bg-background"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{birthday.name}</span>
+                                    {birthday.shouldFireNow && (
+                                      <Badge className="bg-green-500 hover:bg-green-600">
+                                        Сработает! ✓
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="text-xs space-y-1">
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Часовой пояс:</span>
+                                      <span className="font-mono">{birthday.timezone}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Текущее время:</span>
+                                      <span className="font-mono font-semibold">{birthday.currentTimeInTZ}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Времена уведомлений:</span>
+                                      <span className="font-mono">
+                                        {birthday.notificationTimes.join(", ")}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground text-sm">
+                              Нет именинников с включенными уведомлениями
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={loadDiagnosticInfo}
+                        disabled={isLoadingDiagnostic}
+                        className="mt-4"
+                      >
+                        {isLoadingDiagnostic ? "Обновление..." : "Обновить"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground">
                   Тестовое уведомление будет отправлено через Firebase Cloud Messaging и придет даже если приложение
                   закрыто
