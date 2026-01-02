@@ -47,10 +47,20 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
 
       setNotificationTimes(times)
       
-      // Parse custom fields from phone and email if they exist
+      // Load custom fields from custom_fields JSON or from phone/email
       const fields: Array<{ name: string; value: string }> = []
-      if (birthday.phone) fields.push({ name: "Телефон", value: birthday.phone })
-      if (birthday.email) fields.push({ name: "Email", value: birthday.email })
+      
+      if (birthday.custom_fields && typeof birthday.custom_fields === 'object') {
+        // Load from custom_fields JSON
+        Object.entries(birthday.custom_fields).forEach(([name, value]) => {
+          fields.push({ name, value: String(value) })
+        })
+      } else {
+        // Legacy: load from phone and email fields
+        if (birthday.phone) fields.push({ name: "Телефон", value: birthday.phone })
+        if (birthday.email) fields.push({ name: "Email", value: birthday.email })
+      }
+      
       setCustomFields(fields)
       
       setFormData({
@@ -84,12 +94,21 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
       const phoneField = customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
       const emailField = customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
       
+      // Convert all custom fields to object
+      const customFieldsObj: Record<string, string> = {}
+      customFields.forEach(field => {
+        if (field.name && field.value) {
+          customFieldsObj[field.name] = field.value
+        }
+      })
+      
       const dataToSave = {
         ...formData,
         phone: phoneField?.value || "",
         email: emailField?.value || "",
+        custom_fields: Object.keys(customFieldsObj).length > 0 ? customFieldsObj : null,
         notification_times: notificationTimes,
-        notification_time: notificationTimes[0] || "09:00", // Первое время для legacy
+        notification_time: notificationTimes[0] || "09:00",
         notification_repeat_count: notificationTimes.length,
       }
       
