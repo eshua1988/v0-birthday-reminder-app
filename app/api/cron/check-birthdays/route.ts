@@ -230,6 +230,18 @@ export async function GET(request: NextRequest) {
                 age: age.toString(),
                 type: "birthday_reminder",
               },
+              android: {
+                priority: "high" as const,
+                notification: {
+                  channelId: "birthday_notifications",
+                  priority: "high" as const,
+                  defaultSound: true,
+                  defaultVibrateTimings: true,
+                  icon: "/icon-192x192.png",
+                  tag: `birthday-${birthday.id}`,
+                  clickAction: "/",
+                },
+              },
               webpush: {
                 notification: {
                   icon: "/icon-192x192.png",
