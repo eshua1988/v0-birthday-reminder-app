@@ -1074,6 +1074,33 @@ export default function SettingsPage() {
                           <span className="font-mono font-semibold">{diagnosticInfo.serverTime}</span>
                         </div>
 
+                        <div className={cn(
+                          "flex items-center justify-between p-2 rounded",
+                          diagnosticInfo.hasFCMTokens 
+                            ? "bg-green-50 dark:bg-green-950" 
+                            : "bg-red-50 dark:bg-red-950"
+                        )}>
+                          <span className={cn(
+                            "text-sm",
+                            diagnosticInfo.hasFCMTokens 
+                              ? "text-green-800 dark:text-green-200" 
+                              : "text-red-800 dark:text-red-200"
+                          )}>
+                            {diagnosticInfo.hasFCMTokens 
+                              ? `✓ FCM токены активны (${diagnosticInfo.fcmTokenCount})` 
+                              : "⚠️ FCM токены отсутствуют - уведомления не будут отправляться!"}
+                          </span>
+                        </div>
+
+                        <Alert className="mb-4">
+                          <Info className="h-4 w-4" />
+                          <AlertTitle>Важно: Cron запускается каждую минуту</AlertTitle>
+                          <AlertDescription>
+                            Уведомления отправляются автоматически каждую минуту через Vercel Cron. 
+                            Если время совпадает и есть FCM токены, уведомление будет отправлено.
+                          </AlertDescription>
+                        </Alert>
+
                         <div className="mt-4">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-medium">

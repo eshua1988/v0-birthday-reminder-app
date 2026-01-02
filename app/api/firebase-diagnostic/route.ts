@@ -41,6 +41,15 @@ export async function GET() {
 
     const userTimezone = settings?.timezone || "UTC"
 
+    // Get FCM tokens for the user
+    const { data: fcmTokens } = await supabase
+      .from("fcm_tokens")
+      .select("token")
+      .eq("user_id", user.id)
+
+    const hasFCMTokens = fcmTokens && fcmTokens.length > 0
+    const fcmTokenCount = fcmTokens?.length || 0
+
     // Get current date for filtering today's birthdays
     const now = new Date()
     const currentMonth = now.getMonth() + 1 // getMonth() returns 0-11
@@ -96,6 +105,8 @@ export async function GET() {
       serverTime: serverTimeHHMMSS,
       serverTimeISO: serverTimeFormatted,
       userTimezone: userTimezone,
+      hasFCMTokens: hasFCMTokens,
+      fcmTokenCount: fcmTokenCount,
       birthdays: birthdaysWithDiagnostics,
       totalBirthdays: birthdaysWithDiagnostics.length,
       todayBirthdays: birthdaysWithDiagnostics.filter((b: any) => b.isBirthdayToday).length,
