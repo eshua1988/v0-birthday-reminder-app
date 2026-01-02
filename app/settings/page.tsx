@@ -49,11 +49,11 @@ export default function SettingsPage() {
   const [defaultNotificationTime, setDefaultNotificationTime] = useState(() => {
     // Get current time as default
     const now = new Date()
-    return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
   })
   const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(() => {
     const now = new Date()
-    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
     return [currentTime]
   })
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -737,7 +737,7 @@ export default function SettingsPage() {
 
   const addDefaultNotificationTime = () => {
     if (defaultNotificationTimes.length < 5) {
-      setDefaultNotificationTimes([...defaultNotificationTimes, "09:00"])
+      setDefaultNotificationTimes([...defaultNotificationTimes, "09:00:00"])
     }
   }
 
@@ -1285,6 +1285,7 @@ export default function SettingsPage() {
                     <div key={index} className="flex gap-2 items-center">
                       <Input
                         type="time"
+                        step="1"
                         value={time}
                         onChange={(e) => updateDefaultNotificationTime(index, e.target.value)}
                         disabled={!notificationsEnabled}
@@ -1404,6 +1405,7 @@ export default function SettingsPage() {
                       <Input
                         id="theme-start"
                         type="time"
+                        step="1"
                         value={scheduledThemeStart}
                         onChange={(e) => handleScheduledThemeStartChange(e.target.value)}
                       />
@@ -1415,6 +1417,7 @@ export default function SettingsPage() {
                       <Input
                         id="theme-end"
                         type="time"
+                        step="1"
                         value={scheduledThemeEnd}
                         onChange={(e) => handleScheduledThemeEndChange(e.target.value)}
                       />
