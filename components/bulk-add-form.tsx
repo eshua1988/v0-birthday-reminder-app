@@ -21,7 +21,7 @@ interface BulkMember {
 interface BulkAddFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (members: Omit<BulkMember, "id">[]) => Promise<void>
+  onSave: (members: any[]) => Promise<void>
 }
 
 export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
