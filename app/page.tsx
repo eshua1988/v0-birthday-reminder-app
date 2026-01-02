@@ -10,7 +10,6 @@ import { BirthdayCard } from "@/components/birthday-card"
 import { BirthdayList } from "@/components/birthday-list"
 import { BirthdayTable } from "@/components/birthday-table"
 import { BirthdayForm } from "@/components/birthday-form"
-import { BulkAddForm } from "@/components/bulk-add-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Users, Search } from "lucide-react"
@@ -33,7 +32,6 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<SortOption>("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [isBulkFormOpen, setIsBulkFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false)
@@ -307,25 +305,6 @@ export default function HomePage() {
     }
   }
 
-  const handleBulkSave = async (members: Partial<Birthday>[]) => {
-    console.log("[v0] Bulk saving birthdays, count:", members.length)
-    console.log("[v0] Members data:", members)
-
-    const membersWithUserId = members.map((m) => ({ ...m, user_id: userId }))
-
-    const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select()
-
-    if (error) {
-      console.error("[v0] Error creating birthdays:", error)
-      alert(`Ошибка при массовом добавлении: ${error.message}`)
-    } else {
-      console.log("[v0] Birthdays created successfully, count:", insertedData?.length)
-      await fetchBirthdays()
-      setIsBulkFormOpen(false)
-      scheduleSync()
-    }
-  }
-
   const handleDelete = async (id: string) => {
     console.log("[v0] Deleting birthday, id:", id)
     const { error } = await supabase.from("birthdays").delete().eq("id", id)
@@ -459,10 +438,6 @@ export default function HomePage() {
                   <Plus className="h-4 w-4 mr-2" />
                   {t.addMember}
                 </Button>
-                <Button variant="outline" onClick={() => setIsBulkFormOpen(true)} className={cn(isMobile && "flex-1")}>
-                  <Users className="h-4 w-4 mr-2" />
-                  {t.addMultiple}
-                </Button>
               </div>
             </div>
 
@@ -579,8 +554,6 @@ export default function HomePage() {
         }}
         onSave={handleSave}
       />
-
-      <BulkAddForm open={isBulkFormOpen} onOpenChange={setIsBulkFormOpen} onSave={handleBulkSave} />
     </div>
   )
 }
