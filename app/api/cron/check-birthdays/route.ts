@@ -218,37 +218,28 @@ export async function GET(request: NextRequest) {
             const messaging = getFirebaseMessaging()
             const age = userNow.getFullYear() - birthDate.getFullYear()
 
+            // Use data-only message for reliable background delivery on Android PWA
             const message = {
-              notification: {
+              data: {
                 title: "🎂 День рождения!",
                 body: `${birthday.name || `${birthday.first_name} ${birthday.last_name}`} отмечает ${age} день рождения сегодня!`,
-              },
-              data: {
                 birthdayId: birthday.id.toString(),
                 firstName: birthday.first_name || birthday.name?.split(' ')[0] || '',
                 lastName: birthday.last_name || birthday.name?.split(' ').slice(1).join(' ') || '',
                 age: age.toString(),
                 type: "birthday_reminder",
+                icon: "/icon-192x192.png",
+                badge: "/badge-72x72.png",
+                tag: `birthday-${birthday.id}`,
+                clickAction: "/",
               },
               android: {
                 priority: "high" as const,
-                notification: {
-                  channelId: "birthday_notifications",
-                  priority: "high" as const,
-                  defaultSound: true,
-                  defaultVibrateTimings: true,
-                  icon: "/icon-192x192.png",
-                  tag: `birthday-${birthday.id}`,
-                  clickAction: "/",
-                },
               },
               webpush: {
-                notification: {
-                  icon: "/icon-192x192.png",
-                  badge: "/badge-72x72.png",
-                  vibrate: [200, 100, 200],
-                  tag: `birthday-${birthday.id}`,
-                  requireInteraction: true,
+                headers: {
+                  Urgency: "high",
+                  TTL: "86400",
                 },
                 fcmOptions: {
                   link: "/",

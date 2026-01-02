@@ -31,19 +31,25 @@ const messaging = firebase.messaging()
 console.log('[FCM SW] Messaging instance created')
 
 // Handle background messages (when app is in background or closed)
+// Now processing data-only messages for reliable Android PWA delivery
 messaging.onBackgroundMessage((payload) => {
   console.log("[FCM SW] Received background message:", payload)
 
-  const notificationTitle = payload.notification?.title || "🎂 Напоминание о дне рождения"
+  // Extract data from payload (data-only message structure)
+  const data = payload.data || {}
+  const notificationTitle = data.title || payload.notification?.title || "🎂 Напоминание о дне рождения"
+  const notificationBody = data.body || payload.notification?.body || ""
+  
   const notificationOptions = {
-    body: payload.notification?.body || "",
-    icon: "/icon-192x192.png",
-    badge: "/badge-72x72.png",
-    tag: "birthday-notification",
+    body: notificationBody,
+    icon: data.icon || "/icon-192x192.png",
+    badge: data.badge || "/badge-72x72.png",
+    tag: data.tag || "birthday-notification",
     requireInteraction: true,
-    vibrate: [200, 100, 200],
+    vibrate: [200, 100, 200, 100, 200],
     renotify: true,
-    data: payload.data,
+    silent: false,
+    data: data,
     actions: [
       {
         action: "open",
@@ -56,6 +62,7 @@ messaging.onBackgroundMessage((payload) => {
     ]
   }
 
+  console.log("[FCM SW] Showing notification:", notificationTitle)
   return self.registration.showNotification(notificationTitle, notificationOptions)
 })
 

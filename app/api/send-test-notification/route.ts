@@ -60,22 +60,25 @@ export async function POST(request: NextRequest) {
 
       const messaging = getFirebaseMessaging()
 
+      // Use data-only message for reliable background delivery
       const message = {
-        notification: {
+        data: {
           title: "🎉 Тестовое уведомление",
           body: "Firebase Cloud Messaging работает! Вы будете получать уведомления о днях рождения.",
-        },
-        data: {
           type: "test_notification",
           timestamp: new Date().toISOString(),
+          icon: "/icon-192x192.png",
+          badge: "/badge-72x72.png",
+          tag: "test-notification",
+          clickAction: "/",
+        },
+        android: {
+          priority: "high" as const,
         },
         webpush: {
-          notification: {
-            icon: "/icon-192x192.png",
-            badge: "/badge-72x72.png",
-            vibrate: [200, 100, 200],
-            tag: "test-notification",
-            requireInteraction: false,
+          headers: {
+            Urgency: "high",
+            TTL: "86400",
           },
           fcmOptions: {
             link: "/",
