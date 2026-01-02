@@ -78,7 +78,7 @@ self.addEventListener("notificationclick", (event) => {
 
   // Get birthday ID from notification data
   const birthdayId = event.notification.data?.birthdayId
-  const targetUrl = birthdayId ? `/?birthday=${birthdayId}` : "/"
+  const targetUrl = birthdayId ? "/?birthday=" + birthdayId : "/"
 
   console.log("[FCM SW] Opening URL:", targetUrl)
 
