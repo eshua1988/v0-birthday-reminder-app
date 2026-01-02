@@ -68,7 +68,7 @@ messaging.onBackgroundMessage((payload) => {
 
 // Handle notification clicks
 self.addEventListener("notificationclick", (event) => {
-  console.log("[FCM SW] Notification click:", event.action)
+  console.log("[FCM SW] Notification click:", event.action, "Data:", event.notification.data)
 
   event.notification.close()
 
@@ -76,15 +76,26 @@ self.addEventListener("notificationclick", (event) => {
     return
   }
 
+  // Get birthday ID from notification data
+  const birthdayId = event.notification.data?.birthdayId
+  const targetUrl = birthdayId ? `/?birthday=${birthdayId}` : "/"
+
+  console.log("[FCM SW] Opening URL:", targetUrl)
+
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // If app is already open, navigate to the birthday
       for (const client of clientList) {
-        if (client.url === self.registration.scope && "focus" in client) {
-          return client.focus()
+        if (client.url.includes(self.registration.scope) && "focus" in client) {
+          console.log("[FCM SW] Focusing existing window and navigating")
+          client.focus()
+          return client.navigate(targetUrl)
         }
       }
+      // Otherwise, open new window with birthday ID
       if (clients.openWindow) {
-        return clients.openWindow("/")
+        console.log("[FCM SW] Opening new window")
+        return clients.openWindow(targetUrl)
       }
     })
   )

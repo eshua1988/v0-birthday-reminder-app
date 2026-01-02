@@ -59,7 +59,8 @@ export function BirthdayList({ birthdays, onEdit, onDelete, isSelected, onToggle
 
         return (
           <div 
-            key={birthday.id} 
+            key={birthday.id}
+            id={`birthday-${birthday.id}`}
             className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors relative group"
             style={
               isToday 

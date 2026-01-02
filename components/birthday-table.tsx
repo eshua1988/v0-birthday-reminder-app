@@ -167,6 +167,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete, isSelected, onToggl
             return (
               <TableRow 
                 key={birthday.id}
+                id={`birthday-${birthday.id}`}
                 style={
                   isToday 
                     ? { borderLeft: '4px solid #34C924', backgroundColor: 'rgba(52, 201, 36, 0.1)' }

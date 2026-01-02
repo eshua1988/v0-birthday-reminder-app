@@ -112,6 +112,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
   return (
     <>
       <Card
+        id={`birthday-${birthday.id}`}
         className={`overflow-hidden transition-all hover:shadow-lg cursor-pointer relative group ${
           isToday ? 'border-2' : isSelected ? 'border-2' : ''
         }`}
