@@ -1133,12 +1133,26 @@ export default function SettingsPage() {
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Времена уведомлений:</span>
-                                      <span className="font-mono">
+                                      <span className={cn("font-mono", birthday.notificationTimes.length === 0 && "text-yellow-600")}>
                                         {birthday.notificationTimes.length > 0 
                                           ? birthday.notificationTimes.join(", ")
                                           : "⚠️ Не настроено"}
                                       </span>
                                     </div>
+                                    {birthday.isBirthdayToday && !birthday.shouldFireNow && birthday.notificationTimes.length > 0 && (
+                                      <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded text-yellow-800 dark:text-yellow-200">
+                                        <span className="font-medium">ℹ️ Не сработает сейчас:</span>
+                                        <br />
+                                        Текущее время {birthday.currentTimeInTZ.substring(0, 5)} не совпадает с временами уведомлений: {birthday.notificationTimes.join(", ")}
+                                      </div>
+                                    )}
+                                    {birthday.isBirthdayToday && birthday.notificationTimes.length === 0 && (
+                                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-950 rounded text-red-800 dark:text-red-200">
+                                        <span className="font-medium">⚠️ Уведомления не настроены!</span>
+                                        <br />
+                                        Добавьте время уведомления в настройках или для этого именинника.
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
