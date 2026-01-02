@@ -97,22 +97,23 @@ export async function GET(request: NextRequest) {
 
     for (const birthday of birthdays || []) {
       birthdaysChecked++
-      const birthDate = new Date(birthday.birth_date)
+      // Support both 'date' and 'birth_date' fields
+      const birthDate = new Date(birthday.date || birthday.birth_date)
       
-      // Get user's timezone, default to UTC if not set or 'auto'
-      let userTimezone = userTimezonesMap.get(birthday.user_id) || "UTC"
-      if (userTimezone === "auto" || userTimezone === "disabled") {
-        userTimezone = "UTC"
+      // Get birthday's individual timezone first, fallback to user's global timezone
+      let birthdayTimezone = birthday.timezone || userTimezonesMap.get(birthday.user_id) || "UTC"
+      if (birthdayTimezone === "auto" || birthdayTimezone === "disabled") {
+        birthdayTimezone = "UTC"
       }
       
-      // Get current time in user's timezone
+      // Get current time in birthday's timezone
       let userNow: Date
       try {
-        userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }))
+        userNow = new Date(now.toLocaleString("en-US", { timeZone: birthdayTimezone }))
       } catch (e) {
-        console.error("[v0] Cron: Invalid timezone", userTimezone, "for user", birthday.user_id, "using UTC")
+        console.error("[v0] Cron: Invalid timezone", birthdayTimezone, "for birthday", birthday.id, "using UTC")
         userNow = now
-        userTimezone = "UTC"
+        birthdayTimezone = "UTC"
       }
       
       const userCurrentTime = `${userNow.getHours().toString().padStart(2, "0")}:${userNow.getMinutes().toString().padStart(2, "0")}:00`
@@ -132,7 +133,9 @@ export async function GET(request: NextRequest) {
 
       console.log("[v0] Cron: Processing birthday:", {
         id: birthday.id,
-        name: `${birthday.first_name} ${birthday.last_name}`,
+        name: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
+        birthdayTimezone: birthdayTimezone,
+        userCurrentTime: userCurrentTime,
         notification_times_raw: birthday.notification_times,
         notification_time_raw: birthday.notification_time,
         notification_enabled: birthday.notification_enabled,
@@ -168,8 +171,8 @@ export async function GET(request: NextRequest) {
       // Remove duplicates
       const uniqueTimes = [...new Set(notificationTimes)]
 
-      console.log("[v0] Cron: Birthday TODAY:", birthday.first_name, birthday.last_name, {
-        userTimezone,
+      console.log("[v0] Cron: Birthday TODAY:", birthday.name || `${birthday.first_name} ${birthday.last_name}`, {
+        birthdayTimezone,
         userCurrentTime,
         notificationTimes: uniqueTimes,
         shouldNotify: uniqueTimes.includes(userCurrentTime),
@@ -191,8 +194,7 @@ export async function GET(request: NextRequest) {
 
         console.log(
           "[v0] Cron: Sending notification for:",
-          birthday.first_name,
-          birthday.last_name,
+          birthday.name || `${birthday.first_name} ${birthday.last_name}`,
           "to",
           fcmTokens.length,
           "devices",
@@ -206,12 +208,12 @@ export async function GET(request: NextRequest) {
             const message = {
               notification: {
                 title: "🎂 День рождения!",
-                body: `${birthday.first_name} ${birthday.last_name} отмечает ${age} день рождения сегодня!`,
+                body: `${birthday.name || `${birthday.first_name} ${birthday.last_name}`} отмечает ${age} день рождения сегодня!`,
               },
               data: {
                 birthdayId: birthday.id.toString(),
-                firstName: birthday.first_name,
-                lastName: birthday.last_name,
+                firstName: birthday.first_name || birthday.name?.split(' ')[0] || '',
+                lastName: birthday.last_name || birthday.name?.split(' ').slice(1).join(' ') || '',
                 age: age.toString(),
                 type: "birthday_reminder",
               },
@@ -233,7 +235,7 @@ export async function GET(request: NextRequest) {
             const response = await messaging.sendEachForMulticast(message)
 
             console.log("[v0] Cron: FCM sent successfully:", {
-              birthday: `${birthday.first_name} ${birthday.last_name}`,
+              birthday: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
               successCount: response.successCount,
               failureCount: response.failureCount,
             })
@@ -261,28 +263,28 @@ export async function GET(request: NextRequest) {
 
             notificationsSent += response.successCount
             notifications.push({
-              birthday: `${birthday.first_name} ${birthday.last_name}`,
+              birthday: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
               sent: response.successCount,
               failed: response.failureCount,
             })
           } catch (firebaseError) {
             console.error("[v0] Cron: Firebase error:", firebaseError)
             notifications.push({
-              birthday: `${birthday.first_name} ${birthday.last_name}`,
+              birthday: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
               error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
             })
           }
         } else {
           console.log("[v0] Cron: Firebase Admin SDK not configured, skipping")
           notifications.push({
-            birthday: `${birthday.first_name} ${birthday.last_name}`,
+            birthday: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
             status: "Firebase not configured",
           })
         }
       } else {
         console.log("[v0] Cron: No FCM tokens found for user:", birthday.user_id)
         notifications.push({
-          birthday: `${birthday.first_name} ${birthday.last_name}`,
+          birthday: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
           status: "No FCM tokens",
         })
       }
