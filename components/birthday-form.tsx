@@ -20,9 +20,10 @@ interface BirthdayFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (data: Partial<Birthday>) => Promise<void>
+  onSwitchToBulkAdd?: () => void
 }
 
-export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayFormProps) {
+export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToBulkAdd }: BirthdayFormProps) {
   const { t } = useLocale()
   const isMobile = useIsMobile()
   const [isLoading, setIsLoading] = useState(false)
@@ -282,6 +283,21 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave }: BirthdayF
           </div>
 
           <div className="flex gap-2 justify-end">
+            {!birthday && onSwitchToBulkAdd && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false)
+                  onSwitchToBulkAdd()
+                }}
+                disabled={isLoading}
+                className="mr-auto"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить нескольких
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               {t.cancel}
             </Button>
