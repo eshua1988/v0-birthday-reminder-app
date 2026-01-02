@@ -41,8 +41,22 @@ export async function GET() {
 
     const userTimezone = settings?.timezone || "UTC"
 
+    // Get current date for filtering today's birthdays
+    const now = new Date()
+    const currentMonth = now.getMonth() + 1 // getMonth() returns 0-11
+    const currentDay = now.getDate()
+
     // Process each birthday with notification info
-    const birthdaysWithDiagnostics = (birthdays || []).map((birthday: any) => {
+    const birthdaysWithDiagnostics = (birthdays || [])
+      .filter((birthday: any) => {
+        // Filter only today's birthdays
+        const birthDate = new Date(birthday.date || birthday.birth_date)
+        const birthdayMonth = birthDate.getMonth() + 1
+        const birthdayDay = birthDate.getDate()
+        
+        return birthdayMonth === currentMonth && birthdayDay === currentDay
+      })
+      .map((birthday: any) => {
       const birthdayTimezone = birthday.timezone || userTimezone
       
       // Get current time in the birthday's timezone

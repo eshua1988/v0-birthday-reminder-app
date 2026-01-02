@@ -1074,7 +1074,7 @@ export default function SettingsPage() {
 
                         <div className="mt-4">
                           <h4 className="font-medium mb-2">
-                            Именинники с включенными уведомлениями ({diagnosticInfo.totalBirthdays})
+                            🎂 Именинники сегодня ({diagnosticInfo.totalBirthdays})
                           </h4>
                           {diagnosticInfo.birthdays && diagnosticInfo.birthdays.length > 0 ? (
                             <div className="space-y-2">
@@ -1104,7 +1104,9 @@ export default function SettingsPage() {
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Времена уведомлений:</span>
                                       <span className="font-mono">
-                                        {birthday.notificationTimes.join(", ")}
+                                        {birthday.notificationTimes.length > 0 
+                                          ? birthday.notificationTimes.join(", ")
+                                          : "⚠️ Не настроено"}
                                       </span>
                                     </div>
                                   </div>
@@ -1113,7 +1115,7 @@ export default function SettingsPage() {
                             </div>
                           ) : (
                             <p className="text-muted-foreground text-sm">
-                              Нет именинников с включенными уведомлениями
+                              Сегодня нет именинников с включенными уведомлениями
                             </p>
                           )}
                         </div>
