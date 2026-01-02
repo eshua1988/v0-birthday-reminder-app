@@ -1,3 +1,8 @@
+const authHeader = request.headers.get('authorization');
+if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+
 import { type NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
