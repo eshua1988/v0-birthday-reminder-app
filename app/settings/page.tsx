@@ -1284,7 +1284,7 @@ export default function SettingsPage() {
                                     <div>
                                       <span className="text-muted-foreground">Timezone:</span>
                                       <br />
-                                      <code className="text-xs">{birthday.user_timezone}</code>
+                                      <code className="text-xs">{birthday.timezone}</code>
                                     </div>
                                     <div>
                                       <span className="text-muted-foreground">Время:</span>

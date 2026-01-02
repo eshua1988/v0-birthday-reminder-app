@@ -70,22 +70,22 @@ export async function GET(request: NextRequest) {
     const results: any[] = []
 
     for (const birthday of birthdays || []) {
-      const birthDate = new Date(birthday.birth_date)
+      const birthDate = new Date(birthday.date || birthday.birth_date)
       
-      // Get user's timezone
-      let userTimezone = userTimezonesMap.get(birthday.user_id) || "UTC"
-      if (userTimezone === "auto" || userTimezone === "disabled") {
-        userTimezone = "UTC"
+      // Get birthday's individual timezone first, fallback to user's global timezone
+      let birthdayTimezone = birthday.timezone || userTimezonesMap.get(birthday.user_id) || "UTC"
+      if (birthdayTimezone === "auto" || birthdayTimezone === "disabled") {
+        birthdayTimezone = "UTC"
       }
       
-      // Get current time in user's timezone
+      // Get current time in birthday's timezone
       let userNow: Date
       try {
-        userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }))
+        userNow = new Date(now.toLocaleString("en-US", { timeZone: birthdayTimezone }))
       } catch (e) {
-        console.error("[v0] Test: Invalid timezone", userTimezone, "using UTC")
+        console.error("[v0] Test: Invalid timezone", birthdayTimezone, "using UTC")
         userNow = now
-        userTimezone = "UTC"
+        birthdayTimezone = "UTC"
       }
       
       const userCurrentTime = `${userNow.getHours().toString().padStart(2, "0")}:${userNow.getMinutes().toString().padStart(2, "0")}:00`
@@ -120,10 +120,10 @@ export async function GET(request: NextRequest) {
 
       const result = {
         id: birthday.id,
-        name: `${birthday.first_name} ${birthday.last_name}`,
-        birth_date: birthday.birth_date,
+        name: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
+        birth_date: birthday.date || birthday.birth_date,
         is_birthday_today: isBirthdayToday,
-        user_timezone: userTimezone,
+        timezone: birthdayTimezone,
         user_current_time: userCurrentTime,
         server_current_time: currentTime,
         notification_times_raw: birthday.notification_times,
