@@ -28,12 +28,11 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
   const isMobile = useIsMobile()
   const [isLoading, setIsLoading] = useState(false)
   const [notificationTimes, setNotificationTimes] = useState<string[]>(["09:00"])
+  const [customFields, setCustomFields] = useState<Array<{ name: string; value: string }>>([])
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     birth_date: "",
-    phone: "",
-    email: "",
     photo_url: "",
     notification_time: "09:00",
     notification_enabled: true,
@@ -47,24 +46,28 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
           : [birthday.notification_time || "09:00"]
 
       setNotificationTimes(times)
+      
+      // Parse custom fields from phone and email if they exist
+      const fields: Array<{ name: string; value: string }> = []
+      if (birthday.phone) fields.push({ name: "Телефон", value: birthday.phone })
+      if (birthday.email) fields.push({ name: "Email", value: birthday.email })
+      setCustomFields(fields)
+      
       setFormData({
         first_name: birthday.first_name,
         last_name: birthday.last_name,
         birth_date: birthday.birth_date,
-        phone: birthday.phone || "",
-        email: birthday.email || "",
         photo_url: birthday.photo_url || "",
         notification_time: birthday.notification_time || "09:00",
         notification_enabled: birthday.notification_enabled ?? true,
       })
     } else {
       setNotificationTimes(["09:00"])
+      setCustomFields([])
       setFormData({
         first_name: "",
         last_name: "",
         birth_date: "",
-        phone: "",
-        email: "",
         photo_url: "",
         notification_time: "09:00",
         notification_enabled: true,
@@ -77,8 +80,14 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
     setIsLoading(true)
 
     try {
+      // Convert custom fields to phone/email for backwards compatibility
+      const phoneField = customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
+      const emailField = customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
+      
       const dataToSave = {
         ...formData,
+        phone: phoneField?.value || "",
+        email: emailField?.value || "",
         notification_times: notificationTimes,
         notification_time: notificationTimes[0] || "09:00", // Первое время для legacy
         notification_repeat_count: notificationTimes.length,
@@ -89,12 +98,11 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
       await onSave(dataToSave)
       onOpenChange(false)
       setNotificationTimes(["09:00"])
+      setCustomFields([])
       setFormData({
         first_name: "",
         last_name: "",
         birth_date: "",
-        phone: "",
-        email: "",
         photo_url: "",
         notification_time: "09:00",
         notification_enabled: true,
@@ -199,24 +207,60 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="phone">{t.phone}</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="email">{t.email}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Дополнительные поля</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCustomFields([...customFields, { name: "", value: "" }])}
+                  className="h-8"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Добавить поле
+                </Button>
+              </div>
+              
+              {customFields.map((field, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    placeholder="Название"
+                    value={field.name}
+                    onChange={(e) => {
+                      const newFields = [...customFields]
+                      newFields[index].name = e.target.value
+                      setCustomFields(newFields)
+                    }}
+                    className="w-1/3"
+                  />
+                  <Input
+                    placeholder="Значение"
+                    value={field.value}
+                    onChange={(e) => {
+                      const newFields = [...customFields]
+                      newFields[index].value = e.target.value
+                      setCustomFields(newFields)
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCustomFields(customFields.filter((_, i) => i !== index))}
+                    className="h-10 w-10 shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              
+              {customFields.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Нажмите "Добавить поле" для добавления телефона, email или других данных
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-4">

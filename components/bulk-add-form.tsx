@@ -15,8 +15,7 @@ interface BulkMember {
   first_name: string
   last_name: string
   birth_date: string
-  phone: string
-  email: string
+  customFields: Array<{ name: string; value: string }>
 }
 
 interface BulkAddFormProps {
@@ -29,7 +28,7 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
   const { t } = useLocale()
   const [isLoading, setIsLoading] = useState(false)
   const [members, setMembers] = useState<BulkMember[]>([
-    { id: "1", first_name: "", last_name: "", birth_date: "", phone: "", email: "" },
+    { id: "1", first_name: "", last_name: "", birth_date: "", customFields: [] },
   ])
 
   const addMember = () => {
@@ -40,8 +39,7 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
         first_name: "",
         last_name: "",
         birth_date: "",
-        phone: "",
-        email: "",
+        customFields: [],
       },
     ])
   }
@@ -67,9 +65,21 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
         return
       }
 
-      await onSave(validMembers.map(({ id, ...rest }) => rest))
+      // Convert customFields to phone/email for backwards compatibility
+      const membersWithFields = validMembers.map(({ id, customFields, ...rest }) => {
+        const phoneField = customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
+        const emailField = customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
+        
+        return {
+          ...rest,
+          phone: phoneField?.value || "",
+          email: emailField?.value || "",
+        }
+      })
+
+      await onSave(membersWithFields)
       onOpenChange(false)
-      setMembers([{ id: "1", first_name: "", last_name: "", birth_date: "", phone: "", email: "" }])
+      setMembers([{ id: "1", first_name: "", last_name: "", birth_date: "", customFields: [] }])
     } catch (error) {
       console.error("Error saving members:", error)
     } finally {
@@ -124,7 +134,7 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
                   />
                 </div>
 
-                <div className="grid gap-2">
+                <div className="grid gap-2 sm:col-span-2">
                   <Label>{t.birthDate}</Label>
                   <Input
                     type="date"
@@ -134,22 +144,83 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label>{t.phone}</Label>
-                  <Input
-                    type="tel"
-                    value={member.phone}
-                    onChange={(e) => updateMember(member.id, "phone", e.target.value)}
-                  />
-                </div>
-
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label>{t.email}</Label>
-                  <Input
-                    type="email"
-                    value={member.email}
-                    onChange={(e) => updateMember(member.id, "email", e.target.value)}
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Дополнительные поля</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newMembers = members.map(m => 
+                          m.id === member.id 
+                            ? { ...m, customFields: [...m.customFields, { name: "", value: "" }] }
+                            : m
+                        )
+                        setMembers(newMembers)
+                      }}
+                      className="h-7"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Добавить
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {member.customFields.map((field, fieldIndex) => (
+                      <div key={fieldIndex} className="flex gap-2">
+                        <Input
+                          placeholder="Название"
+                          value={field.name}
+                          onChange={(e) => {
+                            const newMembers = members.map(m => {
+                              if (m.id === member.id) {
+                                const newFields = [...m.customFields]
+                                newFields[fieldIndex].name = e.target.value
+                                return { ...m, customFields: newFields }
+                              }
+                              return m
+                            })
+                            setMembers(newMembers)
+                          }}
+                          className="w-1/3"
+                        />
+                        <Input
+                          placeholder="Значение"
+                          value={field.value}
+                          onChange={(e) => {
+                            const newMembers = members.map(m => {
+                              if (m.id === member.id) {
+                                const newFields = [...m.customFields]
+                                newFields[fieldIndex].value = e.target.value
+                                return { ...m, customFields: newFields }
+                              }
+                              return m
+                            })
+                            setMembers(newMembers)
+                          }}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const newMembers = members.map(m => {
+                              if (m.id === member.id) {
+                                return { ...m, customFields: m.customFields.filter((_, i) => i !== fieldIndex) }
+                              }
+                              return m
+                            })
+                            setMembers(newMembers)
+                          }}
+                          className="h-10 w-10 shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
