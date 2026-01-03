@@ -2,125 +2,108 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   const swContent = `
-// Firebase Cloud Messaging Service Worker
-// This worker handles push notifications on all devices (desktop, tablet, mobile)
+// Firebase Messaging Service Worker v6
+// For background push notifications on Android PWA
+console.log('[SW v6] Loading...')
 
-importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js")
-importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js")
-
-const firebase = self.firebase
-
-console.log('[FCM SW] Service Worker loaded')
-
-// Initialize Firebase with real config from environment
-firebase.initializeApp({
+// Firebase config
+const firebaseConfig = {
   apiKey: "${process.env.NEXT_PUBLIC_FIREBASE_API_KEY || ''}",
   authDomain: "${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || ''}",
   projectId: "${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || ''}",
   storageBucket: "${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || ''}",
   messagingSenderId: "${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || ''}",
   appId: "${process.env.NEXT_PUBLIC_FIREBASE_APP_ID || ''}",
-})
+}
 
-console.log('[FCM SW] Firebase initialized with config:', {
-  apiKey: "${process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'SET' : 'MISSING'}",
-  projectId: "${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'MISSING'}"
-})
+// Import Firebase scripts
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js')
 
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig)
 const messaging = firebase.messaging()
-console.log('[FCM SW] Messaging instance created')
 
-// Handle background messages (when app is in background or closed)
-// Now processing data-only messages for reliable Android PWA delivery
-messaging.onBackgroundMessage((payload) => {
-  console.log("[FCM SW] Received background message:", payload)
+console.log('[SW v6] Firebase initialized')
 
-  // Extract data from payload (data-only message structure)
-  const data = payload.data || {}
-  const notificationTitle = data.title || payload.notification?.title || "🎂 Напоминание о дне рождения"
-  const notificationBody = data.body || payload.notification?.body || ""
+// Handle push event
+self.addEventListener('push', function(event) {
+  console.log('[SW v6] Push received')
   
-  const notificationOptions = {
-    body: notificationBody,
-    icon: data.icon || "/icon-192x192.png",
-    badge: data.badge || "/badge-72x72.png",
-    tag: data.tag || "birthday-notification",
-    requireInteraction: true,
-    vibrate: [200, 100, 200, 100, 200],
+  let data = {}
+  
+  if (event.data) {
+    try {
+      const json = event.data.json()
+      data = json.data || json.notification || json
+    } catch (e) {
+      data = { title: 'Уведомление', body: event.data.text() }
+    }
+  }
+
+  const title = data.title || '🎂 День рождения!'
+  const options = {
+    body: data.body || 'У кого-то сегодня день рождения!',
+    icon: '/icon-192x192.png',
+    badge: '/badge-72x72.png',
+    tag: data.tag || 'notification-' + Date.now(),
     renotify: true,
-    silent: false,
-    data: data,
-    actions: [
-      {
-        action: "open",
-        title: "Открыть"
-      },
-      {
-        action: "close",
-        title: "Закрыть"
-      }
-    ]
+    requireInteraction: true,
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || data.clickAction || '/',
+      birthdayId: data.birthdayId || '',
+    }
   }
-
-  console.log("[FCM SW] Showing notification:", notificationTitle)
-  return self.registration.showNotification(notificationTitle, notificationOptions)
-})
-
-// Handle notification clicks
-self.addEventListener("notificationclick", (event) => {
-  console.log("[FCM SW] Notification click:", event.action, "Data:", event.notification.data)
-
-  event.notification.close()
-
-  if (event.action === "close") {
-    return
-  }
-
-  // Get birthday ID from notification data
-  const birthdayId = event.notification.data?.birthdayId
-  const targetUrl = birthdayId ? "/?birthday=" + birthdayId : "/"
-
-  console.log("[FCM SW] Opening URL:", targetUrl)
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, navigate to the birthday
-      for (const client of clientList) {
-        if (client.url.includes(self.registration.scope) && "focus" in client) {
-          console.log("[FCM SW] Focusing existing window and navigating")
-          client.focus()
-          return client.navigate(targetUrl)
-        }
-      }
-      // Otherwise, open new window with birthday ID
-      if (clients.openWindow) {
-        console.log("[FCM SW] Opening new window")
-        return clients.openWindow(targetUrl)
-      }
-    })
+    self.registration.showNotification(title, options)
   )
 })
 
-self.addEventListener("notificationclose", (event) => {
-  console.log("[FCM SW] Notification closed:", event.notification.tag)
+// Handle notification click
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close()
+  
+  const url = event.notification.data?.url || '/'
+  
+  event.waitUntil(
+    clients.matchAll({type: 'window', includeUncontrolled: true})
+      .then(function(clientList) {
+        for (let client of clientList) {
+          if (client.url.includes(self.registration.scope) && 'focus' in client) {
+            return client.focus().then(() => client.navigate(url))
+          }
+        }
+        return clients.openWindow(url)
+      })
+  )
 })
 
-self.addEventListener("activate", (event) => {
-  console.log("[FCM SW] Service Worker activated")
-  event.waitUntil(clients.claim())
+// Firebase background message handler
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[SW v6] Background message:', payload)
 })
 
-self.addEventListener("install", (event) => {
-  console.log("[FCM SW] Service Worker installing")
+// Install
+self.addEventListener('install', function(event) {
+  console.log('[SW v6] Installing')
   self.skipWaiting()
+})
+
+// Activate
+self.addEventListener('activate', function(event) {
+  console.log('[SW v6] Activated')
+  event.waitUntil(self.clients.claim())
 })
 `
 
   return new NextResponse(swContent, {
     headers: {
-      "Content-Type": "application/javascript",
+      "Content-Type": "application/javascript; charset=utf-8",
       "Service-Worker-Allowed": "/",
-      "Cache-Control": "no-cache",
+      // Cache for 1 hour to prevent constant reloads
+      "Cache-Control": "public, max-age=3600",
     },
   })
 }

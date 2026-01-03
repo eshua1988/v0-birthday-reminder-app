@@ -217,12 +217,14 @@ export async function GET(request: NextRequest) {
           try {
             const messaging = getFirebaseMessaging()
             const age = userNow.getFullYear() - birthDate.getFullYear()
+            const fullName = birthday.name || `${birthday.first_name} ${birthday.last_name}`
 
-            // Use data-only message for reliable background delivery on Android PWA
+            // DATA-ONLY message for PWA background delivery
+            // Service Worker will handle showing the notification
             const message = {
               data: {
                 title: "🎂 День рождения!",
-                body: `${birthday.name || `${birthday.first_name} ${birthday.last_name}`} отмечает ${age} день рождения сегодня!`,
+                body: `${fullName} отмечает ${age} день рождения сегодня!`,
                 birthdayId: birthday.id.toString(),
                 firstName: birthday.first_name || birthday.name?.split(' ')[0] || '',
                 lastName: birthday.last_name || birthday.name?.split(' ').slice(1).join(' ') || '',
@@ -231,18 +233,17 @@ export async function GET(request: NextRequest) {
                 icon: "/icon-192x192.png",
                 badge: "/badge-72x72.png",
                 tag: `birthday-${birthday.id}`,
-                clickAction: "/",
+                url: "/?birthday=" + birthday.id,
+                timestamp: Date.now().toString(),
               },
               android: {
                 priority: "high" as const,
+                ttl: 86400000, // 24 hours
               },
               webpush: {
                 headers: {
                   Urgency: "high",
                   TTL: "86400",
-                },
-                fcmOptions: {
-                  link: "/",
                 },
               },
               tokens: fcmTokens,

@@ -60,28 +60,27 @@ export async function POST(request: NextRequest) {
 
       const messaging = getFirebaseMessaging()
 
-      // Use data-only message for reliable background delivery
+      // DATA-ONLY message for PWA background delivery
+      // Service Worker will handle showing the notification with sound/vibration
       const message = {
         data: {
           title: "🎉 Тестовое уведомление",
-          body: "Firebase Cloud Messaging работает! Вы будете получать уведомления о днях рождения.",
+          body: "Firebase Push работает! Уведомления о днях рождения будут приходить даже когда приложение закрыто.",
           type: "test_notification",
-          timestamp: new Date().toISOString(),
           icon: "/icon-192x192.png",
           badge: "/badge-72x72.png",
-          tag: "test-notification",
-          clickAction: "/",
+          tag: "test-notification-" + Date.now(),
+          url: "/settings",
+          timestamp: Date.now().toString(),
         },
         android: {
           priority: "high" as const,
+          ttl: 86400000,
         },
         webpush: {
           headers: {
             Urgency: "high",
             TTL: "86400",
-          },
-          fcmOptions: {
-            link: "/",
           },
         },
         tokens: fcmTokens,

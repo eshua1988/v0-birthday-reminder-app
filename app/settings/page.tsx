@@ -153,6 +153,10 @@ export default function SettingsPage() {
     saveScheduledThemeTime('theme_scheduled_end', time)
   }
 
+  const [isTestingFCM, setIsTestingFCM] = useState(false)
+  const [fcmTestResult, setFcmTestResult] = useState<string | null>(null)
+  const [fcmTokenCount, setFcmTokenCount] = useState<number>(0)
+
   const handleTestNotification = () => {
     sendNotification("🎂 Тестовое уведомление", {
       body: "Так будут выглядеть напоминания о днях рождения",
@@ -162,6 +166,86 @@ export default function SettingsPage() {
       title: t.sendTestNotification,
       description: t.checkYourDevices,
     })
+  }
+
+  const handleClearOldTokens = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Удаляем все токены кроме самого нового
+      const { data: tokens } = await supabase
+        .from("fcm_tokens")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+
+      if (tokens && tokens.length > 1) {
+        // Оставляем только самый новый токен
+        const tokensToDelete = tokens.slice(1).map((t: { token: string }) => t.token)
+        await supabase
+          .from("fcm_tokens")
+          .delete()
+          .in("token", tokensToDelete)
+        
+        toast({
+          title: "Очищено",
+          description: `Удалено ${tokensToDelete.length} старых токенов`,
+        })
+        setFcmTokenCount(1)
+      } else {
+        toast({
+          title: "Нет старых токенов",
+          description: "Только 1 активный токен",
+        })
+      }
+    } catch (error: any) {
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleTestFCMNotification = async () => {
+    setIsTestingFCM(true)
+    setFcmTestResult(null)
+    
+    try {
+      const response = await fetch('/api/send-test-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        const details = data.details || {}
+        setFcmTestResult(`✅ Уведомление отправлено! 📱 Успешно: ${details.successCount || 0} ❌ Ошибок: ${details.failureCount || 0}`)
+        setFcmTokenCount(details.totalTokens || 0)
+        toast({
+          title: "Успешно",
+          description: data.message || "Push-уведомление отправлено через FCM",
+        })
+      } else {
+        setFcmTestResult(`❌ ${data.error}: ${data.message || ''}`)
+        toast({
+          title: "Ошибка",
+          description: data.message || data.error,
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      setFcmTestResult(`❌ Ошибка: ${error.message}`)
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsTestingFCM(false)
+    }
   }
 
   const loadSettings = async () => {
@@ -646,9 +730,49 @@ export default function SettingsPage() {
                     <Bell className="inline h-4 w-4 mr-2" />
                     {t.notificationsAllowed}
                   </p>
-                  <Button variant="outline" onClick={handleTestNotification}>
-                    {t.sendTestNotification}
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button variant="outline" onClick={handleTestNotification}>
+                      {t.sendTestNotification} (браузер)
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      onClick={handleTestFCMNotification}
+                      disabled={isTestingFCM}
+                    >
+                      {isTestingFCM ? "Отправка..." : "🔔 Тест Push (FCM)"}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={async () => {
+                        try {
+                          const registration = await navigator.serviceWorker.getRegistration()
+                          if (registration) {
+                            await registration.update()
+                            toast({ title: "Service Worker обновлён", description: "Перезагрузите страницу для применения" })
+                          }
+                        } catch (e) {
+                          toast({ title: "Ошибка", description: String(e), variant: "destructive" })
+                        }
+                      }}
+                    >
+                      🔄 Обновить SW
+                    </Button>
+                  </div>
+                  {fcmTestResult && (
+                    <p className={`text-sm mt-2 ${fcmTestResult.startsWith('✅') ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                      {fcmTestResult}
+                    </p>
+                  )}
+                  {fcmTokenCount > 1 && (
+                    <div className="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                        ⚠️ У вас {fcmTokenCount} FCM токенов. Рекомендуется очистить старые.
+                      </p>
+                      <Button variant="outline" size="sm" onClick={handleClearOldTokens}>
+                        🗑️ Очистить старые токены
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

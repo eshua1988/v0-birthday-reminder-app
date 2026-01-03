@@ -129,7 +129,7 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
             <Checkbox 
               checked={isSelected} 
               onCheckedChange={onToggleSelect}
-              className="h-5 w-5 bg-white border-2 shadow-md"
+              className="h-5 w-5 bg-background border-2 shadow-md"
             />
           </div>
         )}

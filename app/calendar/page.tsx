@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Birthday } from "@/types/birthday"
 import { Sidebar } from "@/components/sidebar"
@@ -41,6 +41,58 @@ export default function CalendarPage() {
     }
     return "year"
   })
+
+  // Swipe handling for calendar navigation
+  const touchStartX = useRef<number>(0)
+  const touchStartY = useRef<number>(0)
+  const calendarRef = useRef<HTMLDivElement>(null)
+
+  const handleSwipeNavigation = useCallback((direction: 'left' | 'right') => {
+    if (direction === 'left') {
+      // Swipe left = next period
+      if (calendarView === 'year') {
+        setCurrentDate(new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), 1))
+      } else if (calendarView === 'month') {
+        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+      } else if (calendarView === 'week') {
+        const newDate = new Date(currentDate)
+        newDate.setDate(currentDate.getDate() + 7)
+        setCurrentDate(newDate)
+      }
+    } else {
+      // Swipe right = previous period
+      if (calendarView === 'year') {
+        setCurrentDate(new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1))
+      } else if (calendarView === 'month') {
+        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+      } else if (calendarView === 'week') {
+        const newDate = new Date(currentDate)
+        newDate.setDate(currentDate.getDate() - 7)
+        setCurrentDate(newDate)
+      }
+    }
+  }, [calendarView, currentDate])
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX
+    const touchEndY = e.changedTouches[0].clientY
+    const deltaX = touchEndX - touchStartX.current
+    const deltaY = Math.abs(touchEndY - touchStartY.current)
+    
+    // Horizontal swipe (min 80px, vertical movement < 100px)
+    if (Math.abs(deltaX) > 80 && deltaY < 100) {
+      if (deltaX > 0) {
+        handleSwipeNavigation('right') // Previous
+      } else {
+        handleSwipeNavigation('left') // Next
+      }
+    }
+  }, [handleSwipeNavigation])
 
   const setCalendarViewAndSave = (value: CalendarView) => {
     setCalendarView(value)
@@ -420,7 +472,11 @@ export default function CalendarPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              className="touch-pan-y"
+            >
               {calendarView === "month" && renderMonthView()}
               {calendarView === "week" && renderWeekView()}
               {calendarView === "year" && renderYearView()}

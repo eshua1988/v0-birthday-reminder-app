@@ -13,19 +13,16 @@ if ('serviceWorker' in navigator) {
       await navigator.serviceWorker.ready;
       console.log('[SW] Service Worker is ready');
       
-      // Check for updates periodically
+      // Check for updates every 6 hours (not more often to avoid reload loops)
       setInterval(() => {
         registration.update();
-      }, 60 * 60 * 1000); // Check every hour
+      }, 6 * 60 * 60 * 1000);
       
     } catch (error) {
       console.error('[SW] Service Worker registration failed:', error);
     }
   });
   
-  // Listen for service worker updates
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[SW] Service Worker controller changed, reloading page');
-    window.location.reload();
-  });
+  // Don't auto-reload on controller change - this causes reload loops
+  // User can manually refresh if needed
 }

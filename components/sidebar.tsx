@@ -1,9 +1,9 @@
 "use client"
 
-import { Home, Settings, Calendar, Menu, X } from "lucide-react"
+import { Home, Settings, Calendar, Menu, X, MessageSquareHeart } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -19,6 +19,45 @@ export function Sidebar() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const supabase = createClient()
+
+  // Swipe handling
+  const touchStartX = useRef<number>(0)
+  const touchStartY = useRef<number>(0)
+  const touchEndX = useRef<number>(0)
+  const sidebarRef = useRef<HTMLElement>(null)
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    touchEndX.current = e.changedTouches[0].clientX
+    const deltaX = touchEndX.current - touchStartX.current
+    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY.current)
+    
+    // Swipe right to open (from left edge, horizontal swipe)
+    if (!isOpen && touchStartX.current < 30 && deltaX > 80 && deltaY < 100) {
+      setIsOpen(true)
+    }
+    
+    // Swipe left to close
+    if (isOpen && deltaX < -80 && deltaY < 100) {
+      setIsOpen(false)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (isMobile) {
+      document.addEventListener('touchstart', handleTouchStart, { passive: true })
+      document.addEventListener('touchend', handleTouchEnd, { passive: true })
+      
+      return () => {
+        document.removeEventListener('touchstart', handleTouchStart)
+        document.removeEventListener('touchend', handleTouchEnd)
+      }
+    }
+  }, [isMobile, handleTouchStart, handleTouchEnd])
 
   useEffect(() => {
     loadUser()
@@ -59,6 +98,7 @@ export function Sidebar() {
   const links = [
     { href: "/", icon: Home, label: t.home },
     { href: "/calendar", icon: Calendar, label: t.calendar },
+    { href: "/greetings", icon: MessageSquareHeart, label: t.greetings || "Поздравления" },
     { href: "/settings", icon: Settings, label: t.settings },
   ]
 
