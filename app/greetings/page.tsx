@@ -245,15 +245,19 @@ export default function GreetingsPage() {
 
   const getUpcomingBirthdays = () => {
     const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset to start of day
+    
     const sorted = [...birthdays].sort((a, b) => {
       const dateA = new Date(a.birth_date)
       const dateB = new Date(b.birth_date)
       
       // Set to current year for comparison
       dateA.setFullYear(today.getFullYear())
+      dateA.setHours(0, 0, 0, 0)
       dateB.setFullYear(today.getFullYear())
+      dateB.setHours(0, 0, 0, 0)
       
-      // If date has passed, move to next year
+      // If date has passed (strictly before today), move to next year
       if (dateA < today) dateA.setFullYear(today.getFullYear() + 1)
       if (dateB < today) dateB.setFullYear(today.getFullYear() + 1)
       
