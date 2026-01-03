@@ -86,12 +86,17 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
       const phoneField = customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
       const emailField = customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
       
+      // Explicitly specify only valid database fields
       const dataToSave = {
-        ...formData,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        birth_date: formData.birth_date,
+        photo_url: formData.photo_url || null,
+        notification_time: notificationTimes[0] || "09:00",
+        notification_enabled: formData.notification_enabled,
         phone: phoneField?.value || "",
         email: emailField?.value || "",
         notification_times: notificationTimes,
-        notification_time: notificationTimes[0] || "09:00",
         notification_repeat_count: notificationTimes.length,
       }
       

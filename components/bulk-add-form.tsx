@@ -65,13 +65,15 @@ export function BulkAddForm({ open, onOpenChange, onSave }: BulkAddFormProps) {
         return
       }
 
-      // Convert customFields to phone/email
-      const membersWithFields = validMembers.map(({ id, customFields, ...rest }) => {
-        const phoneField = customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
-        const emailField = customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
+      // Convert customFields to phone/email - explicitly specify only valid fields
+      const membersWithFields = validMembers.map((member) => {
+        const phoneField = member.customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
+        const emailField = member.customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
         
         return {
-          ...rest,
+          first_name: member.first_name,
+          last_name: member.last_name,
+          birth_date: member.birth_date,
           phone: phoneField?.value || "",
           email: emailField?.value || "",
         }
