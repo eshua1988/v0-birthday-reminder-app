@@ -270,7 +270,9 @@ export default function HomePage() {
     console.log("[v0] notification_times:", data.notification_times)
     console.log("[v0] notification_time:", data.notification_time)
 
-    const birthdayData = { ...data, user_id: userId }
+    // Remove any fields that don't exist in the database
+    const { custom_fields, ...cleanData } = data as any
+    const birthdayData = { ...cleanData, user_id: userId }
     console.log("[v0] Final birthdayData to save:", birthdayData)
 
     if (editingBirthday) {
@@ -311,7 +313,11 @@ export default function HomePage() {
     console.log("[v0] Bulk saving birthdays, count:", members.length)
     console.log("[v0] Members data:", members)
 
-    const membersWithUserId = members.map((m) => ({ ...m, user_id: userId }))
+    // Remove any fields that don't exist in the database
+    const membersWithUserId = members.map((m) => {
+      const { custom_fields, ...cleanData } = m as any
+      return { ...cleanData, user_id: userId }
+    })
 
     const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select()
 
