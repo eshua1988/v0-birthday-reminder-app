@@ -319,18 +319,17 @@ export default function GreetingsPage() {
                       {getUpcomingBirthdays().map((birthday) => (
                         <div
                           key={birthday.id}
-                          onClick={() => handleToggleBirthday(birthday.id)}
                           className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
                             selectedBirthdays.has(birthday.id)
                               ? "border-primary bg-primary/10"
-                              : "border-border hover:bg-accent"
+                              : "border-border"
                           )}
                         >
                           <Checkbox
                             checked={selectedBirthdays.has(birthday.id)}
                             onCheckedChange={() => handleToggleBirthday(birthday.id)}
-                            onClick={(e) => e.stopPropagation()}
+                            className="cursor-pointer"
                           />
                           {birthday.photo_url ? (
                             <Image
