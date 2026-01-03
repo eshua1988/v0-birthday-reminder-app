@@ -270,9 +270,20 @@ export default function HomePage() {
     console.log("[v0] notification_times:", data.notification_times)
     console.log("[v0] notification_time:", data.notification_time)
 
-    // Remove any fields that don't exist in the database
-    const { custom_fields, ...cleanData } = data as any
-    const birthdayData = { ...cleanData, user_id: userId }
+    // Explicitly specify only the fields that exist in the database
+    const birthdayData = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      birth_date: data.birth_date,
+      photo_url: data.photo_url || null,
+      phone: data.phone || null,
+      email: data.email || null,
+      notification_time: data.notification_time || "09:00",
+      notification_times: data.notification_times || null,
+      notification_repeat_count: data.notification_repeat_count || 1,
+      notification_enabled: data.notification_enabled ?? true,
+      user_id: userId,
+    }
     console.log("[v0] Final birthdayData to save:", birthdayData)
 
     if (editingBirthday) {
@@ -313,11 +324,20 @@ export default function HomePage() {
     console.log("[v0] Bulk saving birthdays, count:", members.length)
     console.log("[v0] Members data:", members)
 
-    // Remove any fields that don't exist in the database
-    const membersWithUserId = members.map((m) => {
-      const { custom_fields, ...cleanData } = m as any
-      return { ...cleanData, user_id: userId }
-    })
+    // Explicitly specify only the fields that exist in the database
+    const membersWithUserId = members.map((m) => ({
+      first_name: m.first_name,
+      last_name: m.last_name,
+      birth_date: m.birth_date,
+      photo_url: m.photo_url || null,
+      phone: m.phone || null,
+      email: m.email || null,
+      notification_time: m.notification_time || "09:00",
+      notification_times: m.notification_times || null,
+      notification_repeat_count: m.notification_repeat_count || 1,
+      notification_enabled: m.notification_enabled ?? true,
+      user_id: userId,
+    }))
 
     const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select()
 
