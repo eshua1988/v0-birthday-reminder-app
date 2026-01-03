@@ -272,7 +272,7 @@ export default function CalendarPage() {
                   className="w-full p-2 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
                 >
                   <Plus className="h-3 w-3" />
-                  <span>{t.add}</span>
+                  <span className="hidden sm:inline">{t.add}</span>
                 </button>
               </div>
             </div>
