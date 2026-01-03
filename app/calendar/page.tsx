@@ -284,50 +284,52 @@ export default function CalendarPage() {
     })
 
     return (
-      <div className="grid grid-cols-7 gap-4">
+      <div className="grid grid-cols-7 gap-2 sm:gap-4">
         {weekDates.map((date, index) => {
           const dayBirthdays = getBirthdaysForDay(date.getDate(), date.getMonth())
           const isToday = date.toDateString() === new Date().toDateString()
+          const isSelected = selectedDate?.toDateString() === date.toDateString()
 
           return (
-            <div key={index} className="space-y-2">
+            <button
+              key={index}
+              onClick={() => {
+                setSelectedDate(date)
+                setSelectedDateBirthdays(dayBirthdays)
+              }}
+              className={cn(
+                "space-y-1 p-1 sm:p-2 rounded-lg transition-colors text-left",
+                isSelected ? "ring-2 ring-primary bg-primary/5" : "hover:bg-muted/50"
+              )}
+            >
               <div
-                className={`text-center p-2 rounded-lg ${isToday ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                className={cn(
+                  "text-center p-1 sm:p-2 rounded-lg",
+                  isToday ? "bg-primary text-primary-foreground" : "bg-muted"
+                )}
               >
-                <div className="text-sm font-semibold">{weekDays[index]}</div>
-                <div className="text-2xl font-bold">{date.getDate()}</div>
+                <div className="text-xs sm:text-sm font-semibold">{weekDays[index]}</div>
+                <div className="text-lg sm:text-2xl font-bold">{date.getDate()}</div>
               </div>
-              <div className="space-y-1">
-                {dayBirthdays.map((b) => (
-                  <button
+              <div className="space-y-0.5 sm:space-y-1">
+                {dayBirthdays.slice(0, 2).map((b) => (
+                  <div
                     key={b.id}
-                    onClick={() => {
-                      setSelectedDate(date)
-                      setSelectedDateBirthdays([b])
-                    }}
-                    className="w-full text-left p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors text-xs"
+                    className="w-full text-left p-1 sm:p-2 rounded-lg bg-primary/10 text-xs"
                   >
                     <div className="font-semibold truncate">
-                      {b.last_name} {b.first_name}
+                      {b.last_name} {b.first_name[0]}.
                     </div>
-                  </button>
+                  </div>
                 ))}
-                <button
-                  onClick={() => {
-                    const year = date.getFullYear()
-                    const month = String(date.getMonth() + 1).padStart(2, "0")
-                    const day = String(date.getDate()).padStart(2, "0")
-                    setNewBirthdayDate(`${year}-${month}-${day}`)
-                    setEditingBirthday(null)
-                    setIsFormOpen(true)
-                  }}
-                  className="w-full p-2 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span className="hidden sm:inline">{t.add}</span>
-                </button>
+                {dayBirthdays.length > 2 && (
+                  <div className="text-xs text-muted-foreground text-center">+{dayBirthdays.length - 2}</div>
+                )}
+                {dayBirthdays.length > 0 && (
+                  <div className="text-xs text-primary font-medium text-center">{dayBirthdays.length} 🎂</div>
+                )}
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
@@ -355,7 +357,14 @@ export default function CalendarPage() {
               }}
             >
               <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-sm sm:text-base">{monthNames[monthIndex]}</CardTitle>
+                <CardTitle className="text-sm sm:text-base flex items-center justify-between">
+                  <span>{monthNames[monthIndex]}</span>
+                  {monthBirthdays.length > 0 && (
+                    <span className="text-xs font-normal bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {monthBirthdays.length} 🎂
+                    </span>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                 <div className="space-y-1 max-h-24 sm:max-h-32 overflow-y-auto">
@@ -483,8 +492,8 @@ export default function CalendarPage() {
             </CardContent>
           </Card>
 
-          {/* Selected date birthdays list - only for month view */}
-          {calendarView === "month" && selectedDate && (
+          {/* Selected date birthdays list - for month and week views */}
+          {(calendarView === "month" || calendarView === "week") && selectedDate && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -573,7 +582,7 @@ export default function CalendarPage() {
       </main>
 
       <Dialog
-        open={selectedDate !== null && calendarView !== "month"}
+        open={selectedDate !== null && calendarView === "year"}
         onOpenChange={() => {
           setSelectedDate(null)
           setSelectedDateBirthdays([])
