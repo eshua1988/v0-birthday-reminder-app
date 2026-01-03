@@ -32,6 +32,7 @@ export default function GreetingsPage() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [greetings, setGreetings] = useState<Record<string, Greeting>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedBirthday, setSelectedBirthday] = useState<Birthday | null>(null)
   const [selectedBirthdays, setSelectedBirthdays] = useState<Set<string>>(new Set())
   const [greetingText, setGreetingText] = useState("")
   const [isRecording, setIsRecording] = useState(false)
@@ -83,7 +84,8 @@ export default function GreetingsPage() {
     }
   }
 
-  const handleToggleBirthday = (birthdayId: string) => {
+  const handleToggleBirthday = (birthdayId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
     setSelectedBirthdays(prev => {
       const newSet = new Set(prev)
       if (newSet.has(birthdayId)) {
@@ -95,7 +97,32 @@ export default function GreetingsPage() {
     })
   }
 
+  const handleSelectBirthday = (birthday: Birthday) => {
+    // If clicking on already selected, deselect
+    if (selectedBirthday?.id === birthday.id) {
+      setSelectedBirthday(null)
+      setGreetingText("")
+      setAudioUrl(null)
+      setAudioBlob(null)
+      return
+    }
+    
+    setSelectedBirthday(birthday)
+    setSelectedBirthdays(new Set()) // Clear multi-select when selecting single
+    const existing = greetings[birthday.id]
+    if (existing) {
+      setGreetingText(existing.text || "")
+      setAudioUrl(existing.audio_url)
+      setAudioBlob(null)
+    } else {
+      setGreetingText("")
+      setAudioUrl(null)
+      setAudioBlob(null)
+    }
+  }
+
   const handleSelectAll = () => {
+    setSelectedBirthday(null) // Clear single select
     if (selectedBirthdays.size === birthdays.length) {
       setSelectedBirthdays(new Set())
     } else {
@@ -153,7 +180,12 @@ export default function GreetingsPage() {
   }
 
   const handleSave = async () => {
-    if (selectedBirthdays.size === 0) return
+    // Determine which birthdays to save for
+    const birthdaysToSave = selectedBirthdays.size > 0 
+      ? Array.from(selectedBirthdays)
+      : selectedBirthday ? [selectedBirthday.id] : []
+    
+    if (birthdaysToSave.length === 0) return
 
     setIsSaving(true)
     try {
@@ -185,7 +217,7 @@ export default function GreetingsPage() {
 
       // Save greeting for each selected birthday
       let savedCount = 0
-      for (const birthdayId of selectedBirthdays) {
+      for (const birthdayId of birthdaysToSave) {
         const existingGreeting = greetings[birthdayId]
 
         if (existingGreeting) {
@@ -212,15 +244,17 @@ export default function GreetingsPage() {
             })
 
           if (!error) savedCount++
-        if (!error) savedCount++
         }
       }
 
       toast({
         title: t.success || "Успешно",
-        description: `${t.greetingsSaved || "Сохранено поздравлений"}: ${savedCount}`,
+        description: savedCount === 1 
+          ? (t.greetingSaved || "Поздравление сохранено")
+          : `${t.greetingsSaved || "Сохранено поздравлений"}: ${savedCount}`,
       })
 
+      setSelectedBirthday(null)
       setSelectedBirthdays(new Set())
       setGreetingText("")
       setAudioUrl(null)
@@ -319,16 +353,20 @@ export default function GreetingsPage() {
                       {getUpcomingBirthdays().map((birthday) => (
                         <div
                           key={birthday.id}
+                          onClick={() => handleSelectBirthday(birthday)}
                           className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                            selectedBirthdays.has(birthday.id)
-                              ? "border-primary bg-primary/10"
-                              : "border-border"
+                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                            selectedBirthday?.id === birthday.id
+                              ? "border-primary bg-primary/10 ring-2 ring-primary"
+                              : selectedBirthdays.has(birthday.id)
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:bg-accent"
                           )}
                         >
                           <Checkbox
                             checked={selectedBirthdays.has(birthday.id)}
-                            onCheckedChange={() => handleToggleBirthday(birthday.id)}
+                            onCheckedChange={() => {}}
+                            onClick={(e) => handleToggleBirthday(birthday.id, e)}
                             className="cursor-pointer"
                           />
                           {birthday.photo_url ? (
@@ -374,7 +412,9 @@ export default function GreetingsPage() {
                       <MessageSquareHeart className="h-5 w-5" />
                       {selectedBirthdays.size > 0
                         ? `${t.greetingForSelected || "Поздравление для"} ${selectedBirthdays.size} ${t.persons || "чел."}`
-                        : t.selectPersonsToGreet || "Выберите участников для поздравления"
+                        : selectedBirthday
+                        ? `${t.greetingFor || "Поздравление для"} ${selectedBirthday.first_name}`
+                        : t.selectPersonToGreet || "Выберите участника для поздравления"
                       }
                     </CardTitle>
                     {selectedBirthdays.size > 0 && (
@@ -384,7 +424,7 @@ export default function GreetingsPage() {
                     )}
                   </CardHeader>
                   <CardContent>
-                    {selectedBirthdays.size > 0 ? (
+                    {(selectedBirthdays.size > 0 || selectedBirthday) ? (
                       <div className="space-y-4">
                         {/* Text greeting */}
                         <div>
@@ -471,7 +511,8 @@ export default function GreetingsPage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                         <MessageSquareHeart className="h-12 w-12 mb-4 opacity-50" />
-                        <p>{t.selectPersonsFirst || "Сначала выберите участников из списка"}</p>
+                        <p>{t.selectPersonFirst || "Сначала выберите участника из списка"}</p>
+                        <p className="text-xs mt-2">{t.selectMultipleHint || "Используйте чекбоксы для выбора нескольких"}</p>
                       </div>
                     )}
                   </CardContent>
