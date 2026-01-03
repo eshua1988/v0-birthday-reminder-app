@@ -1562,7 +1562,6 @@ export const translations = {
     selectPersonsToGreet: "Выберыце ўдзельнікаў для віншавання",
     selectPersonsFirst: "Спачатку выберыце ўдзельнікаў са спісу",
     saveGreetings: "Захаваць віншаванні",
-    selectMultipleHint: "Выкарыстоўвайце чэкбоксы для выбару некалькіх",
     microphoneAccessDenied: "Няма доступу да мікрафона",
   },
 }
