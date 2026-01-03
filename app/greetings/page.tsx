@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { MessageSquareHeart, User, Calendar, Mic, Square, Trash2, Save, Loader2, Users, CheckSquare } from "lucide-react"
+import { MessageSquareHeart, User, Calendar, Mic, Square, Trash2, Save, Loader2, Users, CheckSquare, ChevronDown, ChevronUp } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
@@ -40,6 +40,7 @@ export default function GreetingsPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isListExpanded, setIsListExpanded] = useState(false)
 
   const supabase = createClient()
 
@@ -325,84 +326,109 @@ export default function GreetingsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Birthday list */}
+              <div className="space-y-6">
+                {/* Birthday list - collapsible */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      {t.selectPersons || "Выберите участников"}
-                    </CardTitle>
-                    <CardDescription className="flex items-center justify-between">
-                      <span>{t.sortedByUpcoming || "Отсортировано по ближайшим дням рождения"}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSelectAll}
-                        className="h-auto py-1 px-2"
-                      >
-                        <CheckSquare className="h-4 w-4 mr-1" />
-                        {selectedBirthdays.size === birthdays.length 
-                          ? (t.deselectAll || "Снять все") 
-                          : (t.selectAll || "Выбрать все")}
-                      </Button>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                      {getUpcomingBirthdays().map((birthday) => (
-                        <div
-                          key={birthday.id}
-                          onClick={() => handleSelectBirthday(birthday)}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                            selectedBirthday?.id === birthday.id
-                              ? "border-primary bg-primary/10 ring-2 ring-primary"
-                              : selectedBirthdays.has(birthday.id)
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:bg-accent"
-                          )}
-                        >
-                          <Checkbox
-                            checked={selectedBirthdays.has(birthday.id)}
-                            onCheckedChange={() => {}}
-                            onClick={(e) => handleToggleBirthday(birthday.id, e)}
-                            className="cursor-pointer"
-                          />
-                          {birthday.photo_url ? (
-                            <Image
-                              src={birthday.photo_url}
-                              alt={birthday.first_name}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                              <User className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">
-                              {birthday.first_name} {birthday.last_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(birthday.birth_date)}
-                            </p>
-                          </div>
-                          {hasGreeting(birthday.id) && (
-                            <MessageSquareHeart className="h-5 w-5 text-primary flex-shrink-0" />
-                          )}
-                        </div>
-                      ))}
-                      {birthdays.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          {t.noBirthdays || "Нет участников"}
-                        </p>
+                  <CardHeader 
+                    className="cursor-pointer select-none"
+                    onClick={() => setIsListExpanded(!isListExpanded)}
+                  >
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        {t.selectPersons || "Выберите участников"}
+                        {(selectedBirthday || selectedBirthdays.size > 0) && (
+                          <span className="text-sm font-normal text-muted-foreground">
+                            ({selectedBirthdays.size > 0 ? selectedBirthdays.size : 1} {t.selected || "выбрано"})
+                          </span>
+                        )}
+                      </div>
+                      {isListExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
                       )}
-                    </div>
-                  </CardContent>
+                    </CardTitle>
+                    {!isListExpanded && (selectedBirthday || selectedBirthdays.size > 0) && (
+                      <CardDescription>
+                        {selectedBirthdays.size > 0 
+                          ? getSelectedBirthdaysList().map(b => b.first_name).join(", ")
+                          : selectedBirthday?.first_name + " " + selectedBirthday?.last_name
+                        }
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  {isListExpanded && (
+                    <CardContent>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-muted-foreground">{t.sortedByUpcoming || "Отсортировано по ближайшим дням рождения"}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleSelectAll(); }}
+                          className="h-auto py-1 px-2"
+                        >
+                          <CheckSquare className="h-4 w-4 mr-1" />
+                          {selectedBirthdays.size === birthdays.length 
+                            ? (t.deselectAll || "Снять все") 
+                            : (t.selectAll || "Выбрать все")}
+                        </Button>
+                      </div>
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                        {getUpcomingBirthdays().map((birthday) => (
+                          <div
+                            key={birthday.id}
+                            onClick={() => { handleSelectBirthday(birthday); setIsListExpanded(false); }}
+                            className={cn(
+                              "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                              selectedBirthday?.id === birthday.id
+                                ? "border-primary bg-primary/10 ring-2 ring-primary"
+                                : selectedBirthdays.has(birthday.id)
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:bg-accent"
+                            )}
+                          >
+                            <Checkbox
+                              checked={selectedBirthdays.has(birthday.id)}
+                              onCheckedChange={() => {}}
+                              onClick={(e) => handleToggleBirthday(birthday.id, e)}
+                              className="cursor-pointer"
+                            />
+                            {birthday.photo_url ? (
+                              <Image
+                                src={birthday.photo_url}
+                                alt={birthday.first_name}
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                <User className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">
+                                {birthday.first_name} {birthday.last_name}
+                              </p>
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(birthday.birth_date)}
+                              </p>
+                            </div>
+                            {hasGreeting(birthday.id) && (
+                              <MessageSquareHeart className="h-5 w-5 text-primary flex-shrink-0" />
+                            )}
+                          </div>
+                        ))}
+                        {birthdays.length === 0 && (
+                          <p className="text-center text-muted-foreground py-8">
+                            {t.noBirthdays || "Нет участников"}
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  )}
                 </Card>
 
                 {/* Greeting editor */}
