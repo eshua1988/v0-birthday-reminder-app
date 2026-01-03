@@ -121,14 +121,59 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
     }
   }
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxWidth: number = 300, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          
+          // Scale down if larger than maxWidth
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height)
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
+            console.log('[v0] Original size:', (e.target?.result as string).length, 'Compressed size:', compressedDataUrl.length)
+            resolve(compressedDataUrl)
+          } else {
+            reject(new Error('Could not get canvas context'))
+          }
+        }
+        img.onerror = reject
+        img.src = e.target?.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setFormData({ ...formData, photo_url: reader.result as string })
+      try {
+        // Compress image before saving
+        const compressedPhoto = await compressImage(file, 300, 0.7)
+        setFormData({ ...formData, photo_url: compressedPhoto })
+      } catch (error) {
+        console.error('[v0] Error compressing image:', error)
+        // Fallback to original if compression fails
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setFormData({ ...formData, photo_url: reader.result as string })
+        }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
     }
   }
 
