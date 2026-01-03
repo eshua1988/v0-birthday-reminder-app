@@ -325,9 +325,6 @@ export default function CalendarPage() {
                 {dayBirthdays.length > 2 && (
                   <div className="text-xs text-muted-foreground text-center">+{dayBirthdays.length - 2}</div>
                 )}
-                {dayBirthdays.length > 0 && (
-                  <div className="text-xs text-primary font-medium text-center">{dayBirthdays.length} 🎂</div>
-                )}
               </div>
             </button>
           )
