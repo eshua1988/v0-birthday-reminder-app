@@ -150,9 +150,10 @@ export default function HomePage() {
     setIsLoading(true)
 
     try {
+      // Explicitly select only existing columns to avoid schema cache issues
       const { data, error } = await supabase
         .from("birthdays")
-        .select("*")
+        .select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
         .eq("user_id", userId)
         .order("birth_date", { ascending: true })
 
@@ -292,7 +293,7 @@ export default function HomePage() {
         .from("birthdays")
         .update(birthdayData)
         .eq("id", editingBirthday.id)
-        .select()
+        .select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
 
       if (error) {
         console.error("[v0] Error updating birthday:", error)
@@ -306,7 +307,7 @@ export default function HomePage() {
       }
     } else {
       console.log("[v0] Inserting new birthday")
-      const { data: insertedData, error } = await supabase.from("birthdays").insert([birthdayData]).select()
+      const { data: insertedData, error } = await supabase.from("birthdays").insert([birthdayData]).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
 
       if (error) {
         console.error("[v0] Error creating birthday:", error)
@@ -339,7 +340,7 @@ export default function HomePage() {
       user_id: userId,
     }))
 
-    const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select()
+    const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
 
     if (error) {
       console.error("[v0] Error creating birthdays:", error)
