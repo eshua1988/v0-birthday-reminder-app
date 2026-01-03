@@ -1,5 +1,5 @@
 {
-  "name": "Дни Рождения - Birthday Reminder",
+  "name": "Дни Рождения",
   "short_name": "Birthdays",
   "description": "Приложение для напоминания дней рождений",
   "start_url": "/",
@@ -13,34 +13,16 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "/icon-light-32x32.png",
-      "sizes": "32x32",
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icon-192x192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512x512.svg",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-192x192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-512x512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/apple-icon.png",
