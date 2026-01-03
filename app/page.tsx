@@ -50,7 +50,7 @@ export default function HomePage() {
   // Handle URL query parameter for birthday navigation from push notification
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
-    const birthdayId = urlParams.get('birthday')
+    const birthdayId = urlParams.get('highlight') || urlParams.get('birthday')
     
     if (birthdayId && birthdays.length > 0) {
       console.log("[v0] Navigating to birthday from notification:", birthdayId)
@@ -61,15 +61,17 @@ export default function HomePage() {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' })
           // Highlight the card briefly
-          element.style.transition = 'box-shadow 0.3s ease'
-          element.style.boxShadow = '0 0 0 3px rgb(34 197 94), 0 10px 30px rgba(34, 197, 94, 0.3)'
+          element.style.transition = 'box-shadow 0.3s ease, transform 0.3s ease'
+          element.style.boxShadow = '0 0 0 4px rgb(34 197 94), 0 10px 30px rgba(34, 197, 94, 0.4)'
+          element.style.transform = 'scale(1.02)'
           setTimeout(() => {
             element.style.boxShadow = ''
-          }, 2000)
+            element.style.transform = ''
+          }, 3000)
         } else {
           console.log("[v0] Birthday card not found:", birthdayId)
         }
-      }, 300)
+      }, 500)
       
       // Clean up URL without reloading
       window.history.replaceState({}, '', window.location.pathname)

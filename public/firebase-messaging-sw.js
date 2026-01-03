@@ -1,6 +1,6 @@
 // Firebase Cloud Messaging Service Worker
 // This worker handles push notifications on all devices (desktop, tablet, mobile)
-// Version: 2026-01-03-v2 - Force cache refresh
+// Version: 2026-01-03-v3 - Add click navigation to birthday and sound
 
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js")
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js")
@@ -30,16 +30,21 @@ console.log('[FCM SW] Messaging instance created')
 messaging.onBackgroundMessage((payload) => {
   console.log("[FCM SW] Received background message:", payload)
 
+  const birthdayId = payload.data?.birthdayId || ''
   const notificationTitle = payload.notification?.title || "🎂 Напоминание о дне рождения"
   const notificationOptions = {
     body: payload.notification?.body || "",
-    icon: "/icon-light-32x32.png",
-    badge: "/icon-light-32x32.png",
-    tag: "birthday-notification",
+    icon: "/icon-192x192.png",
+    badge: "/badge-72x72.png",
+    tag: `birthday-${birthdayId || 'notification'}`,
     requireInteraction: true,
-    vibrate: [200, 100, 200], // Vibration pattern for mobile
+    vibrate: [200, 100, 200, 100, 200], // Extended vibration pattern for mobile
     renotify: true, // Re-alert even if notification with same tag exists
-    data: payload.data,
+    silent: false, // Allow sound
+    data: {
+      ...payload.data,
+      url: birthdayId ? `/?highlight=${birthdayId}` : '/'
+    },
     actions: [
       {
         action: "open",
@@ -57,7 +62,7 @@ messaging.onBackgroundMessage((payload) => {
 
 // Handle notification clicks
 self.addEventListener("notificationclick", (event) => {
-  console.log("[FCM SW] Notification click:", event.action)
+  console.log("[FCM SW] Notification click:", event.action, event.notification.data)
 
   event.notification.close()
 
@@ -65,18 +70,24 @@ self.addEventListener("notificationclick", (event) => {
     return
   }
 
-  // Open or focus the app
+  // Get the URL to open (with birthday id if available)
+  const urlToOpen = event.notification.data?.url || '/'
+  const fullUrl = new URL(urlToOpen, self.registration.scope).href
+
+  console.log("[FCM SW] Opening URL:", fullUrl)
+
+  // Open or focus the app with the birthday highlighted
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, focus it
+      // If app is already open, navigate and focus it
       for (const client of clientList) {
-        if (client.url === self.registration.scope && "focus" in client) {
-          return client.focus()
+        if ('focus' in client && 'navigate' in client) {
+          return client.navigate(fullUrl).then(() => client.focus())
         }
       }
       // Otherwise, open new window
       if (clients.openWindow) {
-        return clients.openWindow("/")
+        return clients.openWindow(fullUrl)
       }
     })
   )
