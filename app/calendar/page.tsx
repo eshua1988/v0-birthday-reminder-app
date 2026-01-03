@@ -482,11 +482,98 @@ export default function CalendarPage() {
               {calendarView === "year" && renderYearView()}
             </CardContent>
           </Card>
+
+          {/* Selected date birthdays list - only for month view */}
+          {calendarView === "month" && selectedDate && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>
+                    {selectedDate.toLocaleDateString(
+                      ({ ru: "ru-RU", pl: "pl-PL", uk: "uk-UA", en: "en-US", ua: "uk-UA", be: "be-BY" } as Record<Locale, string>)[
+                        locale
+                      ] || "en-US",
+                      { day: "numeric", month: "long" }
+                    )}
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (selectedDate) {
+                        const year = selectedDate.getFullYear()
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, "0")
+                        const day = String(selectedDate.getDate()).padStart(2, "0")
+                        setNewBirthdayDate(`${year}-${month}-${day}`)
+                        setEditingBirthday(null)
+                        setIsFormOpen(true)
+                      }
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t.add}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {selectedDateBirthdays.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">{t.noBirthdaysOnDate}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedDateBirthdays.map((birthday) => (
+                      <div
+                        key={birthday.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={birthday.photo_url || undefined} />
+                          <AvatarFallback>
+                            {birthday.first_name[0]}
+                            {birthday.last_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {birthday.last_name} {birthday.first_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {calculateAge(birthday.birth_date)} {t.years}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingBirthday(birthday)
+                              setIsFormOpen(true)
+                            }}
+                            className="h-8 w-8"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(birthday.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
 
       <Dialog
-        open={selectedDate !== null}
+        open={selectedDate !== null && calendarView !== "month"}
         onOpenChange={() => {
           setSelectedDate(null)
           setSelectedDateBirthdays([])
