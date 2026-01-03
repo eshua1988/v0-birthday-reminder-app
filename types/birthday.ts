@@ -6,7 +6,6 @@ export interface Birthday {
   birth_date: string
   phone: string | null
   email: string | null
-  custom_fields?: Record<string, string> | null
   notification_time: string
   notification_times: string[] | null
   notification_repeat_count: number
