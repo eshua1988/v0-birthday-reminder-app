@@ -286,7 +286,7 @@ export default function CalendarPage() {
     const months = Array.from({ length: 12 }, (_, i) => i)
 
     return (
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {months.map((monthIndex) => {
           const monthBirthdays = birthdays.filter((b) => {
             const birthDate = new Date(b.birth_date)
@@ -299,14 +299,14 @@ export default function CalendarPage() {
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => {
                 setCurrentDate(new Date(currentDate.getFullYear(), monthIndex, 1))
-                setCalendarView("month")
+                setCalendarViewAndSave("month")
               }}
             >
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{monthNames[monthIndex]}</CardTitle>
+              <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-sm sm:text-base">{monthNames[monthIndex]}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="space-y-1 max-h-24 sm:max-h-32 overflow-y-auto">
                   {monthBirthdays.length === 0 ? (
                     <p className="text-xs text-muted-foreground">{t.noBirthdays}</p>
                   ) : (
@@ -322,7 +322,7 @@ export default function CalendarPage() {
                           }}
                           className="w-full text-left p-1 rounded hover:bg-muted transition-colors text-xs"
                         >
-                          <span className="font-semibold">{birthDate.getDate()}</span> - {b.last_name} {b.first_name}
+                          <span className="font-semibold">{birthDate.getDate()}</span> - <span className="truncate">{b.last_name} {b.first_name[0]}.</span>
                         </button>
                       )
                     })
