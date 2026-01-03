@@ -309,7 +309,7 @@ export default function GreetingsPage() {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:ml-16">
         <main className={cn("flex-1 p-4 md:p-6", isMobile && "pb-20")}>
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-6">

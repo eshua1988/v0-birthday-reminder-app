@@ -128,7 +128,7 @@ export default function DiagnosticPage() {
   }
 
   return (
-    <div className="container max-w-4xl mx-auto p-8 space-y-6">
+    <div className="container max-w-4xl mx-auto p-8 space-y-6 md:ml-16">
       <Card>
         <CardHeader>
           <CardTitle>🔍 Диагностика Push уведомлений</CardTitle>

@@ -253,7 +253,7 @@ export default function ProfilePage() {
           onRedo={() => {}}
         />
 
-        <main className={cn(isMobile ? "p-4" : "p-8")}>
+        <main className={cn(isMobile ? "p-4" : "p-8 md:ml-16")}>
           <div className="container mx-auto max-w-2xl">
             <h1 className="mb-6 text-3xl font-bold">{t.userProfile}</h1>
 
