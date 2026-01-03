@@ -7,10 +7,11 @@ import { Sidebar } from "@/components/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { MessageSquareHeart, User, Calendar, Mic, Square, Trash2, Save, Loader2 } from "lucide-react"
+import { MessageSquareHeart, User, Calendar, Mic, Square, Trash2, Save, Loader2, Users, CheckSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
@@ -31,7 +32,7 @@ export default function GreetingsPage() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [greetings, setGreetings] = useState<Record<string, Greeting>>({})
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedBirthday, setSelectedBirthday] = useState<Birthday | null>(null)
+  const [selectedBirthdays, setSelectedBirthdays] = useState<Set<string>>(new Set())
   const [greetingText, setGreetingText] = useState("")
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -82,18 +83,28 @@ export default function GreetingsPage() {
     }
   }
 
-  const handleSelectBirthday = (birthday: Birthday) => {
-    setSelectedBirthday(birthday)
-    const existing = greetings[birthday.id]
-    if (existing) {
-      setGreetingText(existing.text || "")
-      setAudioUrl(existing.audio_url)
-      setAudioBlob(null)
+  const handleToggleBirthday = (birthdayId: string) => {
+    setSelectedBirthdays(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(birthdayId)) {
+        newSet.delete(birthdayId)
+      } else {
+        newSet.add(birthdayId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedBirthdays.size === birthdays.length) {
+      setSelectedBirthdays(new Set())
     } else {
-      setGreetingText("")
-      setAudioUrl(null)
-      setAudioBlob(null)
+      setSelectedBirthdays(new Set(birthdays.map(b => b.id)))
     }
+  }
+
+  const getSelectedBirthdaysList = () => {
+    return birthdays.filter(b => selectedBirthdays.has(b.id))
   }
 
   const startRecording = async () => {
@@ -142,7 +153,7 @@ export default function GreetingsPage() {
   }
 
   const handleSave = async () => {
-    if (!selectedBirthday) return
+    if (selectedBirthdays.size === 0) return
 
     setIsSaving(true)
     try {
@@ -153,7 +164,7 @@ export default function GreetingsPage() {
 
       // Upload audio if new recording exists
       if (audioBlob) {
-        const fileName = `${session.user.id}/${selectedBirthday.id}_${Date.now()}.webm`
+        const fileName = `${session.user.id}/shared_${Date.now()}.webm`
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("greetings")
           .upload(fileName, audioBlob, {
@@ -172,39 +183,48 @@ export default function GreetingsPage() {
         uploadedAudioUrl = urlData.publicUrl
       }
 
-      const existingGreeting = greetings[selectedBirthday.id]
+      // Save greeting for each selected birthday
+      let savedCount = 0
+      for (const birthdayId of selectedBirthdays) {
+        const existingGreeting = greetings[birthdayId]
 
-      if (existingGreeting) {
-        // Update existing
-        const { error } = await supabase
-          .from("greetings")
-          .update({
-            text: greetingText || null,
-            audio_url: uploadedAudioUrl,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingGreeting.id)
+        if (existingGreeting) {
+          // Update existing
+          const { error } = await supabase
+            .from("greetings")
+            .update({
+              text: greetingText || null,
+              audio_url: uploadedAudioUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingGreeting.id)
 
-        if (error) throw error
-      } else {
-        // Create new
-        const { error } = await supabase
-          .from("greetings")
-          .insert({
-            user_id: session.user.id,
-            birthday_id: selectedBirthday.id,
-            text: greetingText || null,
-            audio_url: uploadedAudioUrl,
-          })
+          if (!error) savedCount++
+        } else {
+          // Create new
+          const { error } = await supabase
+            .from("greetings")
+            .insert({
+              user_id: session.user.id,
+              birthday_id: birthdayId,
+              text: greetingText || null,
+              audio_url: uploadedAudioUrl,
+            })
 
-        if (error) throw error
+          if (!error) savedCount++
+        if (!error) savedCount++
+        }
       }
 
       toast({
         title: t.success || "Успешно",
-        description: t.greetingSaved || "Поздравление сохранено",
+        description: `${t.greetingsSaved || "Сохранено поздравлений"}: ${savedCount}`,
       })
 
+      setSelectedBirthdays(new Set())
+      setGreetingText("")
+      setAudioUrl(null)
+      setAudioBlob(null)
       await loadData()
     } catch (error) {
       console.error("Error saving greeting:", error)
@@ -272,26 +292,42 @@ export default function GreetingsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      {t.selectPerson || "Выберите участника"}
+                      <Users className="h-5 w-5" />
+                      {t.selectPersons || "Выберите участников"}
                     </CardTitle>
-                    <CardDescription>
-                      {t.sortedByUpcoming || "Отсортировано по ближайшим дням рождения"}
+                    <CardDescription className="flex items-center justify-between">
+                      <span>{t.sortedByUpcoming || "Отсортировано по ближайшим дням рождения"}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSelectAll}
+                        className="h-auto py-1 px-2"
+                      >
+                        <CheckSquare className="h-4 w-4 mr-1" />
+                        {selectedBirthdays.size === birthdays.length 
+                          ? (t.deselectAll || "Снять все") 
+                          : (t.selectAll || "Выбрать все")}
+                      </Button>
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                       {getUpcomingBirthdays().map((birthday) => (
-                        <button
+                        <div
                           key={birthday.id}
-                          onClick={() => handleSelectBirthday(birthday)}
+                          onClick={() => handleToggleBirthday(birthday.id)}
                           className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left",
-                            selectedBirthday?.id === birthday.id
+                            "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                            selectedBirthdays.has(birthday.id)
                               ? "border-primary bg-primary/10"
                               : "border-border hover:bg-accent"
                           )}
                         >
+                          <Checkbox
+                            checked={selectedBirthdays.has(birthday.id)}
+                            onCheckedChange={() => handleToggleBirthday(birthday.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                           {birthday.photo_url ? (
                             <Image
                               src={birthday.photo_url}
@@ -317,7 +353,7 @@ export default function GreetingsPage() {
                           {hasGreeting(birthday.id) && (
                             <MessageSquareHeart className="h-5 w-5 text-primary flex-shrink-0" />
                           )}
-                        </button>
+                        </div>
                       ))}
                       {birthdays.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">
@@ -333,14 +369,19 @@ export default function GreetingsPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MessageSquareHeart className="h-5 w-5" />
-                      {selectedBirthday
-                        ? `${t.greetingFor || "Поздравление для"} ${selectedBirthday.first_name}`
-                        : t.selectPersonToGreet || "Выберите участника для поздравления"
+                      {selectedBirthdays.size > 0
+                        ? `${t.greetingForSelected || "Поздравление для"} ${selectedBirthdays.size} ${t.persons || "чел."}`
+                        : t.selectPersonsToGreet || "Выберите участников для поздравления"
                       }
                     </CardTitle>
+                    {selectedBirthdays.size > 0 && (
+                      <CardDescription>
+                        {getSelectedBirthdaysList().map(b => b.first_name).join(", ")}
+                      </CardDescription>
+                    )}
                   </CardHeader>
                   <CardContent>
-                    {selectedBirthday ? (
+                    {selectedBirthdays.size > 0 ? (
                       <div className="space-y-4">
                         {/* Text greeting */}
                         <div>
@@ -418,13 +459,16 @@ export default function GreetingsPage() {
                           ) : (
                             <Save className="h-4 w-4 mr-2" />
                           )}
-                          {t.saveGreeting || "Сохранить поздравление"}
+                          {selectedBirthdays.size > 1 
+                            ? `${t.saveGreetings || "Сохранить поздравления"} (${selectedBirthdays.size})`
+                            : (t.saveGreeting || "Сохранить поздравление")
+                          }
                         </Button>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                         <MessageSquareHeart className="h-12 w-12 mb-4 opacity-50" />
-                        <p>{t.selectPersonFirst || "Сначала выберите участника из списка"}</p>
+                        <p>{t.selectPersonsFirst || "Сначала выберите участников из списка"}</p>
                       </div>
                     )}
                   </CardContent>
