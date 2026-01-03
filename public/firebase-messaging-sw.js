@@ -1,5 +1,6 @@
 // Firebase Cloud Messaging Service Worker
 // This worker handles push notifications on all devices (desktop, tablet, mobile)
+// Version: 2026-01-03-v2 - Force cache refresh
 
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js")
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js")
