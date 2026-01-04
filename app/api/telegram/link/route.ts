@@ -38,14 +38,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user settings with telegram_chat_id
-    const { error: updateError } = await supabase
+    // First check if user has any settings record
+    const { data: existingSettings } = await supabase
       .from("settings")
-      .upsert({
-        user_id: userId,
-        telegram_chat_id: pendingLink.chat_id,
-        telegram_username: pendingLink.username,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" })
+      .select("id")
+      .eq("user_id", userId)
+      .limit(1)
+      .single()
+
+    let updateError;
+    
+    if (existingSettings) {
+      // Update existing record
+      const { error } = await supabase
+        .from("settings")
+        .update({
+          telegram_chat_id: pendingLink.chat_id,
+          telegram_username: pendingLink.username,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+      updateError = error
+    } else {
+      // Create new record with a default key
+      const { error } = await supabase
+        .from("settings")
+        .insert({
+          user_id: userId,
+          key: "telegram_linked",
+          value: "true",
+          telegram_chat_id: pendingLink.chat_id,
+          telegram_username: pendingLink.username,
+        })
+      updateError = error
+    }
 
     if (updateError) {
       console.error("[Telegram Link] Update error:", updateError)
