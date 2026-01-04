@@ -435,7 +435,7 @@ export default function GreetingsPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm">1.</span>
                       <a 
-                        href="https://t.me/ChurchBirthdayBot" 
+                        href="https://t.me/ChurchBirthdayReminderBot" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-[#0088cc] hover:underline flex items-center gap-1"
