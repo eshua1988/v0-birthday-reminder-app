@@ -420,12 +420,24 @@ export default function GreetingsPage() {
                 {telegramLinked ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-500">✓</span>
-                        <span>{t.telegramConnected || "Подключен"}</span>
-                        {telegramUsername && (
-                          <span className="text-muted-foreground">@{telegramUsername}</span>
-                        )}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-500">✓</span>
+                          <span>{t.telegramConnected || "Подключен"}</span>
+                          {telegramUsername && (
+                            <span className="text-muted-foreground">@{telegramUsername}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">Бот: <b>ChurchBirthdayReminderBot</b></span>
+                          <button
+                            className="ml-2 text-destructive hover:text-red-600"
+                            title={t.disconnect || "Отключить Telegram"}
+                            onClick={handleUnlinkTelegram}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -456,9 +468,6 @@ export default function GreetingsPage() {
                           }}
                         >
                           {t.testMessage || "Тест"}
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleUnlinkTelegram}>
-                          {t.disconnect || "Отключить"}
                         </Button>
                       </div>
                     </div>
