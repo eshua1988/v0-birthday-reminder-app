@@ -19,10 +19,11 @@
 | `GOOGLE_CLIENT_ID` | ⚠️ | Google Cloud Console | `123.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | ⚠️ | Google Cloud Console | `GOCSPX-...` |
 | `GOOGLE_REFRESH_TOKEN` | ⚠️ | OAuth Flow | `1//0gF...` |
+| `TELEGRAM_BOT_TOKEN` | ⚠️ | @BotFather в Telegram | `6841458983:AAGy...` |
 
 **Легенда:**
 - ✅ **Обязательна** - приложение не будет работать без неё
-- ⚠️ **Опциональна** - для дополнительных функций (Google Drive бэкап, Analytics)
+- ⚠️ **Опциональна** - для дополнительных функций (Google Drive бэкап, Telegram, Analytics)
 
 ---
 

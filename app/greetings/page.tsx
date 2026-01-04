@@ -11,9 +11,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { MessageSquareHeart, User, Calendar, Mic, Square, Trash2, Save, Loader2, Users, CheckSquare, ChevronDown, ChevronUp } from "lucide-react"
+import { MessageSquareHeart, User, Calendar, Mic, Square, Trash2, Save, Loader2, Users, CheckSquare, ChevronDown, ChevronUp, Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
+import { Input } from "@/components/ui/input"
 
 interface Greeting {
   id: string
@@ -41,6 +42,13 @@ export default function GreetingsPage() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isListExpanded, setIsListExpanded] = useState(false)
+  
+  // Telegram integration
+  const [telegramLinked, setTelegramLinked] = useState(false)
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null)
+  const [linkCode, setLinkCode] = useState("")
+  const [isLinking, setIsLinking] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -53,6 +61,8 @@ export default function GreetingsPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
+      
+      setUserId(session.user.id)
 
       // Load birthdays
       const { data: birthdaysData } = await supabase
@@ -78,10 +88,84 @@ export default function GreetingsPage() {
         })
         setGreetings(greetingsMap)
       }
+      
+      // Check Telegram connection
+      const { data: settings } = await supabase
+        .from("settings")
+        .select("telegram_chat_id, telegram_username")
+        .eq("user_id", session.user.id)
+        .single()
+      
+      if (settings?.telegram_chat_id) {
+        setTelegramLinked(true)
+        setTelegramUsername(settings.telegram_username)
+      }
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleLinkTelegram = async () => {
+    if (!userId || !linkCode.trim()) return
+    
+    setIsLinking(true)
+    try {
+      const response = await fetch("/api/telegram/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, linkCode: linkCode.trim() }),
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setTelegramLinked(true)
+        setTelegramUsername(data.username)
+        setLinkCode("")
+        toast({
+          title: t.success || "Успешно",
+          description: t.telegramLinked || "Telegram успешно подключен!",
+        })
+      } else {
+        toast({
+          title: t.error || "Ошибка",
+          description: data.error === "Code expired" 
+            ? (t.telegramCodeExpired || "Код истёк. Получите новый в боте.")
+            : (t.telegramLinkFailed || "Не удалось подключить Telegram"),
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error linking Telegram:", error)
+      toast({
+        title: t.error || "Ошибка",
+        description: t.telegramLinkFailed || "Не удалось подключить Telegram",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLinking(false)
+    }
+  }
+
+  const handleUnlinkTelegram = async () => {
+    if (!userId) return
+    
+    try {
+      await supabase
+        .from("settings")
+        .update({ telegram_chat_id: null, telegram_username: null })
+        .eq("user_id", userId)
+      
+      setTelegramLinked(false)
+      setTelegramUsername(null)
+      toast({
+        title: t.success || "Успешно",
+        description: t.telegramUnlinked || "Telegram отключен",
+      })
+    } catch (error) {
+      console.error("Error unlinking Telegram:", error)
     }
   }
 
@@ -320,6 +404,79 @@ export default function GreetingsPage() {
             <p className="text-muted-foreground mb-6">
               {t.greetingsDescription || "Запишите текстовое или голосовое поздравление для каждого участника. Оно будет показано в день рождения."}
             </p>
+
+            {/* Telegram Integration Card */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Send className="h-5 w-5 text-[#0088cc]" />
+                  Telegram Bot
+                </CardTitle>
+                <CardDescription>
+                  {t.telegramBotDescription || "Подключите Telegram для получения поздравлений"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {telegramLinked ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span>
+                      <span>{t.telegramConnected || "Подключен"}</span>
+                      {telegramUsername && (
+                        <span className="text-muted-foreground">@{telegramUsername}</span>
+                      )}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleUnlinkTelegram}>
+                      {t.disconnect || "Отключить"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">1.</span>
+                      <a 
+                        href="https://t.me/ChurchBirthdayBot" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#0088cc] hover:underline flex items-center gap-1"
+                      >
+                        <Send className="h-4 w-4" />
+                        {t.openTelegramBot || "Открыть бота в Telegram"}
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">2.</span>
+                      <span className="text-sm text-muted-foreground">
+                        {t.sendStartCommand || "Нажмите /start и скопируйте код"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">3.</span>
+                      <div className="flex-1 flex gap-2">
+                        <Input
+                          placeholder={t.enterCode || "Введите код"}
+                          value={linkCode}
+                          onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
+                          className="max-w-[150px] uppercase"
+                          maxLength={8}
+                        />
+                        <Button 
+                          onClick={handleLinkTelegram} 
+                          disabled={isLinking || !linkCode.trim()}
+                          size="sm"
+                        >
+                          {isLinking ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            t.connect || "Подключить"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
