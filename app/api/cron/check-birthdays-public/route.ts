@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
+import { formatAge } from "@/lib/utils"
 
 /**
  * Convert local time to UTC based on user's timezone
@@ -244,10 +245,11 @@ export async function GET(request: NextRequest) {
               fcmTokensCount: fcmTokens.length,
             })
 
+            const ageText = formatAge(age)
             const message = {
               notification: {
                 title: "🎂 День рождения!",
-                body: `${birthday.first_name} ${birthday.last_name} отмечает ${age} день рождения сегодня!`,
+                body: `${birthday.first_name} ${birthday.last_name} — сегодня исполняется ${ageText}!`,
               },
               data: {
                 birthdayId: birthday.id.toString(),

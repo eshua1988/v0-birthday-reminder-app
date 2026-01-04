@@ -39,6 +39,46 @@ export async function sendTelegramMessage({ chatId, text, parseMode = "HTML" }: 
   }
 }
 
+// Функция для склонения возраста (1 год, 2 года, 5 лет)
+function formatAge(age: number): string {
+  const lastDigit = age % 10
+  const lastTwoDigits = age % 100
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+    return `${age} лет`
+  }
+  
+  if (lastDigit === 1) {
+    return `${age} год`
+  }
+  
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${age} года`
+  }
+  
+  return `${age} лет`
+}
+
+// Функция для склонения дней (1 день, 2 дня, 5 дней)
+function formatDays(days: number): string {
+  const lastDigit = days % 10
+  const lastTwoDigits = days % 100
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+    return `${days} дней`
+  }
+  
+  if (lastDigit === 1) {
+    return `${days} день`
+  }
+  
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${days} дня`
+  }
+  
+  return `${days} дней`
+}
+
 export async function sendBirthdayReminder(
   chatId: string,
   birthdayPerson: string,
@@ -50,15 +90,15 @@ export async function sendBirthdayReminder(
   if (daysUntil === 0) {
     text = `🎂 <b>Сегодня день рождения!</b>\n\n` +
       `🎉 ${birthdayPerson}` +
-      (age ? ` исполняется ${age} лет!` : "")
+      (age ? ` — исполняется ${formatAge(age)}!` : "")
   } else if (daysUntil === 1) {
     text = `🔔 <b>Напоминание</b>\n\n` +
       `Завтра день рождения у ${birthdayPerson}` +
-      (age ? ` (исполнится ${age} лет)` : "")
+      (age ? ` (исполнится ${formatAge(age)})` : "")
   } else {
     text = `🔔 <b>Напоминание</b>\n\n` +
-      `Через ${daysUntil} дней день рождения у ${birthdayPerson}` +
-      (age ? ` (исполнится ${age} лет)` : "")
+      `Через ${formatDays(daysUntil)} день рождения у ${birthdayPerson}` +
+      (age ? ` (исполнится ${formatAge(age)})` : "")
   }
 
   return sendTelegramMessage({ chatId, text })

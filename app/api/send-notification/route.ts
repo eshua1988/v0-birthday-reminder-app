@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
+import { formatAge } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,10 +35,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isFirebaseAdminConfigured()) {
+      const age = new Date().getFullYear() - new Date(birthday.birth_date).getFullYear()
       console.log("[v0] Birthday notification: Simulating (no Firebase Admin SDK)")
       console.log("[v0] Would send:", {
         title: "🎂 День рождения!",
-        body: `${birthday.first_name} ${birthday.last_name} отмечает день рождения сегодня!`,
+        body: `${birthday.first_name} ${birthday.last_name} — сегодня исполняется ${formatAge(age)}!`,
         tokens: fcmTokens?.length || 0,
       })
 
@@ -49,12 +51,13 @@ export async function POST(request: NextRequest) {
 
     try {
       const messaging = getFirebaseMessaging()
+      const age = new Date().getFullYear() - new Date(birthday.birth_date).getFullYear()
 
       // FCM v1 API message format
       const message = {
         notification: {
           title: "🎂 День рождения!",
-          body: `${birthday.first_name} ${birthday.last_name} отмечает день рождения сегодня!`,
+          body: `${birthday.first_name} ${birthday.last_name} — сегодня исполняется ${formatAge(age)}!`,
         },
         data: {
           birthdayId: birthdayId.toString(),

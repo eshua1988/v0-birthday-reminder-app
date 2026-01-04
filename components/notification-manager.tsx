@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { checkNotificationSupport, sendNotification } from "@/lib/notifications"
 import type { Birthday } from "@/types/birthday"
 import { useLocale } from "@/lib/locale-context"
+import { formatAge } from "@/lib/utils"
 
 export function NotificationManager() {
   const { t } = useLocale()
@@ -91,7 +92,8 @@ export function NotificationManager() {
       // Match time including seconds
       if (isBirthdayToday && birthday.notification_time === currentTime) {
         const age = now.getFullYear() - birthDate.getFullYear()
-        const message = `${birthday.first_name} ${birthday.last_name} отмечает ${age} день рождения сегодня!`
+        const ageText = formatAge(age)
+        const message = `${birthday.first_name} ${birthday.last_name} — сегодня исполняется ${ageText}!`
 
         console.log("[v0] Browser: Sending notification for:", birthday.first_name, birthday.last_name)
 

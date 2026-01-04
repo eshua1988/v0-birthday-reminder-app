@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
 import { sendBirthdayReminder } from "@/lib/telegram"
+import { formatAge } from "@/lib/utils"
 
 // This endpoint should be called by a cron job (e.g., Vercel Cron)
 // Configure in vercel.json:
@@ -227,10 +228,11 @@ export async function GET(request: NextRequest) {
 
             // DATA-ONLY message for PWA background delivery
             // Service Worker will handle showing the notification
+            const ageText = formatAge(age)
             const message = {
               data: {
                 title: "🎂 День рождения!",
-                body: `${fullName} отмечает ${age} день рождения сегодня!`,
+                body: `${fullName} — сегодня исполняется ${ageText}!`,
                 birthdayId: birthday.id.toString(),
                 firstName: birthday.first_name || birthday.name?.split(' ')[0] || '',
                 lastName: birthday.last_name || birthday.name?.split(' ').slice(1).join(' ') || '',
