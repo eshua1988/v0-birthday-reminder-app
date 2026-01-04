@@ -295,6 +295,10 @@ export const translations = {
     enterCode: "Введите код",
     connect: "Подключить",
     disconnect: "Отключить",
+    testMessage: "Тест",
+    testMessageSent: "Тестовое сообщение отправлено в Telegram",
+    testMessageFailed: "Не удалось отправить сообщение",
+    telegramRemindersInfo: "Вы будете получать напоминания о днях рождения в Telegram",
   },
   pl: {
     appName: "Urodziny",

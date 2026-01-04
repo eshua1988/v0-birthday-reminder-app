@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
+import { sendBirthdayReminder } from "@/lib/telegram"
 
 // This endpoint should be called by a cron job (e.g., Vercel Cron)
 // Configure in vercel.json:
@@ -57,15 +58,19 @@ export async function GET(request: NextRequest) {
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times", "timezone"])
+      .in("key", ["default_notification_time", "default_notification_times", "timezone", "telegram_linked"])
 
     const globalTimesMap = new Map<string, string[]>()
     const userTimezonesMap = new Map<string, string>()
+    const userTelegramMap = new Map<string, string>() // user_id -> telegram_chat_id
     
     if (globalSettings) {
       for (const setting of globalSettings) {
         if (setting.key === "timezone") {
           userTimezonesMap.set(setting.user_id, setting.value)
+        } else if (setting.telegram_chat_id) {
+          // Save telegram chat_id for this user
+          userTelegramMap.set(setting.user_id, setting.telegram_chat_id)
         } else {
           if (!globalTimesMap.has(setting.user_id)) {
             globalTimesMap.set(setting.user_id, [])
@@ -89,6 +94,7 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Cron: Loaded global notification times for", globalTimesMap.size, "users")
     console.log("[v0] Cron: Loaded timezones for", userTimezonesMap.size, "users")
+    console.log("[v0] Cron: Loaded Telegram chat IDs for", userTelegramMap.size, "users")
     
     // Debug: log all loaded settings
     console.log("[v0] Cron: All global times map:", Array.from(globalTimesMap.entries()))
@@ -304,6 +310,24 @@ export async function GET(request: NextRequest) {
           birthday: birthday.name || `${birthday.first_name} ${birthday.last_name}`,
           status: "No FCM tokens",
         })
+      }
+
+      // Also send via Telegram if user has linked their account
+      const telegramChatId = userTelegramMap.get(birthday.user_id)
+      if (telegramChatId) {
+        const age = userNow.getFullYear() - birthDate.getFullYear()
+        const fullName = birthday.name || `${birthday.first_name} ${birthday.last_name}`
+        
+        console.log("[v0] Cron: Sending Telegram notification to chat:", telegramChatId)
+        
+        const telegramResult = await sendBirthdayReminder(telegramChatId, fullName, 0, age)
+        
+        if (telegramResult.ok) {
+          console.log("[v0] Cron: Telegram notification sent successfully")
+          notificationsSent++
+        } else {
+          console.error("[v0] Cron: Telegram notification failed:", telegramResult.error || telegramResult.description)
+        }
       }
     }
 

@@ -418,17 +418,53 @@ export default function GreetingsPage() {
               </CardHeader>
               <CardContent>
                 {telegramLinked ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-500">✓</span>
-                      <span>{t.telegramConnected || "Подключен"}</span>
-                      {telegramUsername && (
-                        <span className="text-muted-foreground">@{telegramUsername}</span>
-                      )}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-500">✓</span>
+                        <span>{t.telegramConnected || "Подключен"}</span>
+                        {telegramUsername && (
+                          <span className="text-muted-foreground">@{telegramUsername}</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={async () => {
+                            try {
+                              const res = await fetch("/api/telegram/test", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userId, testBirthday: true }),
+                              })
+                              if (res.ok) {
+                                toast({
+                                  title: t.success || "Успешно",
+                                  description: t.testMessageSent || "Тестовое сообщение отправлено в Telegram",
+                                })
+                              } else {
+                                throw new Error("Failed")
+                              }
+                            } catch {
+                              toast({
+                                title: t.error || "Ошибка",
+                                description: t.testMessageFailed || "Не удалось отправить",
+                                variant: "destructive",
+                              })
+                            }
+                          }}
+                        >
+                          {t.testMessage || "Тест"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleUnlinkTelegram}>
+                          {t.disconnect || "Отключить"}
+                        </Button>
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleUnlinkTelegram}>
-                      {t.disconnect || "Отключить"}
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      {t.telegramRemindersInfo || "Вы будете получать напоминания о днях рождения в Telegram"}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
