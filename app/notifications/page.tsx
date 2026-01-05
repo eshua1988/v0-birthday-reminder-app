@@ -99,25 +99,27 @@ export default function NotificationsPage() {
               <CardContent>
                 {telegramLinked ? (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-green-500">✓</span>
-                          <span>{t.telegramConnected || "Подключен"}</span>
-                          {telegramUsername && (
-                            <span className="text-muted-foreground">@{telegramUsername}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground">Бот: <b>ChurchBirthdayReminderBot</b></span>
-                          <button
-                            className="ml-2 text-destructive hover:text-red-600"
-                            title={t.disconnect || "Отключить Telegram"}
-                            onClick={handleUnlinkTelegram}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-500">✓</span>
+                        <span>{t.telegramConnected || "Подключен"}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 pl-6">
+                        <span className="text-sm text-muted-foreground">
+                          <b>Telegram-аккаунт:</b> {telegramUsername ? <span>@{telegramUsername}</span> : <span className="italic text-destructive">не определён</span>}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          <b>Бот:</b> ChurchBirthdayReminderBot
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 pl-6">
+                        <button
+                          className="text-destructive hover:text-red-600"
+                          title={t.disconnect || "Отключить Telegram"}
+                          onClick={handleUnlinkTelegram}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
