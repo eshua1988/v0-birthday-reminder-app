@@ -635,7 +635,7 @@ export default function SettingsPage() {
   }
 
   const addDefaultNotificationTime = () => {
-    if (defaultNotificationTimes.length < 5) {
+    if (defaultNotificationTimes.length < 4) {
       setDefaultNotificationTimes([...defaultNotificationTimes, "09"])
     }
   }
@@ -733,49 +733,6 @@ export default function SettingsPage() {
                     <Bell className="inline h-4 w-4 mr-2" />
                     {t.notificationsAllowed}
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button variant="outline" onClick={handleTestNotification}>
-                      {t.sendTestNotification} (браузер)
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      onClick={handleTestFCMNotification}
-                      disabled={isTestingFCM}
-                    >
-                      {isTestingFCM ? "Отправка..." : "🔔 Тест Push (FCM)"}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={async () => {
-                        try {
-                          const registration = await navigator.serviceWorker.getRegistration()
-                          if (registration) {
-                            await registration.update()
-                            toast({ title: "Service Worker обновлён", description: "Перезагрузите страницу для применения" })
-                          }
-                        } catch (e) {
-                          toast({ title: "Ошибка", description: String(e), variant: "destructive" })
-                        }
-                      }}
-                    >
-                      🔄 Обновить SW
-                    </Button>
-                  </div>
-                  {fcmTestResult && (
-                    <p className={`text-sm mt-2 ${fcmTestResult.startsWith('✅') ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                      {fcmTestResult}
-                    </p>
-                  )}
-                  {fcmTokenCount > 1 && (
-                    <div className="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
-                        ⚠️ У вас {fcmTokenCount} FCM токенов. Рекомендуется очистить старые.
-                      </p>
-                      <Button variant="outline" size="sm" onClick={handleClearOldTokens}>
-                        🗑️ Очистить старые токены
-                      </Button>
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
@@ -813,7 +770,7 @@ export default function SettingsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={addDefaultNotificationTime}
-                    disabled={!notificationsEnabled || defaultNotificationTimes.length >= 5}
+                    disabled={!notificationsEnabled || defaultNotificationTimes.length >= 4}
                     className="h-8"
                   >
                     <Plus className="h-4 w-4 mr-1" />
@@ -821,7 +778,7 @@ export default function SettingsPage() {
                   </Button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="flex flex-row flex-wrap gap-2 items-center">
                   {defaultNotificationTimes.map((hour, index) => (
                     <div key={index} className="flex gap-2 items-center">
                       <select

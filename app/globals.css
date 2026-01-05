@@ -1,3 +1,13 @@
+/* Стили для select, чтобы текст был виден в тёмной теме */
+select {
+  color: var(--foreground);
+  background: var(--input);
+}
+.dark select {
+  color: var(--foreground);
+  background: var(--input);
+  border-color: var(--border);
+}
 @import "tailwindcss";
 @import "tw-animate-css";
 
