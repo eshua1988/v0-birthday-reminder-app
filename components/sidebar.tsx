@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Settings, Calendar, Menu, X, MessageSquareHeart, LogOut } from "lucide-react"
+import { Home, Settings, Calendar, Menu, X, MessageSquareHeart, LogOut, Bell } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -105,6 +105,7 @@ export function Sidebar() {
   const links = [
     { href: "/", icon: Home, label: t.home },
     { href: "/calendar", icon: Calendar, label: t.calendar },
+    { href: "/notifications", icon: Bell, label: t.notifications || "Уведомления" },
     { href: "/greetings", icon: MessageSquareHeart, label: t.greetings || "Поздравления" },
     { href: "/settings", icon: Settings, label: t.settings },
   ]
