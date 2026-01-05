@@ -39,14 +39,14 @@ export default function SettingsPage() {
 
   const currentLanguage = languages.find((lang) => lang.value === locale)
   const [defaultNotificationTime, setDefaultNotificationTime] = useState(() => {
-    // Get current time as default
+    // Текущее время по умолчанию (только часы)
     const now = new Date()
-    return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
+    return now.getHours().toString().padStart(2, "0")
   })
   const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(() => {
     const now = new Date()
-    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`
-    return [currentTime]
+    const currentHour = now.getHours().toString().padStart(2, "0")
+    return [currentHour]
   })
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(true)
@@ -301,8 +301,10 @@ export default function SettingsPage() {
         try {
           const times = JSON.parse(timesData.value)
           if (Array.isArray(times) && times.length > 0) {
-            setDefaultNotificationTimes(times)
-            setDefaultNotificationTime(times[0])
+            // Извлекаем только часы из строки "HH:00:00"
+            const hours = times.map((t: string) => t.split(":")[0])
+            setDefaultNotificationTimes(hours)
+            setDefaultNotificationTime(hours[0])
           }
         } catch (e) {
           console.error("[v0] Error parsing default notification times:", e)
@@ -494,7 +496,8 @@ export default function SettingsPage() {
         throw checkTimesError
       }
 
-      const timesValue = JSON.stringify(defaultNotificationTimes)
+      // Сохраняем только часы, но для обратной совместимости формируем строку "HH:00:00"
+      const timesValue = JSON.stringify(defaultNotificationTimes.map((h) => `${h}:00:00`))
 
       if (existingTimes) {
         const { error: updateTimesError } = await supabase
@@ -633,7 +636,7 @@ export default function SettingsPage() {
 
   const addDefaultNotificationTime = () => {
     if (defaultNotificationTimes.length < 5) {
-      setDefaultNotificationTimes([...defaultNotificationTimes, "09:00:00"])
+      setDefaultNotificationTimes([...defaultNotificationTimes, "09"])
     }
   }
 
@@ -647,12 +650,12 @@ export default function SettingsPage() {
     }
   }
 
-  const updateDefaultNotificationTime = (index: number, time: string) => {
+  const updateDefaultNotificationTime = (index: number, hour: string) => {
     const newTimes = [...defaultNotificationTimes]
-    newTimes[index] = time
+    newTimes[index] = hour
     setDefaultNotificationTimes(newTimes)
     if (index === 0) {
-      setDefaultNotificationTime(time)
+      setDefaultNotificationTime(hour)
     }
   }
 
@@ -819,16 +822,18 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {defaultNotificationTimes.map((time, index) => (
+                  {defaultNotificationTimes.map((hour, index) => (
                     <div key={index} className="flex gap-2 items-center">
-                      <Input
-                        type="time"
-                        step="1"
-                        value={time}
+                      <select
+                        value={hour}
                         onChange={(e) => updateDefaultNotificationTime(index, e.target.value)}
                         disabled={!notificationsEnabled}
-                        className={cn(!notificationsEnabled && "opacity-50 cursor-not-allowed")}
-                      />
+                        className={cn("border rounded px-2 py-1", !notificationsEnabled && "opacity-50 cursor-not-allowed")}
+                      >
+                        {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0")).map((h) => (
+                          <option key={h} value={h}>{h}:00</option>
+                        ))}
+                      </select>
                       {defaultNotificationTimes.length > 1 && (
                         <Button
                           type="button"
