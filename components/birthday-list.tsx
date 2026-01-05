@@ -2,7 +2,8 @@
 
 import type { Birthday } from "@/types/birthday"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Mail, Phone } from "lucide-react"
+import { Edit, Trash2 } from "lucide-react"
+import { ContactIconsRenderer } from "./contact-icons-renderer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useLocale } from "@/lib/locale-context"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -100,20 +101,7 @@ export function BirthdayList({ birthdays, onEdit, onDelete, isSelected, onToggle
             </div>
 
             <div className="flex items-center gap-2">
-              {birthday.phone && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <a href={`tel:${birthday.phone}`}>
-                    <Phone className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
-              {birthday.email && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <a href={`mailto:${birthday.email}`}>
-                    <Mail className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
+              <ContactIconsRenderer birthday={birthday} />
               <Button variant="ghost" size="icon" onClick={() => onEdit(birthday)} className="h-8 w-8">
                 <Edit className="h-4 w-4" />
               </Button>

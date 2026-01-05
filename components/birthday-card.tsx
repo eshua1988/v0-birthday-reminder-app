@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import type { Birthday } from "@/types/birthday"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Mail, Phone } from "lucide-react"
+import { Edit, Trash2 } from "lucide-react"
+import { ContactIconsRenderer } from "./contact-icons-renderer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useLocale } from "@/lib/locale-context"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -25,41 +26,42 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
   const localeMap: Record<string, string> = {
     ru: "ru-RU",
     pl: "pl-PL",
-    uk: "uk-UA",
-    ua: "uk-UA",
-    en: "en-US",
-    be: "be-BY",
-  }
-
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString(localeMap[locale] || "ru-RU", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })
-  const [showDetails, setShowDetails] = useState(false)
-  const [timeUntil, setTimeUntil] = useState({ months: 0, days: 0, hours: 0 })
-
-  const getAge = () => {
-    const today = new Date()
-    const birthDate = new Date(birthday.birth_date)
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--
-    }
-    return age
-  }
-
-  const getTimeUntilBirthday = () => {
-    const today = new Date()
-    const birthDate = new Date(birthday.birth_date)
-    
-    // Create next birthday date
-    const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate(), 0, 0, 0, 0)
-
-    // Check if birthday is today by comparing year, month, and day
-    const isBirthdayToday = today.getFullYear() === nextBirthday.getFullYear() &&
+    return (
+      <Card className="mb-4">
+        <CardContent className="flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            {selectionMode && (
+              <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-4 w-4" />
+            )}
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
+              <AvatarFallback>{birthday.first_name[0]}{birthday.last_name[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold truncate">
+                  {birthday.last_name} {birthday.first_name}
+                </h3>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>{formatDate(birthday.birth_date)}</span>
+                <span>{t.age}: {getAge()} {t.years}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ContactIconsRenderer birthday={birthday} />
+              <Button variant="ghost" size="icon" onClick={() => onEdit(birthday)} className="h-8 w-8">
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => onDelete(birthday.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {/* ...остальной код... */}
+        </CardContent>
+      </Card>
+    )
                             today.getMonth() === nextBirthday.getMonth() &&
                             today.getDate() === nextBirthday.getDate()
 

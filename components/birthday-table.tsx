@@ -2,7 +2,8 @@
 
 import type { Birthday } from "@/types/birthday"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Mail, Phone } from "lucide-react"
+import { Edit, Trash2 } from "lucide-react"
+import { ContactIconsRenderer } from "./contact-icons-renderer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useLocale } from "@/lib/locale-context"
@@ -103,22 +104,7 @@ export function BirthdayTable({ birthdays, onEdit, onDelete, isSelected, onToggl
                   </div>
                   {isToday && <p className="text-sm font-semibold mt-1" style={{ color: '#34C924' }}>{t.today}</p>}
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {birthday.phone && (
-                      <Button variant="outline" size="sm" className="h-7 text-xs bg-transparent" asChild>
-                        <a href={`tel:${birthday.phone}`}>
-                          <Phone className="h-3 w-3 mr-1" />
-                          {birthday.phone}
-                        </a>
-                      </Button>
-                    )}
-                    {birthday.email && (
-                      <Button variant="outline" size="sm" className="h-7 text-xs bg-transparent" asChild>
-                        <a href={`mailto:${birthday.email}`}>
-                          <Mail className="h-3 w-3 mr-1" />
-                          {birthday.email}
-                        </a>
-                      </Button>
-                    )}
+                    <ContactIconsRenderer birthday={birthday} />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">

@@ -14,10 +14,12 @@ import { Upload, LogOut, RefreshCw } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
+import { Table, List, LayoutGrid } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
 export default function ProfilePage() {
+  const [viewMode, setViewMode] = useState<"cards" | "list" | "table">("cards")
   const router = useRouter()
   const supabase = createClient()
   const { t } = useLocale()
@@ -244,9 +246,12 @@ export default function ProfilePage() {
       <Sidebar />
 
       <div className={cn("flex-1", !isMobile && "ml-16")}>
+
+
+
         <Header
-          viewMode="cards"
-          onViewModeChange={() => {}}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           canUndo={false}
           canRedo={false}
           onUndo={() => {}}

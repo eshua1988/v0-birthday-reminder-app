@@ -6,6 +6,7 @@ import { useState, useEffect } from "react"
 import type { Birthday } from "@/types/birthday"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -276,18 +277,30 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
               
               {customFields.map((field, index) => (
                 <div key={index} className="flex gap-2">
-                  <Input
-                    placeholder="Название"
+                  <Select
                     value={field.name}
-                    onChange={(e) => {
+                    onValueChange={(value) => {
                       const newFields = [...customFields]
-                      newFields[index].name = e.target.value
+                      newFields[index].name = value
+                      // Если выбран "messenger_other", очищаем значение для ручного ввода
+                      if (value !== "messenger_other") newFields[index].value = ""
                       setCustomFields(newFields)
                     }}
-                    className="w-1/3"
-                  />
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Название" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="phone">Номер телефона</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="messenger_telegram">Мессенджер: Telegram</SelectItem>
+                      <SelectItem value="messenger_whatsapp">Мессенджер: WhatsApp</SelectItem>
+                      <SelectItem value="messenger_viber">Мессенджер: Viber</SelectItem>
+                      <SelectItem value="messenger_other">Мессенджер: Другое</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
-                    placeholder="Значение"
+                    placeholder={field.name === "messenger_other" ? "Название мессенджера" : "Значение"}
                     value={field.value}
                     onChange={(e) => {
                       const newFields = [...customFields]
