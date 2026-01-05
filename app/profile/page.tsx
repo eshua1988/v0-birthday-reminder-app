@@ -250,8 +250,6 @@ export default function ProfilePage() {
 
 
         <Header
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           canUndo={false}
           canRedo={false}
           onUndo={() => {}}

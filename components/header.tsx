@@ -18,7 +18,7 @@ interface HeaderProps {
   onRedo: () => void
 }
 
-export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, onRedo }: HeaderProps) {
+export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, onRedo }: Partial<HeaderProps>) {
   const { t, locale, setLocale } = useLocale()
   const isMobile = useIsMobile()
 
@@ -63,7 +63,9 @@ export function Header({ viewMode, onViewModeChange, canUndo, canRedo, onUndo, o
           </div>
         </div>
 
-        <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+        {viewMode && onViewModeChange && (
+          <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+        )}
       </div>
     </header>
   )

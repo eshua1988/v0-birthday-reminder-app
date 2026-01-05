@@ -273,7 +273,7 @@ export default function HomePage() {
     console.log("[v0] notification_times:", data.notification_times)
     console.log("[v0] notification_time:", data.notification_time)
 
-    // Explicitly specify only the fields that exist in the database
+    // Добавляем custom_fields для сохранения всех дополнительных полей
     const birthdayData = {
       first_name: data.first_name,
       last_name: data.last_name,
@@ -286,6 +286,7 @@ export default function HomePage() {
       notification_repeat_count: data.notification_repeat_count || 1,
       notification_enabled: data.notification_enabled ?? true,
       user_id: userId,
+      custom_fields: data.custom_fields || null,
     }
     console.log("[v0] Final birthdayData to save:", birthdayData)
 

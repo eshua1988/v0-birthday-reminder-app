@@ -86,8 +86,8 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
       // Convert custom fields to phone/email for backwards compatibility
       const phoneField = customFields.find(f => f.name.toLowerCase().includes('телефон') || f.name.toLowerCase().includes('phone'))
       const emailField = customFields.find(f => f.name.toLowerCase().includes('email') || f.name.toLowerCase().includes('почта'))
-      
-      // Explicitly specify only valid database fields
+
+      // Передаем customFields для сохранения всех дополнительных полей
       const dataToSave = {
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -99,10 +99,11 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
         email: emailField?.value || "",
         notification_times: notificationTimes,
         notification_repeat_count: notificationTimes.length,
+        custom_fields: customFields // <-- добавляем все дополнительные поля
       }
-      
+
       console.log("[v0] BirthdayForm: Submitting data:", dataToSave)
-      
+
       await onSave(dataToSave)
       onOpenChange(false)
       setNotificationTimes(["09:00"])
@@ -275,51 +276,68 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
                 </Button>
               </div>
               
-              {customFields.map((field, index) => (
-                <div key={index} className="flex gap-2">
-                  <Select
-                    value={field.name}
-                    onValueChange={(value) => {
-                      const newFields = [...customFields]
-                      newFields[index].name = value
-                      // Если выбран "messenger_other", очищаем значение для ручного ввода
-                      if (value !== "messenger_other") newFields[index].value = ""
-                      setCustomFields(newFields)
-                    }}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Название" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="phone">Номер телефона</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="messenger_telegram">Мессенджер: Telegram</SelectItem>
-                      <SelectItem value="messenger_whatsapp">Мессенджер: WhatsApp</SelectItem>
-                      <SelectItem value="messenger_viber">Мессенджер: Viber</SelectItem>
-                      <SelectItem value="messenger_other">Мессенджер: Другое</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder={field.name === "messenger_other" ? "Название мессенджера" : "Значение"}
-                    value={field.value}
-                    onChange={(e) => {
-                      const newFields = [...customFields]
-                      newFields[index].value = e.target.value
-                      setCustomFields(newFields)
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCustomFields(customFields.filter((_, i) => i !== index))}
-                    className="h-10 w-10 shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+
+              {customFields.map((field, index) => {
+                // Функция для отображения человеко-читаемого названия
+                const getFieldLabel = (name: string) => {
+                  switch (name) {
+                    case "phone": return "Номер телефона";
+                    case "email": return "Email";
+                    case "messenger_telegram": return "Мессенджер: Telegram";
+                    case "messenger_whatsapp": return "Мессенджер: WhatsApp";
+                    case "messenger_viber": return "Мессенджер: Viber";
+                    case "messenger_other": return "Мессенджер: Другое";
+                    default: return name || "Название";
+                  }
+                };
+                return (
+                  <div key={index} className="flex gap-2">
+                    <Select
+                      value={field.name}
+                      onValueChange={(value) => {
+                        const newFields = [...customFields]
+                        newFields[index].name = value
+                        // Если выбран "messenger_other", очищаем значение для ручного ввода
+                        if (value === "messenger_other") newFields[index].value = ""
+                        setCustomFields(newFields)
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Название">
+                          {getFieldLabel(field.name)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="phone">Номер телефона</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="messenger_telegram">Мессенджер: Telegram</SelectItem>
+                        <SelectItem value="messenger_whatsapp">Мессенджер: WhatsApp</SelectItem>
+                        <SelectItem value="messenger_viber">Мессенджер: Viber</SelectItem>
+                        <SelectItem value="messenger_other">Мессенджер: Другое</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder={field.name === "messenger_other" ? "Название мессенджера" : "Значение"}
+                      value={field.value}
+                      onChange={(e) => {
+                        const newFields = [...customFields]
+                        newFields[index].value = e.target.value
+                        setCustomFields(newFields)
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCustomFields(customFields.filter((_, i) => i !== index))}
+                      className="h-10 w-10 shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
               
               {customFields.length === 0 && (
                 <p className="text-xs text-muted-foreground">

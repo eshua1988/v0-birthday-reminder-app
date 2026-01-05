@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import type { Birthday } from "@/types/birthday"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2 } from "lucide-react"
+import { Edit, Trash2, Phone, Mail } from "lucide-react"
 import { ContactIconsRenderer } from "./contact-icons-renderer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useLocale } from "@/lib/locale-context"
@@ -23,93 +23,84 @@ interface BirthdayCardProps {
 
 export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, onToggleSelect, selectionMode = false }: BirthdayCardProps) {
   const { t, locale } = useLocale()
+
   const localeMap: Record<string, string> = {
     ru: "ru-RU",
     pl: "pl-PL",
-    return (
-      <Card className="mb-4">
-        <CardContent className="flex flex-col gap-2">
-          <div className="flex items-center gap-4">
-            {selectionMode && (
-              <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} className="h-4 w-4" />
-            )}
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={birthday.photo_url || undefined} alt={`${birthday.first_name} ${birthday.last_name}`} />
-              <AvatarFallback>{birthday.first_name[0]}{birthday.last_name[0]}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold truncate">
-                  {birthday.last_name} {birthday.first_name}
-                </h3>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{formatDate(birthday.birth_date)}</span>
-                <span>{t.age}: {getAge()} {t.years}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <ContactIconsRenderer birthday={birthday} />
-              <Button variant="ghost" size="icon" onClick={() => onEdit(birthday)} className="h-8 w-8">
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => onDelete(birthday.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          {/* ...остальной код... */}
-        </CardContent>
-      </Card>
-    )
-                            today.getMonth() === nextBirthday.getMonth() &&
-                            today.getDate() === nextBirthday.getDate()
+    uk: "uk-UA",
+    ua: "uk-UA",
+    en: "en-US",
+    be: "be-BY",
+  };
 
-    // If birthday already passed this year (but not today), move to next year
+
+  // --- Функции и переменные компонента ---
+  const [showDetails, setShowDetails] = useState(false);
+  const [timeUntil, setTimeUntil] = useState({ months: 0, days: 0, hours: 0, totalDays: 0 });
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString(localeMap[locale] || "ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+  const getAge = () => {
+    const today = new Date();
+    const birthDate = new Date(birthday.birth_date);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getTimeUntilBirthday = () => {
+    const today = new Date();
+    const birthDate = new Date(birthday.birth_date);
+    const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate(), 0, 0, 0, 0);
+    const isBirthdayToday = today.getFullYear() === nextBirthday.getFullYear() &&
+      today.getMonth() === nextBirthday.getMonth() &&
+      today.getDate() === nextBirthday.getDate();
     if (nextBirthday < today && !isBirthdayToday) {
-      nextBirthday.setFullYear(today.getFullYear() + 1)
+      nextBirthday.setFullYear(today.getFullYear() + 1);
     }
-
-    const diffTime = nextBirthday.getTime() - today.getTime()
-
-    // If birthday is today, return 0 days
+    const diffTime = nextBirthday.getTime() - today.getTime();
     if (isBirthdayToday) {
-      return { months: 0, days: 0, hours: 0, totalDays: 0 }
+      return { months: 0, days: 0, hours: 0, totalDays: 0 };
     }
-
-    // Расчет месяцев, дней и часов
-    const months = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44))
-    const days = Math.floor((diffTime % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-    return { months, days, hours, totalDays: Math.ceil(diffTime / (1000 * 60 * 60 * 24)) }
-  }
+    const months = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44));
+    const days = Math.floor((diffTime % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    return { months, days, hours, totalDays: Math.ceil(diffTime / (1000 * 60 * 60 * 24)) };
+  };
 
   useEffect(() => {
     const updateTime = () => {
-      const time = getTimeUntilBirthday()
-      setTimeUntil(time)
-    }
+      const time = getTimeUntilBirthday();
+      setTimeUntil(time);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, [birthday.birth_date]);
 
-    updateTime()
-    const interval = setInterval(updateTime, 60000) // обновляем каждую минуту
-
-    return () => clearInterval(interval)
-  }, [birthday.birth_date])
-
-  const timeData = getTimeUntilBirthday()
-  const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase()
-  const isToday = timeData.totalDays === 0
-
+  const timeData = getTimeUntilBirthday();
+  const initials = `${birthday.first_name[0]}${birthday.last_name[0]}`.toUpperCase();
+  const isToday = timeData.totalDays === 0;
   const getCardStyle = () => {
     if (isToday) {
-      return { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.2)' }
+      return { borderColor: '#34C924', backgroundColor: 'rgba(52, 201, 36, 0.2)' };
     }
     if (isSelected) {
-      return { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }
+      return { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' };
     }
-    return {}
-  }
+    return {};
+  };
+
+  // --- Возврат JSX ---
+
 
   return (
     <>
@@ -120,13 +111,13 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
         }`}
         style={getCardStyle()}
         onClick={(e) => {
-          setShowDetails(true)
+          setShowDetails(true);
         }}
       >
         {onToggleSelect && (
           <div className="absolute top-2 left-2 z-10 opacity-100" onClick={(e) => {
-            e.stopPropagation()
-            onToggleSelect()
+            e.stopPropagation();
+            onToggleSelect();
           }}>
             <Checkbox 
               checked={isSelected} 
@@ -262,12 +253,40 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
                   <p className="text-lg font-medium">{birthday.email}</p>
                 </div>
               )}
+              {/* Отображение всех дополнительных полей */}
+              {Array.isArray(birthday.custom_fields) && birthday.custom_fields.length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground">Дополнительные поля</Label>
+                  <div className="space-y-1 mt-1">
+                    {birthday.custom_fields.map((field, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <span className="font-medium">{getCustomFieldLabel(field.name)}</span>
+                        <span className="text-muted-foreground">{field.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {birthday.notification_time && (
                 <div>
                   <Label className="text-muted-foreground">{t.notificationTime}</Label>
                   <p className="text-lg font-medium">{birthday.notification_time}</p>
                 </div>
               )}
+              // Функция для отображения человеко-читаемого названия поля
+              function getCustomFieldLabel(name: string) {
+                switch (name) {
+                  case "phone": return "Номер телефона";
+                  case "email": return "Email";
+                  case "messenger_telegram": return "Мессенджер: Telegram";
+                  case "messenger_whatsapp": return "Мессенджер: WhatsApp";
+                  case "messenger_viber": return "Мессенджер: Viber";
+                  case "messenger_other": return "Мессенджер: Другое";
+                  case "Телефон": return "Телефон";
+                  case "Email": return "Email";
+                  default: return name || "Название";
+                }
+              }
             </div>
 
             <div className="flex gap-2">

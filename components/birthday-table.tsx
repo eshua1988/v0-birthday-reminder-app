@@ -2,7 +2,7 @@
 
 import type { Birthday } from "@/types/birthday"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2 } from "lucide-react"
+import { Edit, Trash2, Phone, Mail } from "lucide-react"
 import { ContactIconsRenderer } from "./contact-icons-renderer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
