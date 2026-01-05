@@ -22,6 +22,20 @@ interface BirthdayCardProps {
 }
 
 export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, onToggleSelect, selectionMode = false }: BirthdayCardProps) {
+    // Функция для отображения человеко-читаемого названия поля
+    function getCustomFieldLabel(name: string) {
+      switch (name) {
+        case "phone": return "Номер телефона";
+        case "email": return "Email";
+        case "messenger_telegram": return "Мессенджер: Telegram";
+        case "messenger_whatsapp": return "Мессенджер: WhatsApp";
+        case "messenger_viber": return "Мессенджер: Viber";
+        case "messenger_other": return "Мессенджер: Другое";
+        case "Телефон": return "Телефон";
+        case "Email": return "Email";
+        default: return name || "Название";
+      }
+    }
   const { t, locale } = useLocale()
 
   const localeMap: Record<string, string> = {
@@ -273,20 +287,6 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
                   <p className="text-lg font-medium">{birthday.notification_time}</p>
                 </div>
               )}
-              // Функция для отображения человеко-читаемого названия поля
-              function getCustomFieldLabel(name: string) {
-                switch (name) {
-                  case "phone": return "Номер телефона";
-                  case "email": return "Email";
-                  case "messenger_telegram": return "Мессенджер: Telegram";
-                  case "messenger_whatsapp": return "Мессенджер: WhatsApp";
-                  case "messenger_viber": return "Мессенджер: Viber";
-                  case "messenger_other": return "Мессенджер: Другое";
-                  case "Телефон": return "Телефон";
-                  case "Email": return "Email";
-                  default: return name || "Название";
-                }
-              }
             </div>
 
             <div className="flex gap-2">
