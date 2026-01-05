@@ -310,10 +310,6 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
                       <SelectContent>
                         <SelectItem value="phone">Номер телефона</SelectItem>
                         <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="messenger_telegram">Мессенджер: Telegram</SelectItem>
-                        <SelectItem value="messenger_whatsapp">Мессенджер: WhatsApp</SelectItem>
-                        <SelectItem value="messenger_viber">Мессенджер: Viber</SelectItem>
-                        <SelectItem value="messenger_other">Мессенджер: Другое</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
