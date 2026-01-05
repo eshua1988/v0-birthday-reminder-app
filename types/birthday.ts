@@ -1,4 +1,5 @@
 export interface Birthday {
+    custom_fields?: Array<{ name: string; value: string }>
   id: string
   first_name: string
   last_name: string
