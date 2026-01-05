@@ -402,10 +402,7 @@ export default function ProfilePage() {
                     <RefreshCw className="mr-2 h-4 w-4" />
                     {t.switchAccount}
                   </Button>
-                  <Button variant="destructive" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    {t.logout}
-                  </Button>
+                  {/* Кнопка выхода перемещена в Sidebar */}
                 </CardContent>
               </Card>
             </div>

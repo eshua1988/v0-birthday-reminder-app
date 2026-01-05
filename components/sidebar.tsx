@@ -1,6 +1,7 @@
 "use client"
 
-import { Home, Settings, Calendar, Menu, X, MessageSquareHeart } from "lucide-react"
+import { Home, Settings, Calendar, Menu, X, MessageSquareHeart, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -19,6 +20,12 @@ export function Sidebar() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const supabase = createClient()
+  const router = useRouter();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+    router.refresh();
+  };
 
   // Swipe handling
   const touchStartX = useRef<number>(0)
@@ -127,42 +134,50 @@ export function Sidebar() {
             isOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <nav className="flex h-full flex-col py-16 px-4">
-            {user && (
-              <Link href="/profile" onClick={() => setIsOpen(false)} className="mb-4 p-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
-                    <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="truncate text-sm font-medium">{user.email}</p>
+          <nav className="flex h-full flex-col py-16 px-4 justify-between">
+            <div>
+              {user && (
+                <Link href="/profile" onClick={() => setIsOpen(false)} className="mb-4 p-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
+                      <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="truncate text-sm font-medium">{user.email}</p>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            )}
+                </Link>
+              )}
 
-            <div className="flex flex-col gap-2">
-              {links.map((link) => {
-                const Icon = link.icon
-                const isActive = pathname === link.href
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{link.label}</span>
-                  </Link>
-                )
-              })}
+              <div className="flex flex-col gap-2">
+                {links.map((link) => {
+                  const Icon = link.icon
+                  const isActive = pathname === link.href
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{link.label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 mb-2">
+              <Button variant="destructive" onClick={handleLogout} className="w-full flex items-center justify-center">
+                <LogOut className="mr-2 h-4 w-4" />
+                {t.logout}
+              </Button>
             </div>
           </nav>
         </aside>
@@ -172,40 +187,48 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-background hidden md:block">
-      <nav className="flex h-full flex-col items-center py-6 gap-2">
-        {user && (
-          <Link
-            href="/profile"
-            className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden"
-            title="Профиль"
-          >
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
-              <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-          </Link>
-        )}
-
-        {links.map((link) => {
-          const Icon = link.icon
-          const isActive = pathname === link.href
-          return (
+      <nav className="flex h-full flex-col items-center py-6 gap-2 justify-between">
+        <div>
+          {user && (
             <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-lg transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-              title={link.label}
+              href="/profile"
+              className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden"
+              title="Профиль"
             >
-              <Icon className="h-5 w-5" />
-              <span className="sr-only">{link.label}</span>
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt="Profile" />
+                <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
             </Link>
-          )
-        })}
+          )}
+
+          {links.map((link) => {
+            const Icon = link.icon
+            const isActive = pathname === link.href
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "flex h-12 w-12 items-center justify-center rounded-lg transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+                title={link.label}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="sr-only">{link.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+        <div className="mb-2">
+          <Button variant="destructive" onClick={handleLogout} className="flex h-12 w-12 items-center justify-center">
+            <LogOut className="h-5 w-5" />
+            <span className="sr-only">{t.logout}</span>
+          </Button>
+        </div>
       </nav>
     </aside>
   )
