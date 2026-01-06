@@ -301,10 +301,13 @@ export default function SettingsPage() {
         try {
           const times = JSON.parse(timesData.value)
           if (Array.isArray(times) && times.length > 0) {
-            // Извлекаем только часы из строки "HH:00:00"
-            const hours = times.map((t: string) => t.split(":")[0])
-            setDefaultNotificationTimes(hours)
-            setDefaultNotificationTime(hours[0])
+            // Сохраняем часы и минуты ("HH:mm")
+            const formatted = times.map((t: string) => {
+              const [h, m] = t.split(":");
+              return `${h}:${m || "00"}`;
+            });
+            setDefaultNotificationTimes(formatted);
+            setDefaultNotificationTime(formatted[0]);
           }
         } catch (e) {
           console.error("[v0] Error parsing default notification times:", e)
