@@ -497,7 +497,11 @@ export default function SettingsPage() {
       }
 
       // Сохраняем только часы, но для обратной совместимости формируем строку "HH:00:00"
-      const timesValue = JSON.stringify(defaultNotificationTimes.map((h) => `${h}:00:00`))
+      // Сохраняем часы и минуты в формате HH:mm:00
+      const timesValue = JSON.stringify(defaultNotificationTimes.map((t) => {
+        const [hour, minute = "00"] = t.split(":");
+        return `${hour}:${minute}:00`;
+      }))
 
       if (existingTimes) {
         const { error: updateTimesError } = await supabase
