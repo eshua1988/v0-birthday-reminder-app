@@ -94,6 +94,7 @@ export async function GET(request: NextRequest) {
       
       const isBirthdayToday = birthDate.getMonth() === userCurrentMonth && birthDate.getDate() === userCurrentDay
 
+
       // Collect all notification times
       const notificationTimes: string[] = []
 
@@ -108,6 +109,7 @@ export async function GET(request: NextRequest) {
         notificationTimes.push(time.length === 5 ? `${time}:00` : time)
       }
 
+      // Глобальные времена из настроек
       const globalTimes = globalTimesMap.get(birthday.user_id)
       if (globalTimes && globalTimes.length > 0) {
         notificationTimes.push(...globalTimes.map(t => 
@@ -117,6 +119,30 @@ export async function GET(request: NextRequest) {
 
       const uniqueTimes = [...new Set(notificationTimes)]
       const shouldNotify = uniqueTimes.includes(userCurrentTime)
+
+      // Отправка Telegram-уведомления по глобальным временам
+      if (shouldNotify && birthday.notification_enabled) {
+        // Получаем telegram_chat_id из настроек пользователя
+        const { data: settings } = await supabase
+          .from("settings")
+          .select("telegram_chat_id")
+          .eq("user_id", birthday.user_id)
+          .not("telegram_chat_id", "is", null)
+          .limit(1)
+          .single()
+
+        if (settings?.telegram_chat_id) {
+          // Импортируем функцию отправки
+          const { sendBirthdayReminder } = await import("@/lib/telegram")
+          const age = new Date().getFullYear() - new Date(birthday.birth_date).getFullYear()
+          await sendBirthdayReminder(
+            settings.telegram_chat_id,
+            birthday.name || `${birthday.first_name} ${birthday.last_name}`,
+            0,
+            age
+          )
+        }
+      }
 
       const result = {
         id: birthday.id,
