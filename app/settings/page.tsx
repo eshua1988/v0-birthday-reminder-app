@@ -779,32 +779,55 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex flex-row flex-wrap gap-2 items-center">
-                  {defaultNotificationTimes.map((hour, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <select
-                        value={hour}
-                        onChange={(e) => updateDefaultNotificationTime(index, e.target.value)}
-                        disabled={!notificationsEnabled}
-                        className={cn("border rounded px-2 py-1", !notificationsEnabled && "opacity-50 cursor-not-allowed")}
-                      >
-                        {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0")).map((h) => (
-                          <option key={h} value={h}>{h}:00</option>
-                        ))}
-                      </select>
-                      {defaultNotificationTimes.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeDefaultNotificationTime(index)}
+                  {defaultNotificationTimes.map((time, index) => {
+                    // time может быть в формате "HH:mm" или "HH"
+                    const [hour, minute = "00"] = time.split(":");
+                    return (
+                      <div key={index} className="flex gap-2 items-center">
+                        <select
+                          value={hour}
+                          onChange={e => {
+                            const newHour = e.target.value.padStart(2, "0");
+                            const newTime = `${newHour}:${minute}`;
+                            updateDefaultNotificationTime(index, newTime);
+                          }}
                           disabled={!notificationsEnabled}
-                          className="h-10 w-10 shrink-0"
+                          className={cn("border rounded px-2 py-1", !notificationsEnabled && "opacity-50 cursor-not-allowed")}
                         >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                          {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0")).map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        :
+                        <select
+                          value={minute}
+                          onChange={e => {
+                            const newMinute = e.target.value.padStart(2, "0");
+                            const newTime = `${hour}:${newMinute}`;
+                            updateDefaultNotificationTime(index, newTime);
+                          }}
+                          disabled={!notificationsEnabled}
+                          className={cn("border rounded px-2 py-1", !notificationsEnabled && "opacity-50 cursor-not-allowed")}
+                        >
+                          {Array.from({ length: 60 }, (_, m) => m.toString().padStart(2, "0")).map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        {defaultNotificationTimes.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeDefaultNotificationTime(index)}
+                            disabled={!notificationsEnabled}
+                            className="h-10 w-10 shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <p className="text-sm text-muted-foreground">
