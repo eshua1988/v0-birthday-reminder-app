@@ -377,6 +377,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
                   <div key={index} className="flex gap-2 items-center">
                     <Input
                       type="time"
+                      step="60"
                       value={time}
                       onChange={(e) => updateNotificationTime(index, e.target.value)}
                       disabled={!formData.notification_enabled}
