@@ -375,15 +375,39 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
               <div className="space-y-2">
                 {notificationTimes.map((time, index) => (
                   <div key={index} className="flex gap-2 items-center">
-                    <Input
-                      type="time"
-                      step="60"
-                      value={time}
-                      onChange={(e) => updateNotificationTime(index, e.target.value)}
+                    {/* Часы */}
+                    <select
+                      value={time.split(":")[0]}
+                      onChange={e => {
+                        const newHour = e.target.value.padStart(2, "0");
+                        const minute = time.split(":")[1] || "00";
+                        updateNotificationTime(index, `${newHour}:${minute}`);
+                      }}
                       disabled={!formData.notification_enabled}
-                      className={cn(!formData.notification_enabled && "opacity-50 cursor-not-allowed")}
+                      className={cn("border rounded px-2 py-1", !formData.notification_enabled && "opacity-50 cursor-not-allowed")}
                       required
-                    />
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h.toString().padStart(2, "0")}>{h.toString().padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    :
+                    {/* Минуты */}
+                    <select
+                      value={time.split(":")[1] || "00"}
+                      onChange={e => {
+                        const hour = time.split(":")[0].padStart(2, "0");
+                        const newMinute = e.target.value.padStart(2, "0");
+                        updateNotificationTime(index, `${hour}:${newMinute}`);
+                      }}
+                      disabled={!formData.notification_enabled}
+                      className={cn("border rounded px-2 py-1", !formData.notification_enabled && "opacity-50 cursor-not-allowed")}
+                      required
+                    >
+                      {Array.from({ length: 60 }, (_, m) => (
+                        <option key={m} value={m.toString().padStart(2, "0")}>{m.toString().padStart(2, "0")}</option>
+                      ))}
+                    </select>
                     {notificationTimes.length > 1 && (
                       <Button
                         type="button"
