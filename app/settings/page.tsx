@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
+import { MultiSelectLanguages } from "@/components/multi-select-languages"
 import { useTheme } from "next-themes"
 
 const supabase = createClient()
