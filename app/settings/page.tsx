@@ -31,12 +31,70 @@ export default function SettingsPage() {
   const [scheduledThemeStart, setScheduledThemeStart] = useState('18:00')
   const [scheduledThemeEnd, setScheduledThemeEnd] = useState('08:00')
   
-  const languages: { value: Locale; label: string; flag: string }[] = [
+  // Расширенный список языков (можно добавить ещё при необходимости)
+  const languages = [
     { value: "ru", label: "Русский", flag: "🇷🇺" },
-    { value: "pl", label: "Polski", flag: "🇵🇱" },
-    { value: "uk", label: "Українська", flag: "🇺🇦" },
     { value: "en", label: "English", flag: "🇬🇧" },
-  ]
+    { value: "uk", label: "Українська", flag: "🇺🇦" },
+    { value: "pl", label: "Polski", flag: "🇵🇱" },
+    { value: "de", label: "Deutsch", flag: "🇩🇪" },
+    { value: "fr", label: "Français", flag: "🇫🇷" },
+    { value: "es", label: "Español", flag: "🇪🇸" },
+    { value: "it", label: "Italiano", flag: "🇮🇹" },
+    { value: "pt", label: "Português", flag: "🇵🇹" },
+    { value: "zh", label: "中文", flag: "🇨🇳" },
+    { value: "ja", label: "日本語", flag: "🇯🇵" },
+    { value: "ko", label: "한국어", flag: "🇰🇷" },
+    { value: "tr", label: "Türkçe", flag: "🇹🇷" },
+    { value: "ar", label: "العربية", flag: "🇸🇦" },
+    { value: "he", label: "עברית", flag: "🇮🇱" },
+    { value: "cs", label: "Čeština", flag: "🇨🇿" },
+    { value: "ro", label: "Română", flag: "🇷🇴" },
+    { value: "bg", label: "Български", flag: "🇧🇬" },
+    { value: "el", label: "Ελληνικά", flag: "🇬🇷" },
+    { value: "fi", label: "Suomi", flag: "🇫🇮" },
+    { value: "sv", label: "Svenska", flag: "🇸🇪" },
+    { value: "no", label: "Norsk", flag: "🇳🇴" },
+    { value: "da", label: "Dansk", flag: "🇩🇰" },
+    { value: "nl", label: "Nederlands", flag: "🇳🇱" },
+    { value: "hu", label: "Magyar", flag: "🇭🇺" },
+    { value: "kk", label: "Қазақша", flag: "🇰🇿" },
+    { value: "uz", label: "Oʻzbekcha", flag: "🇺🇿" },
+    { value: "ka", label: "ქართული", flag: "🇬🇪" },
+    { value: "et", label: "Eesti", flag: "🇪🇪" },
+    { value: "lv", label: "Latviešu", flag: "🇱🇻" },
+    { value: "lt", label: "Lietuvių", flag: "🇱🇹" },
+    { value: "az", label: "Azərbaycanca", flag: "🇦🇿" },
+    { value: "hy", label: "Հայերեն", flag: "🇦🇲" },
+    { value: "be", label: "Беларуская", flag: "🇧🇾" },
+    { value: "sr", label: "Српски", flag: "🇷🇸" },
+    { value: "hr", label: "Hrvatski", flag: "🇭🇷" },
+    { value: "sk", label: "Slovenčina", flag: "🇸🇰" },
+    { value: "sl", label: "Slovenščina", flag: "🇸🇮" },
+    { value: "th", label: "ไทย", flag: "🇹🇭" },
+    { value: "vi", label: "Tiếng Việt", flag: "🇻🇳" },
+    { value: "id", label: "Bahasa Indonesia", flag: "🇮🇩" },
+    { value: "ms", label: "Bahasa Melayu", flag: "🇲🇾" },
+    { value: "hi", label: "हिन्दी", flag: "🇮🇳" },
+    { value: "fa", label: "فارسی", flag: "🇮🇷" },
+    { value: "ur", label: "اردو", flag: "🇵🇰" },
+    { value: "ta", label: "தமிழ்", flag: "🇮🇳" },
+    { value: "te", label: "తెలుగు", flag: "🇮🇳" },
+    { value: "ml", label: "മലയാളം", flag: "🇮🇳" },
+    { value: "bn", label: "বাংলা", flag: "🇧🇩" },
+    { value: "pa", label: "ਪੰਜਾਬੀ", flag: "🇮🇳" },
+    { value: "mr", label: "मराठी", flag: "🇮🇳" },
+    { value: "gu", label: "ગુજરાતી", flag: "🇮🇳" },
+    { value: "kn", label: "ಕನ್ನಡ", flag: "🇮🇳" },
+    { value: "si", label: "සිංහල", flag: "🇱🇰" },
+    { value: "sw", label: "Kiswahili", flag: "🇰🇪" },
+    { value: "zu", label: "isiZulu", flag: "🇿🇦" },
+    { value: "af", label: "Afrikaans", flag: "🇿🇦" },
+    { value: "am", label: "አማርኛ", flag: "🇪🇹" },
+    { value: "yo", label: "Yorùbá", flag: "🇳🇬" },
+    { value: "ig", label: "Igbo", flag: "🇳🇬" },
+    { value: "ha", label: "Hausa", flag: "🇳🇬" },
+  ];
 
   const currentLanguage = languages.find((lang) => lang.value === locale)
   const [defaultNotificationTime, setDefaultNotificationTime] = useState(() => {
@@ -678,11 +736,8 @@ export default function SettingsPage() {
               <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
               <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
             </div>
-            {/* Мультивыбор языков с поиском */}
-            <div className="w-full max-w-md">
-              <Label className="mb-1 block">Языки интерфейса</Label>
-              <MultiSelectLanguages languages={languages} />
-            </div>
+            {/* Раскрывающийся мультивыбор языков с поиском */}
+            <MultiSelectLanguages languages={languages} />
           </div>
 
 
