@@ -677,23 +677,11 @@ export default function SettingsPage() {
               <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.settings}</h1>
               <p className="text-muted-foreground mt-1">{t.settingsDescription}</p>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size={isMobile ? "icon" : "sm"} className="gap-2 bg-transparent h-9">
-                  <Languages className="h-4 w-4" />
-                  {!isMobile && <span>{currentLanguage?.label}</span>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[160px]">
-                {languages.map((lang) => (
-                  <DropdownMenuItem key={lang.value} onClick={() => setLocale(lang.value)} className="cursor-pointer">
-                    <span className="mr-2 text-lg">{lang.flag}</span>
-                    <span className="flex-1">{lang.label}</span>
-                    {locale === lang.value && <span className="ml-2 text-xs">✓</span>}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Мультивыбор языков с поиском */}
+            <div className="w-full max-w-md">
+              <Label className="mb-1 block">Языки интерфейса</Label>
+              <MultiSelectLanguages languages={languages} />
+            </div>
           </div>
 
 
