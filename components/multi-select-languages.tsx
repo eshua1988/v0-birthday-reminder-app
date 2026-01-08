@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 import { cn } from "@/lib/utils";
 
 interface Language {
