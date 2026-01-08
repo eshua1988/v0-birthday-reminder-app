@@ -696,54 +696,7 @@ export default function SettingsPage() {
             </DropdownMenu>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.browserPermissions}</CardTitle>
-              <CardDescription>{t.manageNotificationPermissions}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="browser_notifications" className="cursor-pointer font-medium">
-                    {t.browserPermissions}
-                  </Label>
-                  <p className="text-sm text-muted-foreground">{t.autoRequestPermissions}</p>
-                </div>
-                <Switch
-                  id="browser_notifications"
-                  checked={browserNotificationsEnabled}
-                  onCheckedChange={handleBrowserNotificationsToggle}
-                />
-              </div>
 
-              {!browserPermission.supported && (
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    <BellOff className="inline h-4 w-4 mr-2" />
-                    {t.browserNotSupported}
-                  </p>
-                </div>
-              )}
-
-              {browserPermission.supported && browserPermission.denied && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-                  <p className="text-sm text-red-800 dark:text-red-200">
-                    <BellOff className="inline h-4 w-4 mr-2" />
-                    {t.notificationsBlocked}
-                  </p>
-                </div>
-              )}
-
-              {browserPermission.supported && browserPermission.granted && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-                  <p className="text-sm text-green-800 dark:text-green-200 mb-4">
-                    <Bell className="inline h-4 w-4 mr-2" />
-                    {t.notificationsAllowed}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           <BackupManager />
 
