@@ -50,12 +50,15 @@ export default function LoginPage() {
   }
 
   const handleGoogleSignIn = async () => {
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
-
     try {
-      console.log("[v0] Initiating Google OAuth sign in...")
+      const supabase = createClient();
+      if (!supabase) {
+        setError("Supabase client не инициализирован. Проверьте переменные окружения.");
+        return;
+      }
+      console.log("[v0] Initiating Google OAuth sign in...");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -65,24 +68,23 @@ export default function LoginPage() {
             prompt: "consent",
           },
         },
-      })
-
+      });
       if (error) {
-        console.log("[v0] Google OAuth error:", error)
-        throw error
+        console.log("[v0] Google OAuth error:", error);
+        throw error;
       }
-
-      console.log("[v0] Google OAuth initiated successfully")
+      console.log("[v0] Google OAuth initiated successfully");
     } catch (error: any) {
-      console.log("[v0] Google sign in error:", error.message)
-      if (error.message.includes("Provider") || error.message.includes("enabled")) {
+      console.log("[v0] Google sign in error:", error?.message || error);
+      if (error?.message && (error.message.includes("Provider") || error.message.includes("enabled"))) {
         setError(
           "Google вход не настроен. Администратор должен настроить Google OAuth в Supabase Dashboard. См. документацию OAUTH_SETUP.md",
-        )
+        );
       } else {
-        setError(error.message || "Ошибка входа через Google")
+        setError(error?.message || "Ошибка входа через Google");
       }
-      setIsLoading(false)
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -343,6 +345,8 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pr-10"
+                      autoComplete="new-password"
+                      autoFocus={false}
                     />
                     <button
                       type="button"
