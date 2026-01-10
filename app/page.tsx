@@ -20,10 +20,12 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { useAutoSync } from "@/hooks/use-auto-sync"
 
+
 interface HistoryState {
   birthdays: Birthday[]
 }
 
+export default function HomePage() {
   const { t } = useLocale()
   const isMobile = useIsMobile()
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
