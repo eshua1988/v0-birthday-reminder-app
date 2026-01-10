@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Birthday, ViewMode } from "@/types/birthday"
 import { Sidebar } from "@/components/sidebar"
@@ -23,7 +24,6 @@ interface HistoryState {
   birthdays: Birthday[]
 }
 
-export default function HomePage() {
   const { t } = useLocale()
   const isMobile = useIsMobile()
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
@@ -46,6 +46,7 @@ export default function HomePage() {
 
   const supabase = createClient()
   const { scheduleSync } = useAutoSync({ enabled: autoSyncEnabled })
+  const router = useRouter()
 
   // Handle URL query parameter for birthday navigation from push notification
   useEffect(() => {
@@ -86,13 +87,17 @@ export default function HomePage() {
         } = await supabase.auth.getUser()
         console.log("[v0] Current user:", user?.id)
         setUserId(user?.id || null)
+        if (!user) {
+          router.replace("/auth/login")
+        }
       } catch (error) {
         console.error("[v0] Error getting user:", error)
         setUserId(null)
+        router.replace("/auth/login")
       }
     }
     getUser()
-  }, [])
+  }, [router])
 
   useEffect(() => {
     fetchBirthdays()
