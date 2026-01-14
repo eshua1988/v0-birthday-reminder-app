@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error("[Telegram Link] Update error:", updateError)
-      return NextResponse.json({ error: "Failed to link account" }, { status: 500 })
+      const message = updateError?.message || String(updateError)
+      return NextResponse.json({ error: message }, { status: 500 })
     }
 
     // Delete the used pending link
@@ -106,8 +107,9 @@ export async function POST(request: NextRequest) {
       username: pendingLink.username,
       firstName: pendingLink.first_name 
     })
-  } catch (error) {
-    console.error("[Telegram Link] Error:", error)
-    return NextResponse.json({ error: "Internal error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[Telegram Link] Error:", error?.stack || error?.message || error)
+    const message = (error && (error.message || String(error))) || "Internal error"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

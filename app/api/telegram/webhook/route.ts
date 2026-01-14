@@ -48,10 +48,20 @@ async function sendTelegramMessage(chatId: number, text: string) {
 }
 
 export async function POST(request: NextRequest) {
+  // Add structured error handling and more verbose logs to aid debugging in production
   try {
     const update: TelegramUpdate = await request.json()
-    
-    console.log("[Telegram Webhook] Received update:", JSON.stringify(update, null, 2))
+
+    console.log("[Telegram Webhook] Received update (truncated):", JSON.stringify(update, (k, v) => {
+      // avoid logging huge buffers
+      if (typeof v === 'string' && v.length > 1000) return v.slice(0, 1000) + '...'
+      return v
+    }, 2))
+
+    if (!update) {
+      console.error("[Telegram Webhook] Empty update payload")
+      return NextResponse.json({ ok: false, error: "Empty payload" }, { status: 400 })
+    }
 
     if (update.message?.text) {
       const chatId = update.message.chat.id
@@ -59,65 +69,90 @@ export async function POST(request: NextRequest) {
       const username = update.message.from.username
       const firstName = update.message.from.first_name
 
-      if (text === "/start") {
-        // Generate a unique link code
-        const linkCode = Math.random().toString(36).substring(2, 10).toUpperCase()
-        
-        // Store the pending link in database
-        await supabase
-          .from("telegram_pending_links")
-          .upsert({
-            chat_id: chatId.toString(),
-            link_code: linkCode,
-            username: username || null,
-            first_name: firstName,
-            created_at: new Date().toISOString(),
-          }, { onConflict: "chat_id" })
+      try {
+        if (text === "/start") {
+          const linkCode = Math.random().toString(36).substring(2, 10).toUpperCase()
 
-        await sendTelegramMessage(
-          chatId,
-          `🎂 <b>Добро пожаловать в Birthday Reminder Bot!</b>\n\n` +
-          `Для привязки вашего аккаунта введите этот код в приложении:\n\n` +
-          `<code>${linkCode}</code>\n\n` +
-          `Код действителен 10 минут.`
-        )
-      } else if (text === "/status") {
-        // Check if user is linked
-        const { data: settings } = await supabase
-          .from("settings")
-          .select("*")
-          .eq("telegram_chat_id", chatId.toString())
-          .single()
+          try {
+            await supabase
+              .from("telegram_pending_links")
+              .upsert({
+                chat_id: chatId.toString(),
+                link_code: linkCode,
+                username: username || null,
+                first_name: firstName,
+                created_at: new Date().toISOString(),
+              }, { onConflict: "chat_id" })
+          } catch (dbErr) {
+            console.error("[Telegram Webhook] DB upsert failed:", dbErr)
+            // continue - we still want to notify the user even if DB write failed
+          }
 
-        if (settings) {
-          await sendTelegramMessage(
-            chatId,
-            `✅ <b>Ваш аккаунт привязан!</b>\n\n` +
-            `Вы будете получать поздравления в Telegram.`
-          )
-        } else {
-          await sendTelegramMessage(
-            chatId,
-            `❌ <b>Аккаунт не привязан</b>\n\n` +
-            `Отправьте /start для получения кода привязки.`
-          )
+          try {
+            await sendTelegramMessage(
+              chatId,
+              `🎂 <b>Добро пожаловать в Birthday Reminder Bot!</b>\n\n` +
+              `Для привязки вашего аккаунта введите этот код в приложении:\n\n` +
+              `<code>${linkCode}</code>\n\n` +
+              `Код действителен 10 минут.`
+            )
+          } catch (sendErr) {
+            console.error("[Telegram Webhook] SendMessage failed:", sendErr)
+            return NextResponse.json({ ok: false, error: String(sendErr) }, { status: 502 })
+          }
+
+        } else if (text === "/status") {
+          try {
+            const { data: settings } = await supabase
+              .from("settings")
+              .select("*")
+              .eq("telegram_chat_id", chatId.toString())
+              .single()
+
+            if (settings) {
+              await sendTelegramMessage(
+                chatId,
+                `✅ <b>Ваш аккаунт привязан!</b>\n\n` +
+                `Вы будете получать поздравления в Telegram.`
+              )
+            } else {
+              await sendTelegramMessage(
+                chatId,
+                `❌ <b>Аккаунт не привязан</b>\n\n` +
+                `Отправьте /start для получения кода привязки.`
+              )
+            }
+          } catch (statusErr) {
+            console.error("[Telegram Webhook] Status handling failed:", statusErr)
+            return NextResponse.json({ ok: false, error: String(statusErr) }, { status: 502 })
+          }
+
+        } else if (text === "/help") {
+          try {
+            await sendTelegramMessage(
+              chatId,
+              `🎂 <b>Birthday Reminder Bot</b>\n\n` +
+              `Команды:\n` +
+              `/start - Получить код для привязки аккаунта\n` +
+              `/status - Проверить статус привязки\n` +
+              `/help - Показать эту справку`
+            )
+          } catch (helpErr) {
+            console.error("[Telegram Webhook] Help message failed:", helpErr)
+            return NextResponse.json({ ok: false, error: String(helpErr) }, { status: 502 })
+          }
         }
-      } else if (text === "/help") {
-        await sendTelegramMessage(
-          chatId,
-          `🎂 <b>Birthday Reminder Bot</b>\n\n` +
-          `Команды:\n` +
-          `/start - Получить код для привязки аккаунта\n` +
-          `/status - Проверить статус привязки\n` +
-          `/help - Показать эту справку`
-        )
+      } catch (handlerErr) {
+        console.error("[Telegram Webhook] Handler error:", handlerErr)
+        return NextResponse.json({ ok: false, error: String(handlerErr) }, { status: 500 })
       }
     }
 
     return NextResponse.json({ ok: true })
-  } catch (error) {
-    console.error("[Telegram Webhook] Error:", error)
-    return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[Telegram Webhook] Unexpected error:", error?.stack || error?.message || error)
+    const message = (error && (error.message || String(error))) || "Internal error"
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
 
