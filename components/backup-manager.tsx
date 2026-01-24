@@ -336,13 +336,33 @@ export function BackupManager() {
 
             // Парсинг даты из разных форматов
             try {
-              // Если это Excel date serial number
+              // Если это число — может быть либо Excel serial, либо просто день месяца
               if (typeof birthDateStr === "number") {
-                const excelEpoch = new Date(1899, 11, 30) // Excel base date
-                birthDate = new Date(excelEpoch.getTime() + birthDateStr * 24 * 60 * 60 * 1000)
-                console.log(`[v0] Row ${i + 1} parsed serial date:`, birthDate)
+                // Число от 1 до 31 в колонке месяца — интерпретируем как день месяца
+                if (foundMonth && Number.isInteger(birthDateStr) && birthDateStr >= 1 && birthDateStr <= 31) {
+                  const day = birthDateStr
+                  const month = foundMonth - 1
+                  const year = 2000
+                  birthDate = new Date(year, month, day)
+                  console.log(`[v0] Row ${i + 1} parsed day-of-month number with month ${foundMonth}:`, birthDate)
+                } else {
+                  // Иначе считаем это Excel serial number (дни с эпохи)
+                  const excelEpoch = new Date(1899, 11, 30) // Excel base date
+                  birthDate = new Date(excelEpoch.getTime() + birthDateStr * 24 * 60 * 60 * 1000)
+                  console.log(`[v0] Row ${i + 1} parsed serial date:`, birthDate)
+                }
               } else {
                 const dateStr = String(birthDateStr).trim()
+                // Если строка содержит только число и колонка месяца известна — трактуем как день месяца
+                if (/^\d+$/.test(dateStr) && foundMonth) {
+                  const day = parseInt(dateStr, 10)
+                  if (day >= 1 && day <= 31) {
+                    const month = foundMonth - 1
+                    const year = 2000
+                    birthDate = new Date(year, month, day)
+                    console.log(`[v0] Row ${i + 1} parsed numeric-string day with month ${foundMonth}:`, birthDate)
+                  }
+                }
                 
                 // Попробовать разные форматы
                 // Формат "dd.MM.yyyy" или "dd.MM.yy"
