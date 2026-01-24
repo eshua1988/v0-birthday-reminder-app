@@ -121,12 +121,8 @@ export const GoogleSheetsSettings: React.FC = () => {
 
               <div className="space-y-4 mt-4">
                 <div>
-                  <Label>ID таблицы или ссылка</Label>
-                  <Input
-                    value={spreadsheetInput}
-                    onChange={(e) => setSpreadsheetInput(e.target.value)}
-                    placeholder="https://docs.google.com/spreadsheets/d/... или ID"
-                  />
+                  <Label>ID или ссылка на таблицу</Label>
+                  <Input value={spreadsheetInput} onChange={(e) => setSpreadsheetInput(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/... или ID" />
                 </div>
 
                 <div>
@@ -154,13 +150,6 @@ export const GoogleSheetsSettings: React.FC = () => {
             </DialogContent>
           </Dialog>
 
-          <Button onClick={async () => {
-            // quick open sheet in new tab if id present
-            const id = extractSpreadsheetId(spreadsheetInput)
-            if (id) window.open(`https://docs.google.com/spreadsheets/d/${id}`, '_blank')
-          }}>
-            Открыть таблицу
-          </Button>
           <div className="ml-2 flex gap-2">
             <Button onClick={async () => {
               setIsProcessing(true)
@@ -287,6 +276,16 @@ export const GoogleSheetsSettings: React.FC = () => {
                 setIsProcessing(false)
               }
             }} disabled={isProcessing} variant="outline">Импорт из Google Sheets</Button>
+          </div>
+
+          {/* Открыть таблицу - располагаем после Экспорт/Импорт, стиль как primary */}
+          <div className="ml-2">
+            <Button onClick={async () => {
+              const id = extractSpreadsheetId(spreadsheetInput)
+              if (id) window.open(`https://docs.google.com/spreadsheets/d/${id}`, '_blank')
+            }} className="px-6">
+              Открыть таблицу
+            </Button>
           </div>
         </div>
       </CardContent>

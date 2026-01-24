@@ -46,10 +46,41 @@ export async function POST(req: Request) {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT || ''
     if (!raw) return NextResponse.json({ error: 'No service account configured' }, { status: 500 })
 
-    const serviceAccount = typeof raw === 'string' && raw.trim().startsWith('{') ? JSON.parse(raw) : raw
-    // Ensure private_key has real newlines (in case it's stored with escaped \n)
+    let serviceAccount: any = raw
+    // If value is a JSON string (possibly with escaped newlines), try to normalize and parse it robustly
+    if (typeof raw === 'string') {
+      let candidate = raw.trim()
+      // If wrapped in extra quotes, remove them
+      if ((candidate.startsWith('"') && candidate.endsWith('"')) || (candidate.startsWith("'") && candidate.endsWith("'"))) {
+        candidate = candidate.slice(1, -1)
+      }
+
+      // Try direct parse first
+      try {
+        serviceAccount = JSON.parse(candidate)
+      } catch (err) {
+        // Replace escaped newlines and try parse again
+        try {
+          const replaced = candidate.replace(/\\n/g, '\n')
+          serviceAccount = JSON.parse(replaced)
+        } catch (err2) {
+          // As a last resort, leave raw as-is
+          serviceAccount = raw
+        }
+      }
+    }
+
+    // Ensure private_key has real newlines (in case it's stored with escaped \n and parsing missed it)
     if (serviceAccount && typeof serviceAccount.private_key === 'string') {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n')
+    }
+
+    // Basic validation
+    if (!serviceAccount || !serviceAccount.private_key || !serviceAccount.client_email) {
+      return NextResponse.json({ error: 'Invalid service account configuration. Ensure FIREBASE_SERVICE_ACCOUNT_KEY contains the full JSON for the service account with a valid private_key and client_email.' }, { status: 500 })
+    }
+    if (!serviceAccount.private_key.includes('-----BEGIN')) {
+      return NextResponse.json({ error: 'serviceAccount.private_key does not look valid. Ensure newlines are preserved (replace \\n with actual newlines) when setting the environment variable.' }, { status: 500 })
     }
     const token = await fetchAccessToken(serviceAccount)
 
