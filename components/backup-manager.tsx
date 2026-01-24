@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +19,50 @@ export function BackupManager() {
   const { t } = useLocale()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [sheetSettings, setSheetSettings] = useState<{ spreadsheet_id?: string; sheet_range?: string; autoSync?: boolean } | null>(null)
+
+  // Load Google Sheets settings for current user
+  const loadSheetSettings = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: rows } = await supabase
+        .from('settings')
+        .select('key,value')
+        .eq('user_id', user.id)
+        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_auto_sync'])
+      const res: any = {}
+      ;(rows || []).forEach((r: any) => {
+        if (r.key === 'spreadsheet_id') res.spreadsheet_id = r.value
+        if (r.key === 'sheet_range') res.sheet_range = r.value
+        if (r.key === 'google_sheets_auto_sync') res.autoSync = r.value === 'true'
+      })
+      setSheetSettings(res)
+      return res
+    } catch (e) {
+      console.error('Failed to load sheet settings', e)
+      return null
+    }
+  }
+
+  // Auto-sync loop
+  useEffect(() => {
+    let interval: any
+    let active = true
+    ;(async () => {
+      const s = await loadSheetSettings()
+      if (!s) return
+      if (s.autoSync) {
+        // initial sync
+        try { await handleGoogleExport() } catch (e) { console.error('Auto sync failed', e) }
+        interval = setInterval(async () => {
+          if (!active) return
+          try { await handleGoogleExport() } catch (e) { console.error('Auto sync failed', e) }
+        }, 60_000)
+      }
+    })()
+    return () => { active = false; if (interval) clearInterval(interval) }
+  }, [])
 
   // Экспорт данных в JSON файл (локально)
   const handleLocalExport = async () => {
@@ -180,6 +224,171 @@ export function BackupManager() {
         description: "Не удалось экспортировать в Excel",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Export to Google Sheets
+  const handleGoogleExport = async () => {
+    setIsLoading(true)
+    try {
+      const settings = sheetSettings || (await loadSheetSettings())
+      if (!settings || !settings.spreadsheet_id) throw new Error('Google Sheets not configured')
+
+      const { data: birthdays, error } = await supabase.from('birthdays').select('*').order('birth_date')
+      if (error) throw error
+
+      // Include ID and Delete column to allow remote deletion marking
+      const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
+      const values = [header]
+      ;(birthdays || []).forEach((b: Birthday) => {
+        values.push([
+          // include id if present for safe matching on import
+          (b as any).id || '',
+          b.last_name || '',
+          b.first_name || '',
+          b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
+          b.phone || '',
+          b.email || '',
+          b.notification_time || '',
+          b.notification_enabled ? 'Да' : 'Нет',
+          '', // empty 'Удалить' column for users to mark
+        ])
+      })
+
+      const resp = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'write', spreadsheetId: settings.spreadsheet_id, range: settings.sheet_range || "'Data app'!A:Z", values }),
+      })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error || 'Failed to write to Google Sheets')
+
+      toast({ title: 'Экспорт в Google Sheets', description: `Записано ${values.length - 1} строк` })
+    } catch (e: any) {
+      console.error('Google export error', e)
+      toast({ title: 'Ошибка', description: e.message || String(e), variant: 'destructive' })
+      throw e
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Import from Google Sheets
+  const handleGoogleImport = async () => {
+    setIsLoading(true)
+    try {
+      const settings = sheetSettings || (await loadSheetSettings())
+      if (!settings || !settings.spreadsheet_id) throw new Error('Google Sheets not configured')
+
+      const resp = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'read', spreadsheetId: settings.spreadsheet_id, range: settings.sheet_range || "'Data app'!A:Z" }),
+      })
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.error || 'Failed to read from Google Sheets')
+
+      const rows = result.data?.values || []
+      if (rows.length <= 1) {
+        toast({ title: 'Импорт', description: 'Таблица пуста или только заголовки' })
+        return
+      }
+
+      const header = rows[0].map((h: any) => String(h || '').trim().toLowerCase())
+      const records: any[] = []
+      const toDeleteById: Array<{ id: string, rowIndex: number }> = []
+      const toDeleteByFields: Array<{ first_name?: string, last_name?: string, birth_date?: string, rowIndex: number }> = []
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i]
+        const obj: any = {}
+        header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
+
+        const id = obj['id'] || obj['ид'] || ''
+        const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || ''
+        const first_name = obj['имя'] || obj['first name'] || obj['name'] || ''
+        const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
+        const deleteFlag = (obj['удалить'] || obj['delete'] || obj['remove'] || '')
+
+        let birth_date = null
+        if (rawDate) {
+          const parsed = parse(String(rawDate), 'dd.MM.yyyy', new Date())
+          if (!isNaN(parsed.getTime())) birth_date = format(parsed, 'yyyy-MM-dd')
+          else {
+            const iso = new Date(String(rawDate))
+            if (!isNaN(iso.getTime())) birth_date = format(iso, 'yyyy-MM-dd')
+          }
+        }
+
+        // If marked for deletion, schedule deletion
+        if (String(deleteFlag).toString().trim() !== '') {
+          if (id) toDeleteById.push({ id: String(id), rowIndex: i + 1 })
+          else toDeleteByFields.push({ first_name: String(first_name || '').trim(), last_name: String(last_name || '').trim(), birth_date: birth_date || undefined, rowIndex: i + 1 })
+          continue
+        }
+
+        records.push({ id: id || undefined, first_name: first_name || '', last_name: last_name || '', birth_date: birth_date || null, phone: obj['телефон'] || obj['phone'] || obj['telefon'] || null, email: obj['email'] || obj['e-mail'] || null })
+      }
+
+      // Process deletions first
+      if (toDeleteById.length > 0) {
+        for (const del of toDeleteById) {
+          try {
+            await supabase.from('birthdays').delete().eq('id', del.id)
+            // clear the row in sheet
+            try {
+              await fetch('/api/google-sheets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'write', spreadsheetId: settings.spreadsheet_id, range: `${settings.sheet_range?.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }),
+              })
+            } catch (err) {
+              console.warn('Failed to clear sheet row', del.rowIndex, err)
+            }
+          } catch (err) {
+            console.warn('Failed to delete entry by id', del.id, err)
+          }
+        }
+      }
+
+      if (toDeleteByFields.length > 0) {
+        for (const del of toDeleteByFields) {
+          try {
+            let query = supabase.from('birthdays').delete()
+            if (del.birth_date) query = query.eq('birth_date', del.birth_date)
+            if (del.first_name) query = query.eq('first_name', del.first_name)
+            if (del.last_name) query = query.eq('last_name', del.last_name)
+            await query
+            try {
+              await fetch('/api/google-sheets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'write', spreadsheetId: settings.spreadsheet_id, range: `${settings.sheet_range?.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }),
+              })
+            } catch (err) {
+              console.warn('Failed to clear sheet row', del.rowIndex, err)
+            }
+          } catch (err) {
+            console.warn('Failed to delete entry by fields', del, err)
+          }
+        }
+      }
+
+      if (records.length === 0) {
+        toast({ title: 'Импорт', description: 'Нет записей для импорта' })
+        return
+      }
+
+      const { error } = await supabase.from('birthdays').upsert(records)
+      if (error) throw error
+
+      toast({ title: 'Импорт', description: `Импортировано ${records.length} записей` })
+      setTimeout(() => window.location.reload(), 1200)
+    } catch (e: any) {
+      console.error('Google import error', e)
+      toast({ title: 'Ошибка', description: e.message || String(e), variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }
@@ -603,6 +812,10 @@ export function BackupManager() {
               <Table2 className="h-4 w-4 mr-2" />
               {t.exportExcel || "Excel"}
             </Button>
+            <Button onClick={handleGoogleExport} disabled={isLoading} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Google Sheets
+            </Button>
           </div>
         </div>
 
@@ -623,6 +836,10 @@ export function BackupManager() {
             <Button onClick={handleExcelImport} disabled={isLoading} variant="outline">
               <Table2 className="h-4 w-4 mr-2" />
               {t.importExcel || "Excel"}
+            </Button>
+            <Button onClick={handleGoogleImport} disabled={isLoading} variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Google Sheets
             </Button>
           </div>
         </div>
