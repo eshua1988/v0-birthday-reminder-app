@@ -265,37 +265,55 @@ export function BackupManager() {
         // Преобразовать данные Excel в формат базы данных
         const birthdaysToImport = []
 
-        // Названия месяцев для поиска в колонках (поддерживаем разные формы)
+        // Названия месяцев для поиска в колонках (поддерживаем рус/англ/польск/укр и сокращения)
         const monthMap: Record<string, number> = {
-          январь: 1, янв: 1, january: 1, jan: 1,
-          февраль: 2, фев: 2, february: 2, feb: 2,
-          март: 3, мар: 3, march: 3, mar: 3,
-          апрель: 4, апр: 4, april: 4, apr: 4,
-          май: 5, may: 5,
-          июнь: 6, июн: 6, june: 6, jun: 6,
-          июль: 7, июл: 7, july: 7, jul: 7,
-          август: 8, авг: 8, august: 8, aug: 8,
-          сентябрь: 9, сен: 9, sep: 9, september: 9,
-          октябрь: 10, окт: 10, oct: 10, october: 10,
-          ноябрь: 11, ноя: 11, nov: 11, november: 11,
-          декабрь: 12, дек: 12, dec: 12, december: 12,
+          // Russian
+          январь: 1, янв: 1, february: 2, февраль: 2, фев: 2,
+          март: 3, мар: 3, апрель: 4, апр: 4, май: 5, июнь: 6, июн: 6,
+          июль: 7, июл: 7, август: 8, авг: 8, сентябрь: 9, сен: 9, октябрь: 10, окт: 10, ноябрь: 11, ноя: 11, декабрь: 12, дек: 12,
+          // English
+          january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7, august: 8, aug: 8, september: 9, sep: 9, october: 10, oct: 10, november: 11, nov: 11, december: 12, dec: 12,
+          // Polish (with and without diacritics)
+          styczeń: 1, styczen: 1, sty: 1, luty: 2, lut: 2, marzec: 3, mar: 3, kwiecień: 4, kwiecien: 4, kwi: 4, maj: 5, czerwiec: 6, cze: 6, lipiec: 7, lip: 7, sierpień: 8, sierpien: 8, sie: 8, wrzesień: 9, wrzesien: 9, wrz: 9, październik: 10, pazdziernik: 10, paz: 10, listopad: 11, lis: 11, grudzień: 12, grudzien: 12, gru: 12,
+          // Ukrainian
+          'січень': 1, січ: 1, 'лютий': 2, лют: 2, 'березень': 3, бер: 3, 'квітень': 4, кві: 4, 'травень': 5, тра: 5, 'червень': 6, черв: 6, 'липень': 7, лип: 7, 'серпень': 8, серп: 8, 'вересень': 9, вер: 9, 'жовтень': 10, жов: 10, 'листопад': 11, лис: 11, 'грудень': 12, гру: 12,
         }
 
         const lowerKeys = (obj: any) => Object.keys(obj || {}).map((k) => k.toString().trim().toLowerCase())
         const headers = lowerKeys(jsonData[0] || {})
 
-        // Detect if file uses separate Day/Month/Year columns
-        const dayCol = headers.find((h) => /(^|[^a-zа-я])(день|day)([^a-zа-я]|$)/i.test(h))
-        const monthCol = headers.find((h) => /(^|[^a-zа-я])(месяц|month)([^a-zа-я]|$)/i.test(h))
-        const yearCol = headers.find((h) => /(^|[^a-zа-я])(год|year)([^a-zа-я]|$)/i.test(h))
+        // Detect if file uses separate Day/Month/Year columns (support ru/en/pl/uk)
+        const dayKeywords = ['день', 'day', 'dzień', 'dzien', 'день', 'день']
+        const monthKeywords = ['месяц', 'month', 'miesiąc', 'miesiac', 'місяць']
+        const yearKeywords = ['год', 'year', 'rok', 'рік']
+
+        const dayCol = headers.find((h) => dayKeywords.some((k) => h.includes(k)))
+        const monthCol = headers.find((h) => monthKeywords.some((k) => h.includes(k)))
+        const yearCol = headers.find((h) => yearKeywords.some((k) => h.includes(k)))
 
         for (let i = 0; i < jsonData.length; i++) {
           const row = jsonData[i]
           console.log(`[v0] Processing row ${i + 1}:`, row)
 
           try {
-            // Извлечь ФИО - попробовать разные варианты названий колонок
-            const possibleNameColumns = ["Члены", "Members", "Name", "ФИО", "Имя", "Имена", "__EMPTY"]
+            // Извлечь ФИО - попробовать разные варианты названий колонок (ru/en/pl/uk)
+            const possibleNameColumns = [
+              "Члены",
+              "Члени",
+              "Members",
+              "Name",
+              "ФИО",
+              "Имя",
+              "Ім'я",
+              "Імя",
+              "Імена",
+              "Imie",
+              "Imię",
+              "Członkowie",
+              "Фамилия",
+              "Прізвище",
+              "__EMPTY",
+            ]
             let fullName = ""
             
             for (const col of possibleNameColumns) {
@@ -325,55 +343,7 @@ export function BackupManager() {
 
             console.log(`[v0] Row ${i + 1} name: lastName="${lastName}", firstName="${firstName}"`)
 
-            // Искать дату рождения в колонках месяцев
-            let birthDate = null
-            let birthDateStr = null
-            let foundMonth = null
-
-            for (const monthCol of monthColumns) {
-              if (row[monthCol] !== undefined && row[monthCol] !== null && row[monthCol] !== "") {
-                birthDateStr = row[monthCol]
-                foundMonth = monthColumns.indexOf(monthCol) + 1 // 1-12
-                console.log(`[v0] Row ${i + 1} found date in ${monthCol}:`, birthDateStr)
-                break
-              }
-            }
-
-            if (!birthDateStr) {
-              console.log(`[v0] Row ${i + 1} skipped: no date found`)
-              continue
-            }
-
-            // Парсинг даты из разных форматов
-            try {
-              // Если это число — может быть либо Excel serial, либо просто день месяца
-              if (typeof birthDateStr === "number") {
-                // Число от 1 до 31 в колонке месяца — интерпретируем как день месяца
-                if (foundMonth && Number.isInteger(birthDateStr) && birthDateStr >= 1 && birthDateStr <= 31) {
-                  const day = birthDateStr
-                  const month = foundMonth - 1
-                  const year = 2000
-                  birthDate = new Date(year, month, day)
-                  console.log(`[v0] Row ${i + 1} parsed day-of-month number with month ${foundMonth}:`, birthDate)
-                } else {
-                  // Иначе считаем это Excel serial number (дни с эпохи)
-                  const excelEpoch = new Date(1899, 11, 30) // Excel base date
-                  birthDate = new Date(excelEpoch.getTime() + birthDateStr * 24 * 60 * 60 * 1000)
-                  console.log(`[v0] Row ${i + 1} parsed serial date:`, birthDate)
-                }
-              } else {
-                const dateStr = String(birthDateStr).trim()
-                // Если строка содержит только число и колонка месяца известна — трактуем как день месяца
-                if (/^\d+$/.test(dateStr) && foundMonth) {
-                  const day = parseInt(dateStr, 10)
-                  if (day >= 1 && day <= 31) {
-                    const month = foundMonth - 1
-                    const year = 2000
-                    birthDate = new Date(year, month, day)
-                    console.log(`[v0] Row ${i + 1} parsed numeric-string day with month ${foundMonth}:`, birthDate)
-                  }
-                }
-                
+            
                 // Попытаться обнаружить дату в строке в нескольких вариантах:
                 // 1) Отдельные колонки Day/Month/Year
                 // 2) Колонка с датой (название содержит 'дата'/'birth')
@@ -496,6 +466,24 @@ export function BackupManager() {
                   console.log(`[v0] Row ${i + 1} skipped: invalid date`, birthDateStr)
                   continue
                 }
+
+              // Извлечь дополнительные поля если они есть
+              const phone = row["Телефон"] || row["Phone"] || row["phone"] || row["Telefon"] || row["Telefon"] || null
+              const email = row["Email"] || row["E-mail"] || row["email"] || row["Email"] || null
+
+              const record = {
+                user_id: user.id,
+                first_name: firstName,
+                last_name: lastName,
+                birth_date: format(birthDate, "yyyy-MM-dd"),
+                phone: phone ? String(phone).trim() : null,
+                email: email ? String(email).trim() : null,
+                notification_time: "09:00",
+                notification_enabled: true,
+              }
+
+              console.log(`[v0] Row ${i + 1} valid record:`, record)
+              birthdaysToImport.push(record)
 
         if (birthdaysToImport.length === 0) {
           throw new Error(
