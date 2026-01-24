@@ -265,18 +265,60 @@ export function BackupManager() {
         // Преобразовать данные Excel в формат базы данных
         const birthdaysToImport = []
 
-        // Названия месяцев для поиска в колонках (поддерживаем рус/англ/польск/укр и сокращения)
+        // Названия месяцев для поиска в колонках (поддерживаем rus/eng/pl/uk и сокращения)
         const monthMap: Record<string, number> = {
           // Russian
-          январь: 1, янв: 1, february: 2, февраль: 2, фев: 2,
-          март: 3, мар: 3, апрель: 4, апр: 4, май: 5, июнь: 6, июн: 6,
-          июль: 7, июл: 7, август: 8, авг: 8, сентябрь: 9, сен: 9, октябрь: 10, окт: 10, ноябрь: 11, ноя: 11, декабрь: 12, дек: 12,
+          'январь': 1, 'янв': 1,
+          'февраль': 2, 'фев': 2,
+          'март': 3, 'мар': 3,
+          'апрель': 4, 'апр': 4,
+          'май': 5,
+          'июнь': 6, 'июн': 6,
+          'июль': 7, 'июл': 7,
+          'август': 8, 'авг': 8,
+          'сентябрь': 9, 'сен': 9,
+          'октябрь': 10, 'окт': 10,
+          'ноябрь': 11, 'ноя': 11,
+          'декабрь': 12, 'дек': 12,
           // English
-          january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7, august: 8, aug: 8, september: 9, sep: 9, october: 10, oct: 10, november: 11, nov: 11, december: 12, dec: 12,
-          // Polish (with and without diacritics)
-          styczeń: 1, styczen: 1, sty: 1, luty: 2, lut: 2, marzec: 3, mar: 3, kwiecień: 4, kwiecien: 4, kwi: 4, maj: 5, czerwiec: 6, cze: 6, lipiec: 7, lip: 7, sierpień: 8, sierpien: 8, sie: 8, wrzesień: 9, wrzesien: 9, wrz: 9, październik: 10, pazdziernik: 10, paz: 10, listopad: 11, lis: 11, grudzień: 12, grudzien: 12, gru: 12,
+          'january': 1, 'jan': 1,
+          'february': 2, 'feb': 2,
+          'march': 3, 'mar': 3,
+          'april': 4, 'apr': 4,
+          'may': 5,
+          'june': 6, 'jun': 6,
+          'july': 7, 'jul': 7,
+          'august': 8, 'aug': 8,
+          'september': 9, 'sep': 9,
+          'october': 10, 'oct': 10,
+          'november': 11, 'nov': 11,
+          'december': 12, 'dec': 12,
+          // Polish
+          'styczeń': 1, 'styczen': 1, 'sty': 1,
+          'luty': 2, 'lut': 2,
+          'marzec': 3,
+          'kwiecień': 4, 'kwiecien': 4, 'kwi': 4,
+          'maj': 5,
+          'czerwiec': 6, 'cze': 6,
+          'lipiec': 7, 'lip': 7,
+          'sierpień': 8, 'sierpien': 8, 'sie': 8,
+          'wrzesień': 9, 'wrzesien': 9, 'wrz': 9,
+          'październik': 10, 'pazdziernik': 10, 'paz': 10,
+          'listopad': 11, 'lis': 11,
+          'grudzień': 12, 'grudzien': 12, 'gru': 12,
           // Ukrainian
-          'січень': 1, січ: 1, 'лютий': 2, лют: 2, 'березень': 3, бер: 3, 'квітень': 4, кві: 4, 'травень': 5, тра: 5, 'червень': 6, черв: 6, 'липень': 7, лип: 7, 'серпень': 8, серп: 8, 'вересень': 9, вер: 9, 'жовтень': 10, жов: 10, 'листопад': 11, лис: 11, 'грудень': 12, гру: 12,
+          'січень': 1, 'січ': 1,
+          'лютий': 2, 'лют': 2,
+          'березень': 3, 'бер': 3,
+          'квітень': 4, 'кві': 4,
+          'травень': 5, 'тра': 5,
+          'червень': 6, 'черв': 6,
+          'липень': 7, 'лип': 7,
+          'серпень': 8, 'серп': 8,
+          'вересень': 9, 'вер': 9,
+          'жовтень': 10, 'жов': 10,
+          'листопад': 11, 'лис': 11,
+          'грудень': 12, 'гру': 12,
         }
 
         const lowerKeys = (obj: any) => Object.keys(obj || {}).map((k) => k.toString().trim().toLowerCase())
@@ -484,6 +526,11 @@ export function BackupManager() {
 
               console.log(`[v0] Row ${i + 1} valid record:`, record)
               birthdaysToImport.push(record)
+
+            } catch (error) {
+              console.error(`[v0] Error processing row ${i + 1}:`, row, error)
+            }
+          }
 
         if (birthdaysToImport.length === 0) {
           throw new Error(
