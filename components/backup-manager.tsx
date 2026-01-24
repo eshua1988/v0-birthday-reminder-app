@@ -424,6 +424,11 @@ export function BackupManager() {
               console.warn(`[v0] Could not parse date for row ${i + 1}:`, birthDateStr, error)
             }
 
+            if (birthDate && !isNaN(birthDate.getTime())) {
+              // Normalize time to midday to avoid timezone shifts causing previous/next day
+              birthDate.setHours(12, 0, 0, 0)
+            }
+
             if (!birthDate || isNaN(birthDate.getTime())) {
               console.log(`[v0] Row ${i + 1} skipped: invalid date`)
               continue
