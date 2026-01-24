@@ -89,8 +89,56 @@ export const GoogleSheetsSettings: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Google Sheets</CardTitle>
-        <CardDescription>Синхронизация с вашей таблицей</CardDescription>
+        <div className="w-full flex items-start justify-between">
+          <div>
+            <CardTitle>Google Sheets</CardTitle>
+            <CardDescription>Синхронизация с вашей таблицей</CardDescription>
+          </div>
+          <div className="ml-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[520px]">
+                <DialogHeader>
+                  <DialogTitle>Настройки Google Sheets</DialogTitle>
+                  <DialogDescription>Укажите ID или ссылку на вашу таблицу и диапазон листа</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label>ID или ссылка на таблицу</Label>
+                    <Input value={spreadsheetInput} onChange={(e) => setSpreadsheetInput(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/... или ID" />
+                  </div>
+
+                  <div>
+                    <Label>Диапазон листа</Label>
+                    <Input value={sheetRange} onChange={(e) => setSheetRange(e.target.value)} placeholder="'Data app'!A:Z" />
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    <p>Как настроить:</p>
+                    <ol className="list-decimal ml-5">
+                      <li>Создайте новую Google таблицу</li>
+                      <li>Откройте доступ для сервисного аккаунта</li>
+                      <li>Скопируйте ссылку или ID таблицы</li>
+                      <li>Вставьте сюда и сохраните</li>
+                    </ol>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="ghost">Отмена</Button>
+                  </DialogClose>
+                  <Button onClick={handleSave} disabled={isSaving}>{isSaving ? 'Сохранение...' : 'Сохранить настройки'}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
