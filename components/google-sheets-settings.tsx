@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog"
+import { Settings, ExternalLink } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 const supabase = createClient()
@@ -111,7 +112,9 @@ export const GoogleSheetsSettings: React.FC = () => {
         <div className="flex gap-2">
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline">Настройки</Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <Settings className="h-4 w-4" />
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[520px]">
               <DialogHeader>
@@ -283,8 +286,8 @@ export const GoogleSheetsSettings: React.FC = () => {
             <Button onClick={async () => {
               const id = extractSpreadsheetId(spreadsheetInput)
               if (id) window.open(`https://docs.google.com/spreadsheets/d/${id}`, '_blank')
-            }} className="px-6">
-              Открыть таблицу
+            }} variant="default" size="icon" className="h-8 w-8">
+              <ExternalLink className="h-4 w-4" />
             </Button>
           </div>
         </div>
