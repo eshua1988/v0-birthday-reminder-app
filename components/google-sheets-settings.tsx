@@ -28,6 +28,7 @@ export const GoogleSheetsSettings: React.FC = () => {
   const [spreadsheetInput, setSpreadsheetInput] = useState("")
   const [sheetRange, setSheetRange] = useState("'Data app'!A:Z")
   const [isSaving, setIsSaving] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -160,6 +161,133 @@ export const GoogleSheetsSettings: React.FC = () => {
           }}>
             Открыть таблицу
           </Button>
+          <div className="ml-2 flex gap-2">
+            <Button onClick={async () => {
+              setIsProcessing(true)
+              try {
+                const spreadsheetId = extractSpreadsheetId(spreadsheetInput)
+                if (!spreadsheetId) throw new Error('Spreadsheet ID not configured')
+                const { data: birthdays, error } = await supabase.from('birthdays').select('*').order('birth_date')
+                if (error) throw error
+
+                const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
+                const values: any[] = [header]
+                ;(birthdays || []).forEach((b: any) => {
+                  values.push([
+                    b.id || '',
+                    b.last_name || '',
+                    b.first_name || '',
+                    b.birth_date ? (new Date(b.birth_date)).toLocaleDateString('ru-RU').split('.').reverse().join('.') : (b.birth_date ? b.birth_date : ''),
+                    b.phone || '',
+                    b.email || '',
+                    b.notification_time || '',
+                    b.notification_enabled ? 'Да' : 'Нет',
+                    '',
+                  ])
+                })
+
+                const resp = await fetch('/api/google-sheets', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'write', spreadsheetId, range: sheetRange || "'Data app'!A:Z", values }),
+                })
+                const body = await resp.json()
+                if (!resp.ok) throw new Error(body.error || 'Failed to write to Google Sheets')
+                toast({ title: 'Экспорт', description: `Записано ${values.length - 1} строк` })
+              } catch (e: any) {
+                console.error('Export to Google Sheets failed', e)
+                toast({ title: 'Ошибка экспорта', description: e.message || String(e), variant: 'destructive' })
+              } finally {
+                setIsProcessing(false)
+              }
+            }} disabled={isProcessing} variant="outline">Экспорт в Google Sheets</Button>
+
+            <Button onClick={async () => {
+              setIsProcessing(true)
+              try {
+                const spreadsheetId = extractSpreadsheetId(spreadsheetInput)
+                if (!spreadsheetId) throw new Error('Spreadsheet ID not configured')
+                const resp = await fetch('/api/google-sheets', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'read', spreadsheetId, range: sheetRange || "'Data app'!A:Z" }),
+                })
+                const result = await resp.json()
+                if (!resp.ok) throw new Error(result.error || 'Failed to read from Google Sheets')
+
+                const rows = result.data?.values || []
+                if (rows.length <= 1) {
+                  toast({ title: 'Импорт', description: 'Таблица пуста или только заголовки' })
+                  return
+                }
+
+                const header = rows[0].map((h: any) => String(h || '').trim().toLowerCase())
+                const records: any[] = []
+                const toDeleteById: Array<{ id: string, rowIndex: number }> = []
+                const toDeleteByFields: Array<{ first_name?: string, last_name?: string, birth_date?: string, rowIndex: number }> = []
+
+                for (let i = 1; i < rows.length; i++) {
+                  const r = rows[i]
+                  const obj: any = {}
+                  header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
+
+                  const id = obj['id'] || obj['ид'] || ''
+                  const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || ''
+                  const first_name = obj['имя'] || obj['first name'] || obj['name'] || ''
+                  const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
+                  const deleteFlag = (obj['удалить'] || obj['delete'] || obj['remove'] || '')
+
+                  let birth_date = null
+                  if (rawDate) {
+                    const parsed = new Date(String(rawDate))
+                    if (!isNaN(parsed.getTime())) birth_date = parsed.toISOString().slice(0,10)
+                  }
+
+                  if (String(deleteFlag).toString().trim() !== '') {
+                    if (id) toDeleteById.push({ id: String(id), rowIndex: i + 1 })
+                    else toDeleteByFields.push({ first_name: String(first_name || '').trim(), last_name: String(last_name || '').trim(), birth_date: birth_date || undefined, rowIndex: i + 1 })
+                    continue
+                  }
+
+                  records.push({ id: id || undefined, first_name: first_name || '', last_name: last_name || '', birth_date: birth_date || null, phone: obj['телефон'] || obj['phone'] || obj['telefon'] || null, email: obj['email'] || obj['e-mail'] || null })
+                }
+
+                // Process deletions first
+                if (toDeleteById.length > 0) {
+                  for (const del of toDeleteById) {
+                    try { await supabase.from('birthdays').delete().eq('id', del.id) } catch (err) { console.warn('Failed to delete by id', del.id, err) }
+                    try { await fetch('/api/google-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'write', spreadsheetId, range: `${sheetRange.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }) }) } catch (err) { console.warn('Failed to clear sheet row', del.rowIndex, err) }
+                  }
+                }
+
+                if (toDeleteByFields.length > 0) {
+                  for (const del of toDeleteByFields) {
+                    try {
+                      let query = supabase.from('birthdays').delete()
+                      if (del.birth_date) query = query.eq('birth_date', del.birth_date)
+                      if (del.first_name) query = query.eq('first_name', del.first_name)
+                      if (del.last_name) query = query.eq('last_name', del.last_name)
+                      await query
+                    } catch (err) { console.warn('Failed to delete by fields', del, err) }
+                    try { await fetch('/api/google-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'write', spreadsheetId, range: `${sheetRange.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }) }) } catch (err) { console.warn('Failed to clear sheet row', del.rowIndex, err) }
+                  }
+                }
+
+                if (records.length > 0) {
+                  const { error } = await supabase.from('birthdays').upsert(records)
+                  if (error) throw error
+                }
+
+                toast({ title: 'Импорт', description: `Импортировано ${records.length} записей, удалено ${toDeleteById.length + toDeleteByFields.length}` })
+                setTimeout(() => window.location.reload(), 1200)
+              } catch (e: any) {
+                console.error('Import from Google Sheets failed', e)
+                toast({ title: 'Ошибка импорта', description: e.message || String(e), variant: 'destructive' })
+              } finally {
+                setIsProcessing(false)
+              }
+            }} disabled={isProcessing} variant="outline">Импорт из Google Sheets</Button>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -812,10 +812,6 @@ export function BackupManager() {
               <Table2 className="h-4 w-4 mr-2" />
               {t.exportExcel || "Excel"}
             </Button>
-            <Button onClick={handleGoogleExport} disabled={isLoading} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Google Sheets
-            </Button>
           </div>
         </div>
 
@@ -836,10 +832,6 @@ export function BackupManager() {
             <Button onClick={handleExcelImport} disabled={isLoading} variant="outline">
               <Table2 className="h-4 w-4 mr-2" />
               {t.importExcel || "Excel"}
-            </Button>
-            <Button onClick={handleGoogleImport} disabled={isLoading} variant="outline">
-              <Upload className="h-4 w-4 mr-2" />
-              Google Sheets
             </Button>
           </div>
         </div>

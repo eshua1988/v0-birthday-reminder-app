@@ -47,6 +47,10 @@ export async function POST(req: Request) {
     if (!raw) return NextResponse.json({ error: 'No service account configured' }, { status: 500 })
 
     const serviceAccount = typeof raw === 'string' && raw.trim().startsWith('{') ? JSON.parse(raw) : raw
+    // Ensure private_key has real newlines (in case it's stored with escaped \n)
+    if (serviceAccount && typeof serviceAccount.private_key === 'string') {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n')
+    }
     const token = await fetchAccessToken(serviceAccount)
 
     if (!spreadsheetId) return NextResponse.json({ error: 'Missing spreadsheetId' }, { status: 400 })
