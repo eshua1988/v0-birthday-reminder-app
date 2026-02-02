@@ -28,14 +28,14 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
   const { t } = useLocale()
   const isMobile = useIsMobile()
   const [isLoading, setIsLoading] = useState(false)
-  const [notificationTimes, setNotificationTimes] = useState<string[]>(["09:00"])
+  const [notificationTimes, setNotificationTimes] = useState<string[]>(["08:00"])
   const [customFields, setCustomFields] = useState<Array<{ name: string; value: string }>>([])
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     birth_date: "",
     photo_url: "",
-    notification_time: "09:00",
+    notification_time: "08:00",
     notification_enabled: true,
   })
 
@@ -44,7 +44,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
       const times =
         birthday.notification_times && birthday.notification_times.length > 0
           ? birthday.notification_times
-          : [birthday.notification_time || "09:00"]
+          : [birthday.notification_time || "08:00"]
 
       setNotificationTimes(times)
       
@@ -61,18 +61,18 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
         last_name: birthday.last_name,
         birth_date: birthday.birth_date,
         photo_url: birthday.photo_url || "",
-        notification_time: birthday.notification_time || "09:00",
+        notification_time: birthday.notification_time || "08:00",
         notification_enabled: birthday.notification_enabled ?? true,
       })
     } else {
-      setNotificationTimes(["09:00"])
+      setNotificationTimes(["08:00"])
       setCustomFields([])
       setFormData({
         first_name: "",
         last_name: "",
         birth_date: "",
         photo_url: "",
-        notification_time: "09:00",
+        notification_time: "08:00",
         notification_enabled: true,
       })
     }
@@ -93,7 +93,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
         last_name: formData.last_name,
         birth_date: formData.birth_date,
         photo_url: formData.photo_url || null,
-        notification_time: notificationTimes[0] || "09:00",
+        notification_time: notificationTimes[0] || "08:00",
         notification_enabled: formData.notification_enabled,
         phone: phoneField?.value || "",
         email: emailField?.value || "",
@@ -106,7 +106,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
 
       await onSave(dataToSave)
       onOpenChange(false)
-      setNotificationTimes(["09:00"])
+      setNotificationTimes(["08:00"])
       setCustomFields([])
       setFormData({
         first_name: "",
@@ -184,7 +184,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
 
   const addNotificationTime = () => {
     if (notificationTimes.length < 5) {
-      setNotificationTimes([...notificationTimes, "09:00"])
+      setNotificationTimes([...notificationTimes, "08:00"])
     }
   }
 

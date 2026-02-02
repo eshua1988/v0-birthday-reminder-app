@@ -281,12 +281,10 @@ export function BirthdayCard({ birthday, onEdit, onDelete, isSelected = false, o
                   </div>
                 </div>
               )}
-              {birthday.notification_time && (
-                <div>
-                  <Label className="text-muted-foreground">{t.notificationTime}</Label>
-                  <p className="text-lg font-medium">{birthday.notification_time}</p>
-                </div>
-              )}
+              <div>
+                <Label className="text-muted-foreground">{t.notificationTime}</Label>
+                <p className="text-lg font-medium">{birthday.notification_time || "08:00"}</p>
+              </div>
             </div>
 
             <div className="flex gap-2">

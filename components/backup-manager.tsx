@@ -729,7 +729,7 @@ export function BackupManager() {
                 birth_date: format(birthDate, "yyyy-MM-dd"),
                 phone: phone ? String(phone).trim() : null,
                 email: email ? String(email).trim() : null,
-                notification_time: "09:00",
+                notification_time: "08:00",
                 notification_enabled: true,
               }
 

@@ -658,7 +658,7 @@ export default function CalendarPage() {
 
                           <div className="flex items-center gap-2 text-sm">
                             <span className="font-medium">{t.notificationTimeLabel}</span>
-                            <span>{birthday.notification_time || "09:00"}</span>
+                            <span>{birthday.notification_time || "08:00"}</span>
                           </div>
 
                           {birthday.phone && (
