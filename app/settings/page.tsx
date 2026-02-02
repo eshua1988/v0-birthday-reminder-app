@@ -541,24 +541,49 @@ export default function SettingsPage() {
             return `${hour}:${minute}:00`
           })
 
-          // Also set legacy `notification_time` to first selected time (HH:MM)
-          const legacyTime = timesArrayForDB[0] ? timesArrayForDB[0].slice(0,5) : null
-
-          if (timesArrayForDB.length > 0) {
-            const { error: updateBirthdaysError } = await supabase
+          if (timesArrayForDB.length === 0) {
+            // nothing to apply
+          } else {
+            // Fetch existing birthdays for this user to merge times instead of overwriting
+            const { data: userBirthdays, error: fetchError } = await supabase
               .from("birthdays")
-              .update({ notification_times: timesArrayForDB, notification_time: legacyTime })
+              .select("id, notification_times, notification_time")
               .eq("user_id", user.id)
 
-            if (updateBirthdaysError) {
-              console.error("[v0] Error updating birthdays with default times:", updateBirthdaysError)
-              // non-fatal: continue
+            if (fetchError) {
+              console.error("[v0] Error fetching birthdays for merge:", fetchError)
+            } else if (userBirthdays && userBirthdays.length > 0) {
+              const updatePromises = userBirthdays.map((b: any) => {
+                const existingTimes: string[] = []
+                if (b.notification_times && Array.isArray(b.notification_times)) {
+                  existingTimes.push(...b.notification_times.map((x: any) => (typeof x === 'string' ? (x.length === 5 ? `${x}:00` : x) : String(x))))
+                }
+                if (b.notification_time) {
+                  const nt = typeof b.notification_time === 'string' ? b.notification_time : String(b.notification_time)
+                  existingTimes.push(nt.length === 5 ? `${nt}:00` : nt)
+                }
+
+                // Merge unique
+                const merged = Array.from(new Set([...existingTimes, ...timesArrayForDB]))
+
+                const legacy = merged[0] ? merged[0].slice(0,5) : null
+
+                return supabase.from("birthdays").update({ notification_times: merged, notification_time: legacy }).eq("id", b.id)
+              })
+
+              // Run updates in parallel
+              try {
+                await Promise.all(updatePromises)
+                console.log("[v0] Merged and applied default notification times to existing birthdays for user:", user.id)
+              } catch (upErr) {
+                console.error('[v0] Error applying merged times to birthdays:', upErr)
+              }
             } else {
-              console.log("[v0] Applied default notification times to existing birthdays for user:", user.id)
+              console.log('[v0] No existing birthdays to update for user:', user.id)
             }
           }
         } catch (err) {
-          console.error('[v0] Failed to apply default times to birthdays:', err)
+          console.error('[v0] Failed to merge/apply default times to birthdays:', err)
         }
       }
 
