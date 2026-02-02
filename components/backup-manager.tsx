@@ -30,12 +30,13 @@ export function BackupManager() {
         .from('settings')
         .select('key,value')
         .eq('user_id', user.id)
-        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_auto_sync'])
+        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check'])
       const res: any = {}
       ;(rows || []).forEach((r: any) => {
         if (r.key === 'spreadsheet_id') res.spreadsheet_id = r.value
         if (r.key === 'sheet_range') res.sheet_range = r.value
         if (r.key === 'google_sheets_auto_sync') res.autoSync = r.value === 'true'
+        if (r.key === 'google_sheets_auto_delete_check') res.autoDeleteCheck = r.value === 'true'
       })
       setSheetSettings(res)
       return res
@@ -48,6 +49,7 @@ export function BackupManager() {
   // Auto-sync loop
   useEffect(() => {
     let interval: any
+    let deleteInterval: any
     let active = true
     ;(async () => {
       const s = await loadSheetSettings()
@@ -60,8 +62,18 @@ export function BackupManager() {
           try { await handleGoogleExport() } catch (e) { console.error('Auto sync failed', e) }
         }, 60_000)
       }
+
+      // Always run background delete-check every minute when spreadsheet is configured
+      if (s.spreadsheet_id) {
+        // initial run
+        try { await handleGoogleDeleteCheck(s.spreadsheet_id, s.sheet_range) } catch (e) { console.error('Initial delete-check failed', e) }
+        deleteInterval = setInterval(async () => {
+          if (!active) return
+          try { await handleGoogleDeleteCheck(s.spreadsheet_id, s.sheet_range) } catch (e) { console.error('Background delete-check failed', e) }
+        }, 60_000)
+      }
     })()
-    return () => { active = false; if (interval) clearInterval(interval) }
+    return () => { active = false; if (interval) clearInterval(interval); if (deleteInterval) clearInterval(deleteInterval) }
   }, [])
 
   // Экспорт данных в JSON файл (локально)
@@ -391,6 +403,82 @@ export function BackupManager() {
       toast({ title: 'Ошибка', description: e.message || String(e), variant: 'destructive' })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Background-only: check for rows marked as "Удалить" and process deletions
+  const handleGoogleDeleteCheck = async (spreadsheetId?: string, sheetRange?: string) => {
+    try {
+      const id = spreadsheetId || (sheetSettings && sheetSettings.spreadsheet_id)
+      if (!id) return
+      const range = sheetRange || (sheetSettings && sheetSettings.sheet_range) || "'Data app'!A:Z"
+
+      const resp = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'read', spreadsheetId: id, range }),
+      })
+      if (!resp.ok) {
+        const body = await resp.text()
+        console.warn('Google delete-check read failed', resp.status, body)
+        return
+      }
+      const result = await resp.json()
+      const rows = result.data?.values || []
+      if (rows.length <= 1) return
+
+      const header = rows[0].map((h: any) => String(h || '').trim().toLowerCase())
+      const toDeleteById: Array<{ id: string, rowIndex: number }> = []
+      const toDeleteByFields: Array<{ first_name?: string, last_name?: string, birth_date?: string, rowIndex: number }> = []
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i]
+        const obj: any = {}
+        header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
+        const idCell = obj['id'] || obj['ид'] || ''
+        const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || ''
+        const first_name = obj['имя'] || obj['first name'] || obj['name'] || ''
+        const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
+        const deleteFlag = (obj['удалить'] || obj['delete'] || obj['remove'] || '')
+
+        let birth_date = null
+        if (rawDate) {
+          const parsed = parse(String(rawDate), 'dd.MM.yyyy', new Date())
+          if (!isNaN(parsed.getTime())) birth_date = format(parsed, 'yyyy-MM-dd')
+          else {
+            const iso = new Date(String(rawDate))
+            if (!isNaN(iso.getTime())) birth_date = format(iso, 'yyyy-MM-dd')
+          }
+        }
+
+        if (String(deleteFlag).toString().trim() !== '') {
+          if (idCell) toDeleteById.push({ id: String(idCell), rowIndex: i + 1 })
+          else toDeleteByFields.push({ first_name: String(first_name || '').trim(), last_name: String(last_name || '').trim(), birth_date: birth_date || undefined, rowIndex: i + 1 })
+        }
+      }
+
+      // Process deletions
+      if (toDeleteById.length > 0) {
+        for (const del of toDeleteById) {
+          try { await supabase.from('birthdays').delete().eq('id', del.id) } catch (err) { console.warn('Failed to delete by id', del.id, err) }
+          try { await fetch('/api/google-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'write', spreadsheetId: id, range: `${range.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }) }) } catch (err) { console.warn('Failed to clear sheet row', del.rowIndex, err) }
+        }
+      }
+
+      if (toDeleteByFields.length > 0) {
+        for (const del of toDeleteByFields) {
+          try {
+            let query = supabase.from('birthdays').delete()
+            if (del.birth_date) query = query.eq('birth_date', del.birth_date)
+            if (del.first_name) query = query.eq('first_name', del.first_name)
+            if (del.last_name) query = query.eq('last_name', del.last_name)
+            await query
+          } catch (err) { console.warn('Failed to delete by fields', del, err) }
+          try { await fetch('/api/google-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'write', spreadsheetId: id, range: `${range.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }) }) } catch (err) { console.warn('Failed to clear sheet row', del.rowIndex, err) }
+        }
+      }
+    } catch (e) {
+      console.error('Background delete-check error', e)
     }
   }
 
