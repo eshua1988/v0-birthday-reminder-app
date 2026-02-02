@@ -113,7 +113,7 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
         last_name: "",
         birth_date: "",
         photo_url: "",
-        notification_time: "09:00",
+        notification_time: "08:00",
         notification_enabled: true,
       })
     } catch (error) {
