@@ -56,7 +56,6 @@ export default function SettingsPage() {
   const [isLoadingTheme, setIsLoadingTheme] = useState(false)
   const [isLoadingTimezone, setIsLoadingTimezone] = useState(false)
   const [browserPermission, setBrowserPermission] = useState(checkNotificationSupport())
-  const [applyToAllCards, setApplyToAllCards] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -534,8 +533,7 @@ export default function SettingsPage() {
       }
 
       // Apply the selected default times to all existing birthdays for this user
-      if (applyToAllCards) {
-        try {
+      try {
           const timesArrayForDB = defaultNotificationTimes.map((t) => {
             const [hour, minute = "00"] = t.split(":")
             return `${hour}:${minute}:00`
@@ -585,7 +583,6 @@ export default function SettingsPage() {
         } catch (err) {
           console.error('[v0] Failed to merge/apply default times to birthdays:', err)
         }
-      }
 
       // Save theme settings
       await supabase.from("settings").upsert(
@@ -856,10 +853,7 @@ export default function SettingsPage() {
               <Button type="button" onClick={(e) => handleSaveSettings(e, 'notifications')} disabled={isLoadingNotifications}>
                 {isLoadingNotifications ? t.saving : t.saveSettings}
               </Button>
-              <div className="mt-2 flex items-center gap-3">
-                <Switch id="apply_to_all" checked={applyToAllCards} onCheckedChange={setApplyToAllCards} />
-                <Label htmlFor="apply_to_all" className="cursor-pointer">Применить ко всем карточкам</Label>
-              </div>
+              {/* Default times теперь применяются ко всем карточкам автоматически */}
             </CardContent>
           </Card>
 
