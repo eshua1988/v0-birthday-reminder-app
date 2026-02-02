@@ -86,6 +86,18 @@ export const GoogleSheetsSettings: React.FC = () => {
     }
   }
 
+  const saveSingleSetting = async (key: string, value: string | null) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const entry = { user_id: user.id, key, value }
+      await supabase.from('settings').upsert([entry], { onConflict: 'user_id,key' })
+    } catch (e) {
+      console.error('Failed to save setting', key, e)
+      toast({ title: 'Ошибка', description: `Не удалось сохранить настройку ${key}`, variant: 'destructive' })
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -146,7 +158,7 @@ export const GoogleSheetsSettings: React.FC = () => {
             <Label className="font-medium">Автоматическая синхронизация</Label>
             <p className="text-sm text-muted-foreground">Автосинхронизация данных в фоновом режиме</p>
           </div>
-          <Switch checked={autoSync} onCheckedChange={setAutoSync} />
+          <Switch checked={autoSync} onCheckedChange={async (v) => { setAutoSync(!!v); await saveSingleSetting('google_sheets_auto_sync', !!v ? 'true' : 'false') }} />
         </div>
 
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -154,7 +166,7 @@ export const GoogleSheetsSettings: React.FC = () => {
             <Label className="font-medium">Автопроверка удалений (каждую минуту)</Label>
             <p className="text-sm text-muted-foreground">Проверять удалённые строки в таблице</p>
           </div>
-          <Switch checked={autoDeleteCheck} onCheckedChange={setAutoDeleteCheck} />
+          <Switch checked={autoDeleteCheck} onCheckedChange={async (v) => { setAutoDeleteCheck(!!v); await saveSingleSetting('google_sheets_auto_delete_check', !!v ? 'true' : 'false') }} />
         </div>
 
         <div className="flex gap-2">
