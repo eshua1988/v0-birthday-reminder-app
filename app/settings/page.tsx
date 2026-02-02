@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [isLoadingTheme, setIsLoadingTheme] = useState(false)
   const [isLoadingTimezone, setIsLoadingTimezone] = useState(false)
   const [browserPermission, setBrowserPermission] = useState(checkNotificationSupport())
+  const [applyToAllCards, setApplyToAllCards] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -533,30 +534,32 @@ export default function SettingsPage() {
       }
 
       // Apply the selected default times to all existing birthdays for this user
-      try {
-        const timesArrayForDB = defaultNotificationTimes.map((t) => {
-          const [hour, minute = "00"] = t.split(":")
-          return `${hour}:${minute}:00`
-        })
+      if (applyToAllCards) {
+        try {
+          const timesArrayForDB = defaultNotificationTimes.map((t) => {
+            const [hour, minute = "00"] = t.split(":")
+            return `${hour}:${minute}:00`
+          })
 
-        // Also set legacy `notification_time` to first selected time (HH:MM)
-        const legacyTime = timesArrayForDB[0] ? timesArrayForDB[0].slice(0,5) : null
+          // Also set legacy `notification_time` to first selected time (HH:MM)
+          const legacyTime = timesArrayForDB[0] ? timesArrayForDB[0].slice(0,5) : null
 
-        if (timesArrayForDB.length > 0) {
-          const { error: updateBirthdaysError } = await supabase
-            .from("birthdays")
-            .update({ notification_times: timesArrayForDB, notification_time: legacyTime })
-            .eq("user_id", user.id)
+          if (timesArrayForDB.length > 0) {
+            const { error: updateBirthdaysError } = await supabase
+              .from("birthdays")
+              .update({ notification_times: timesArrayForDB, notification_time: legacyTime })
+              .eq("user_id", user.id)
 
-          if (updateBirthdaysError) {
-            console.error("[v0] Error updating birthdays with default times:", updateBirthdaysError)
-            // non-fatal: continue
-          } else {
-            console.log("[v0] Applied default notification times to existing birthdays for user:", user.id)
+            if (updateBirthdaysError) {
+              console.error("[v0] Error updating birthdays with default times:", updateBirthdaysError)
+              // non-fatal: continue
+            } else {
+              console.log("[v0] Applied default notification times to existing birthdays for user:", user.id)
+            }
           }
+        } catch (err) {
+          console.error('[v0] Failed to apply default times to birthdays:', err)
         }
-      } catch (err) {
-        console.error('[v0] Failed to apply default times to birthdays:', err)
       }
 
       // Save theme settings
@@ -828,6 +831,10 @@ export default function SettingsPage() {
               <Button type="button" onClick={(e) => handleSaveSettings(e, 'notifications')} disabled={isLoadingNotifications}>
                 {isLoadingNotifications ? t.saving : t.saveSettings}
               </Button>
+              <div className="mt-2 flex items-center gap-3">
+                <Switch id="apply_to_all" checked={applyToAllCards} onCheckedChange={setApplyToAllCards} />
+                <Label htmlFor="apply_to_all" className="cursor-pointer">Применить ко всем карточкам</Label>
+              </div>
             </CardContent>
           </Card>
 
