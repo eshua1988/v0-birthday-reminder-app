@@ -301,9 +301,29 @@ export const GoogleSheetsSettings: React.FC = () => {
           {/* Открыть таблицу - располагаем после Экспорт/Импорт, стиль как primary */}
           <div className="ml-2">
             <Button onClick={async () => {
-              const id = extractSpreadsheetId(spreadsheetInput)
-              if (id) window.open(`https://docs.google.com/spreadsheets/d/${id}`, '_blank')
-            }} variant="default" size="icon" className="h-8 w-8">
+                const id = extractSpreadsheetId(spreadsheetInput)
+                if (!id) return
+
+                // Try to open the specific sheet/tab from the configured range
+                let url = `https://docs.google.com/spreadsheets/d/${id}`
+                try {
+                  const rawRange = sheetRange || "'Data app'!A:Z"
+                  const sheetPart = String(rawRange).split('!')[0] || ''
+                  let sheetName = sheetPart.trim()
+                  if ((sheetName.startsWith("'") && sheetName.endsWith("'")) || (sheetName.startsWith('"') && sheetName.endsWith('"'))) {
+                    sheetName = sheetName.slice(1, -1)
+                  }
+                  if (sheetName) {
+                    const anchor = `${sheetName}!A1`
+                    url = `https://docs.google.com/spreadsheets/d/${id}/edit#range=${encodeURIComponent(anchor)}`
+                  }
+                } catch (e) {
+                  // fallback to base spreadsheet url
+                  console.warn('Failed to build sheet-specific URL', e)
+                }
+
+                window.open(url, '_blank')
+              }} variant="default" size="icon" className="h-8 w-8">
               <ExternalLink className="h-4 w-4" />
             </Button>
           </div>
