@@ -14,14 +14,14 @@ async function fetchAccessToken(serviceAccount: any) {
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     aud: serviceAccount.token_uri || 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
-    iat: now,
+    iat: now - 30,
   }
 
   const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`
   const sign = crypto.createSign('RSA-SHA256')
-  sign.update(unsigned)
+  sign.update(unsigned, 'utf8')
   sign.end()
-  const signature = sign.sign(serviceAccount.private_key, 'base64')
+  const signature = sign.sign(serviceAccount.private_key)
   const jwt = `${unsigned}.${base64url(signature)}`
 
   const tokenRes = await fetch(serviceAccount.token_uri, {
@@ -32,7 +32,7 @@ async function fetchAccessToken(serviceAccount: any) {
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text()
-    throw new Error('Failed to fetch access token: ' + text)
+    throw new Error(`Failed to fetch access token (status ${tokenRes.status}): ${text}`)
   }
   const data = await tokenRes.json()
   return data.access_token
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 
     // Ensure private_key has real newlines (in case it's stored with escaped \n and parsing missed it)
     if (serviceAccount && typeof serviceAccount.private_key === 'string') {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n')
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n').replace(/\r/g, '').trim()
     }
 
     // Basic validation
