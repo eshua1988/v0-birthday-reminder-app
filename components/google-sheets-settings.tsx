@@ -28,6 +28,7 @@ export const GoogleSheetsSettings: React.FC = () => {
   const [autoDeleteCheck, setAutoDeleteCheck] = useState(false)
   const [spreadsheetInput, setSpreadsheetInput] = useState("")
   const [sheetRange, setSheetRange] = useState("'Data app'!A:Z")
+  const [sheetName, setSheetName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -47,6 +48,7 @@ export const GoogleSheetsSettings: React.FC = () => {
           ss.forEach((r: any) => {
             if (r.key === 'spreadsheet_id') setSpreadsheetInput(r.value || '')
             if (r.key === 'sheet_range') setSheetRange(r.value || "'Data app'!A:Z")
+            if (r.key === 'google_sheets_sheet_name') setSheetName(r.value || '')
             if (r.key === 'google_sheets_auto_sync') setAutoSync(r.value === 'true')
             if (r.key === 'google_sheets_auto_delete_check') setAutoDeleteCheck(r.value === 'true')
           })
@@ -69,6 +71,7 @@ export const GoogleSheetsSettings: React.FC = () => {
       // upsert multiple keys
       const entries = [
         { user_id: user.id, key: 'spreadsheet_id', value: spreadsheetId || null },
+        { user_id: user.id, key: 'google_sheets_sheet_name', value: sheetName || null },
         { user_id: user.id, key: 'sheet_range', value: sheetRange || "'Data app'!A:Z" },
         { user_id: user.id, key: 'google_sheets_auto_sync', value: autoSync ? 'true' : 'false' },
         { user_id: user.id, key: 'google_sheets_auto_delete_check', value: autoDeleteCheck ? 'true' : 'false' },
@@ -123,6 +126,11 @@ export const GoogleSheetsSettings: React.FC = () => {
                   <div>
                     <Label>ID или ссылка на таблицу</Label>
                     <Input value={spreadsheetInput} onChange={(e) => setSpreadsheetInput(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/... или ID" />
+                  </div>
+
+                  <div>
+                    <Label>Название листа</Label>
+                    <Input value={sheetName} onChange={(e) => setSheetName(e.target.value)} placeholder="Например: Data app или Лист1" />
                   </div>
 
                   <div>
@@ -304,17 +312,21 @@ export const GoogleSheetsSettings: React.FC = () => {
                 const id = extractSpreadsheetId(spreadsheetInput)
                 if (!id) return
 
-                // Try to open the specific sheet/tab from the configured range
+                // Try to open the specific sheet/tab from the configured sheet name or range
                 let url = `https://docs.google.com/spreadsheets/d/${id}`
                 try {
-                  const rawRange = sheetRange || "'Data app'!A:Z"
-                  const sheetPart = String(rawRange).split('!')[0] || ''
-                  let sheetName = sheetPart.trim()
-                  if ((sheetName.startsWith("'") && sheetName.endsWith("'")) || (sheetName.startsWith('"') && sheetName.endsWith('"'))) {
-                    sheetName = sheetName.slice(1, -1)
+                  const configuredName = (sheetName || '').toString().trim()
+                  let nameToUse = configuredName
+                  if (!nameToUse) {
+                    const rawRange = sheetRange || "'Data app'!A:Z"
+                    const sheetPart = String(rawRange).split('!')[0] || ''
+                    nameToUse = sheetPart.trim()
+                    if ((nameToUse.startsWith("'") && nameToUse.endsWith("'")) || (nameToUse.startsWith('"') && nameToUse.endsWith('"'))) {
+                      nameToUse = nameToUse.slice(1, -1)
+                    }
                   }
-                  if (sheetName) {
-                    const anchor = `${sheetName}!A1`
+                  if (nameToUse) {
+                    const anchor = `${nameToUse}!A1`
                     url = `https://docs.google.com/spreadsheets/d/${id}/edit#range=${encodeURIComponent(anchor)}`
                   }
                 } catch (e) {
