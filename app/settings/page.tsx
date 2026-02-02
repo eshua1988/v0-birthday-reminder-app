@@ -532,6 +532,33 @@ export default function SettingsPage() {
         }
       }
 
+      // Apply the selected default times to all existing birthdays for this user
+      try {
+        const timesArrayForDB = defaultNotificationTimes.map((t) => {
+          const [hour, minute = "00"] = t.split(":")
+          return `${hour}:${minute}:00`
+        })
+
+        // Also set legacy `notification_time` to first selected time (HH:MM)
+        const legacyTime = timesArrayForDB[0] ? timesArrayForDB[0].slice(0,5) : null
+
+        if (timesArrayForDB.length > 0) {
+          const { error: updateBirthdaysError } = await supabase
+            .from("birthdays")
+            .update({ notification_times: timesArrayForDB, notification_time: legacyTime })
+            .eq("user_id", user.id)
+
+          if (updateBirthdaysError) {
+            console.error("[v0] Error updating birthdays with default times:", updateBirthdaysError)
+            // non-fatal: continue
+          } else {
+            console.log("[v0] Applied default notification times to existing birthdays for user:", user.id)
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Failed to apply default times to birthdays:', err)
+      }
+
       // Save theme settings
       await supabase.from("settings").upsert(
         {
