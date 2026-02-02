@@ -30,13 +30,14 @@ export function BackupManager() {
         .from('settings')
         .select('key,value')
         .eq('user_id', user.id)
-        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check'])
+        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check'])
       const res: any = {}
       ;(rows || []).forEach((r: any) => {
         if (r.key === 'spreadsheet_id') res.spreadsheet_id = r.value
         if (r.key === 'sheet_range') res.sheet_range = r.value
         if (r.key === 'google_sheets_auto_sync') res.autoSync = r.value === 'true'
         if (r.key === 'google_sheets_auto_delete_check') res.autoDeleteCheck = r.value === 'true'
+        if (r.key === 'google_sheets_sheet_name') res.sheet_name = r.value
       })
       setSheetSettings(res)
       return res

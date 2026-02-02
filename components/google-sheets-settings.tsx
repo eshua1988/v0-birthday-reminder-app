@@ -42,7 +42,7 @@ export const GoogleSheetsSettings: React.FC = () => {
           .from('settings')
           .select('key,value')
           .eq('user_id', user.id)
-          .in('key', ['spreadsheet_id','sheet_range','google_sheets_auto_sync','google_sheets_auto_delete_check'])
+          .in('key', ['spreadsheet_id','sheet_range','google_sheets_sheet_name','google_sheets_auto_sync','google_sheets_auto_delete_check'])
 
         if (ss && Array.isArray(ss)) {
           ss.forEach((r: any) => {
