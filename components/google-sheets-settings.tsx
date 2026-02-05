@@ -29,6 +29,7 @@ export const GoogleSheetsSettings: React.FC = () => {
   const [spreadsheetInput, setSpreadsheetInput] = useState("")
   const [sheetRange, setSheetRange] = useState("'Data app'!A:Z")
   const [sheetName, setSheetName] = useState("")
+  const [sheetNameError, setSheetNameError] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -130,7 +131,8 @@ export const GoogleSheetsSettings: React.FC = () => {
 
                   <div>
                     <Label>Название листа</Label>
-                    <Input value={sheetName} onChange={(e) => setSheetName(e.target.value)} placeholder="Например: Data app или Лист1" />
+                    <Input value={sheetName} onChange={(e) => { setSheetName(e.target.value); if (sheetNameError) setSheetNameError(false) }} placeholder="Например: Data app или Лист1" className={sheetNameError ? 'ring-2 ring-red-600' : ''} />
+                    {sheetNameError ? <p className="text-sm text-red-400 mt-1">Укажите название листа для экспорта</p> : null}
                   </div>
 
                   <div>
