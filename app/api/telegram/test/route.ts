@@ -20,8 +20,6 @@ export async function POST(request: NextRequest) {
       .from("settings")
       .select("telegram_chat_id")
       .eq("user_id", userId)
-      .not("telegram_chat_id", "is", null)
-      .limit(1)
       .single()
 
     if (!settings?.telegram_chat_id) {

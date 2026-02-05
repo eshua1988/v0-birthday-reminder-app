@@ -55,11 +55,10 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Cron: Found", birthdays?.length || 0, "birthdays with notifications enabled")
 
-    // Get all global notification time settings and timezones
+    // Get all settings including telegram_chat_id and global notification times
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times", "timezone", "telegram_chat_id"])
 
     const globalTimesMap = new Map<string, string[]>()
     const userTimezonesMap = new Map<string, string>()
@@ -67,28 +66,34 @@ export async function GET(request: NextRequest) {
     
     if (globalSettings) {
       for (const setting of globalSettings) {
+        // Load telegram_chat_id from direct column
+        if (setting.telegram_chat_id) {
+          userTelegramMap.set(setting.user_id, setting.telegram_chat_id)
+          console.log("[v0] Cron: Found Telegram chat_id for user", setting.user_id, ":", setting.telegram_chat_id)
+        }
+        
+        // Load timezone
         if (setting.key === "timezone") {
           userTimezonesMap.set(setting.user_id, setting.value)
-        } else if (setting.key === "telegram_chat_id") {
-          // Save telegram chat_id for this user
-          userTelegramMap.set(setting.user_id, setting.value)
-          console.log("[v0] Cron: Found Telegram chat_id for user", setting.user_id, ":", setting.value)
-        } else {
+        }
+        
+        // Load notification times
+        if (setting.key === "default_notification_time") {
           if (!globalTimesMap.has(setting.user_id)) {
             globalTimesMap.set(setting.user_id, [])
           }
-          
-          if (setting.key === "default_notification_time") {
-            globalTimesMap.get(setting.user_id)!.push(setting.value)
-          } else if (setting.key === "default_notification_times") {
-            try {
-              const times = JSON.parse(setting.value)
-              if (Array.isArray(times)) {
-                globalTimesMap.get(setting.user_id)!.push(...times)
-              }
-            } catch (e) {
-              console.error("[v0] Cron: Error parsing default_notification_times:", e)
+          globalTimesMap.get(setting.user_id)!.push(setting.value)
+        } else if (setting.key === "default_notification_times") {
+          if (!globalTimesMap.has(setting.user_id)) {
+            globalTimesMap.set(setting.user_id, [])
+          }
+          try {
+            const times = JSON.parse(setting.value)
+            if (Array.isArray(times)) {
+              globalTimesMap.get(setting.user_id)!.push(...times)
             }
+          } catch (e) {
+            console.error("[v0] Cron: Error parsing default_notification_times:", e)
           }
         }
       }
