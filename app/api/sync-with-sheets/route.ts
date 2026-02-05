@@ -146,10 +146,28 @@ export async function POST(request: NextRequest) {
 
     let serviceAccount: any = raw
     try {
-      serviceAccount = typeof raw === 'string' ? JSON.parse(raw.replace(/\\n/g, '\n')) : raw
+      // Remove actual newlines from the string and parse
+      const cleaned = typeof raw === 'string' ? raw.split('\n').join('').trim() : raw
+      serviceAccount = typeof cleaned === 'string' ? JSON.parse(cleaned) : cleaned
+      console.log('[v0] Service account parsed successfully')
     } catch (e: any) {
       console.error('[v0] Error parsing service account:', e.message)
-      serviceAccount = raw
+      console.error('[v0] Raw string first 300 chars:', raw.substring(0, 300))
+      // Try to handle if it's a base64 encoded JSON
+      try {
+        const decoded = Buffer.from(raw, 'base64').toString('utf-8')
+        serviceAccount = JSON.parse(decoded)
+        console.log('[v0] Service account parsed from base64')
+      } catch (e2: any) {
+        console.error('[v0] Base64 parsing also failed:', e2.message)
+        // Last resort: if raw is already an object
+        if (typeof raw === 'object' && raw.private_key) {
+          serviceAccount = raw
+          console.log('[v0] Service account is already an object')
+        } else {
+          serviceAccount = null
+        }
+      }
     }
 
     if (!serviceAccount.private_key || !serviceAccount.client_email) {
