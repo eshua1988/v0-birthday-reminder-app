@@ -1,4 +1,81 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" fill="#3b82f6" rx="32"/>
-  <text x="96" y="130" font-family="Arial, sans-serif" font-size="100" fill="white" text-anchor="middle">🎂</text>
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cakeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5e6d3;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="candleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffeb3b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff9800;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" fill="#e3f2fd"/>
+  
+  <!-- Cake base -->
+  <rect x="100" y="280" width="312" height="120" rx="30" fill="url(#cakeGradient)" stroke="#d4a574" stroke-width="3"/>
+  
+  <!-- Cake frosting lines -->
+  <line x1="100" y1="310" x2="412" y2="310" stroke="#c4915c" stroke-width="2"/>
+  <line x1="100" y1="340" x2="412" y2="340" stroke="#c4915c" stroke-width="2"/>
+  
+  <!-- Top frosting -->
+  <ellipse cx="256" cy="200" rx="140" ry="50" fill="#fff3e0"/>
+  <path d="M 116 200 Q 120 180 150 170 Q 170 165 200 168 Q 230 165 260 163 Q 280 162 310 165 Q 350 170 380 185 Q 400 195 396 210 L 116 210 Z" fill="#ffd54f"/>
+  
+  <!-- Middle cake layer -->
+  <ellipse cx="256" cy="160" rx="150" ry="45" fill="#f5e6d3"/>
+  
+  <!-- Candles -->
+  <g>
+    <!-- Candle 1 -->
+    <rect x="210" y="80" width="20" height="100" rx="5" fill="url(#candleGradient)"/>
+    <ellipse cx="220" cy="75" rx="12" ry="10" fill="#ff6b6b"/>
+    
+    <!-- Candle 2 -->
+    <rect x="256" y="60" width="20" height="120" rx="5" fill="url(#candleGradient)"/>
+    <ellipse cx="266" cy="55" rx="12" ry="10" fill="#ff6b6b"/>
+    
+    <!-- Candle 3 -->
+    <rect x="302" y="85" width="20" height="95" rx="5" fill="url(#candleGradient)"/>
+    <ellipse cx="312" cy="80" rx="12" ry="10" fill="#ff6b6b"/>
+  </g>
+  
+  <!-- Sprinkles on cake -->
+  <g fill="#ffeb3b">
+    <circle cx="150" cy="230" r="5"/>
+    <circle cx="170" cy="220" r="4"/>
+    <circle cx="190" cy="235" r="5"/>
+    <circle cx="210" cy="215" r="4"/>
+    <circle cx="235" cy="238" r="5"/>
+    <circle cx="255" cy="210" r="4"/>
+    <circle cx="275" cy="240" r="5"/>
+    <circle cx="295" cy="218" r="4"/>
+    <circle cx="315" cy="235" r="5"/>
+    <circle cx="335" cy="220" r="4"/>
+    <circle cx="355" cy="238" r="5"/>
+    <circle cx="375" cy="225" r="4"/>
+  </g>
+  
+  <!-- More colorful sprinkles -->
+  <g>
+    <circle cx="130" cy="310" r="4" fill="#ff69b4"/>
+    <circle cx="160" cy="320" r="4" fill="#00bcd4"/>
+    <circle cx="190" cy="310" r="4" fill="#ff69b4"/>
+    <circle cx="220" cy="325" r="4" fill="#4caf50"/>
+    <circle cx="250" cy="315" r="4" fill="#ff69b4"/>
+    <circle cx="280" cy="328" r="4" fill="#2196f3"/>
+    <circle cx="310" cy="312" r="4" fill="#ff69b4"/>
+    <circle cx="340" cy="322" r="4" fill="#9c27b0"/>
+    <circle cx="370" cy="318" r="4" fill="#ff69b4"/>
+    <circle cx="395" cy="308" r="4" fill="#ff5722"/>
+  </g>
+  
+  <!-- Cake texture -->
+  <circle cx="200" cy="300" r="3" fill="#d4a574" opacity="0.5"/>
+  <circle cx="250" cy="315" r="3" fill="#d4a574" opacity="0.5"/>
+  <circle cx="310" cy="305" r="3" fill="#d4a574" opacity="0.5"/>
+  <circle cx="350" cy="320" r="3" fill="#d4a574" opacity="0.5"/>
 </svg>
