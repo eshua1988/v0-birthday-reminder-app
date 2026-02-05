@@ -18,7 +18,6 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
 import { GoogleSheetsSettings } from "@/components/google-sheets-settings"
-import { TelegramSettings } from "@/components/telegram-settings"
 import { MultiSelectLanguages } from "@/components/multi-select-languages"
 import { useTheme } from "next-themes"
 
@@ -755,7 +754,6 @@ export default function SettingsPage() {
 
           <BackupManager />
           <GoogleSheetsSettings />
-          <TelegramSettings />
 
           <Card>
             <CardHeader>
