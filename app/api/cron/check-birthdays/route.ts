@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times", "timezone", "telegram_linked"])
+      .in("key", ["default_notification_time", "default_notification_times", "timezone", "telegram_chat_id"])
 
     const globalTimesMap = new Map<string, string[]>()
     const userTimezonesMap = new Map<string, string>()
@@ -69,9 +69,10 @@ export async function GET(request: NextRequest) {
       for (const setting of globalSettings) {
         if (setting.key === "timezone") {
           userTimezonesMap.set(setting.user_id, setting.value)
-        } else if (setting.telegram_chat_id) {
+        } else if (setting.key === "telegram_chat_id") {
           // Save telegram chat_id for this user
-          userTelegramMap.set(setting.user_id, setting.telegram_chat_id)
+          userTelegramMap.set(setting.user_id, setting.value)
+          console.log("[v0] Cron: Found Telegram chat_id for user", setting.user_id, ":", setting.value)
         } else {
           if (!globalTimesMap.has(setting.user_id)) {
             globalTimesMap.set(setting.user_id, [])
