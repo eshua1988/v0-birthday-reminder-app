@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       // Try to get from supabase context
       const { data: { user } } = await supabase.auth.getUser()
-      userId = user?.id
+      userId = user?.id || null
     }
 
     if (!userId) {
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
         if (rec.last_name) q = q.eq('last_name', rec.last_name)
         if (rec.birth_date) q = q.eq('birth_date', rec.birth_date)
 
-        const { data: existing } = await q.limit(1).single().catch(() => ({ data: null }))
+        const { data: existing, error: existingError } = await q.limit(1).single()
 
         if (existing?.id) {
           // Update existing
