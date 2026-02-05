@@ -20,6 +20,8 @@ async function fetchAccessToken(serviceAccount: any) {
     iat: now - 30,
   }
 
+  console.log('[v0] Creating JWT with iss:', serviceAccount.client_email)
+
   const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`
   const sign = crypto.createSign('RSA-SHA256')
   sign.update(unsigned, 'utf8')
@@ -27,17 +29,23 @@ async function fetchAccessToken(serviceAccount: any) {
   const signature = sign.sign(serviceAccount.private_key)
   const jwt = `${unsigned}.${base64url(signature)}`
 
-  const tokenRes = await fetch(serviceAccount.token_uri, {
+  console.log('[v0] JWT created, sending to token endpoint:', serviceAccount.token_uri || 'https://oauth2.googleapis.com/token')
+
+  const tokenRes = await fetch(serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`,
   })
 
+  console.log('[v0] Token endpoint response status:', tokenRes.status)
+
   if (!tokenRes.ok) {
     const text = await tokenRes.text()
+    console.error('[v0] Token endpoint error response:', text)
     throw new Error(`Failed to fetch access token: ${text}`)
   }
   const data = await tokenRes.json()
+  console.log('[v0] Token obtained successfully')
   return data.access_token
 }
 
@@ -51,22 +59,29 @@ export async function POST(request: NextRequest) {
 
     // Get user from request authorization header
     const authHeader = request.headers.get('authorization')
+    console.log('[v0] Authorization header present:', !!authHeader)
     const token = authHeader?.replace('Bearer ', '')
+    console.log('[v0] Token extracted:', !!token, token?.substring(0, 20) + '...')
     
     let userId: string | null = null
     
     if (token) {
       try {
+        console.log('[v0] Attempting to get user from token...')
         const { data: { user }, error } = await supabase.auth.getUser(token)
         if (error) {
-          console.error('[v0] Error getting user from token:', error.message)
+          console.error('[v0] Error getting user from token:', error.message, error.code)
         } else if (user) {
           userId = user.id
           console.log('[v0] Got user from token:', userId)
+        } else {
+          console.log('[v0] No user in response, user is null')
         }
       } catch (e: any) {
-        console.error('[v0] Exception getting user from token:', e.message)
+        console.error('[v0] Exception getting user from token:', e.message, e.cause)
       }
+    } else {
+      console.log('[v0] No token provided in authorization header')
     }
 
     if (!userId) {
@@ -122,9 +137,12 @@ export async function POST(request: NextRequest) {
 
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT || ''
     if (!raw) {
-      console.error('[v0] No service account configured')
+      console.error('[v0] No service account configured in env vars')
+      console.error('[v0] Checking env vars: FIREBASE_SERVICE_ACCOUNT_KEY=', !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY, 'GOOGLE_SERVICE_ACCOUNT=', !!process.env.GOOGLE_SERVICE_ACCOUNT)
       return NextResponse.json({ error: 'No service account configured' }, { status: 500 })
     }
+
+    console.log('[v0] Service account env found, length:', raw.length)
 
     let serviceAccount: any = raw
     try {
