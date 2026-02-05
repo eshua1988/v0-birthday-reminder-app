@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Settings, Calendar, Menu, X, MessageSquareHeart, LogOut, Bell } from "lucide-react"
+import { Home, Settings, Calendar, Menu, X, MessageSquareHeart, LogOut, Bell, RotateCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -19,13 +20,86 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
   const supabase = createClient()
-  const router = useRouter();
+  const router = useRouter()
+  const { toast } = useToast()
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/auth/login");
     router.refresh();
   };
+
+  const handleSync = async () => {
+    if (isSyncing) return
+    setIsSyncing(true)
+    try {
+      // Get user session
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось получить токен доступа',
+          variant: 'destructive',
+        })
+        setIsSyncing(false)
+        return
+      }
+
+      // Выполнить одновременно экспорт и импорт
+      const [exportResult, importResult] = await Promise.allSettled([
+        fetch('/api/sync-with-sheets', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: 'export' }),
+        }),
+        fetch('/api/sync-with-sheets', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: 'import' }),
+        }),
+      ])
+
+      const exportOk = exportResult.status === 'fulfilled' && exportResult.value?.ok
+      const importOk = importResult.status === 'fulfilled' && importResult.value?.ok
+
+      const exportData = exportOk ? await exportResult.value.json() : null
+      const importData = importOk ? await importResult.value.json() : null
+
+      if (exportOk && importOk) {
+        toast({
+          title: 'Синхронизация успешна',
+          description: `Экспортировано: ${exportData?.rows || 0} строк | Импортировано: ${importData?.imported || 0}`,
+        })
+      } else {
+        const errors = []
+        if (!exportOk) errors.push('Экспорт не удался')
+        if (!importOk) errors.push('Импорт не удался')
+        toast({
+          title: 'Частичная ошибка синхронизации',
+          description: errors.join(' | '),
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('[v0] Sync error:', error)
+      toast({
+        title: 'Ошибка синхронизации',
+        description: 'Убедитесь, что Google Sheets настроены в параметрах',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   // Swipe handling
   const touchStartX = useRef<number>(0)
@@ -175,6 +249,15 @@ export function Sidebar() {
               </div>
             </div>
             <div className="flex flex-col gap-2 mb-2">
+              <Button
+                variant="outline"
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="w-full flex items-center justify-center"
+              >
+                <RotateCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
+                {isSyncing ? 'Синхронизация...' : 'Синхронизировать'}
+              </Button>
               <Button variant="destructive" onClick={handleLogout} className="w-full flex items-center justify-center">
                 <LogOut className="mr-2 h-4 w-4" />
                 {t.logout}
@@ -224,7 +307,18 @@ export function Sidebar() {
             )
           })}
         </div>
-        <div className="mb-2">
+        <div className="flex flex-col gap-2 mb-2">
+          <Button
+            variant="outline"
+            onClick={handleSync}
+            disabled={isSyncing}
+            size="icon"
+            className="h-12 w-12"
+            title={isSyncing ? 'Синхронизация...' : 'Синхронизировать с Google Sheets'}
+          >
+            <RotateCw className={cn("h-5 w-5", isSyncing && "animate-spin")} />
+            <span className="sr-only">Синхронизировать</span>
+          </Button>
           <Button variant="destructive" onClick={handleLogout} className="flex h-12 w-12 items-center justify-center">
             <LogOut className="h-5 w-5" />
             <span className="sr-only">{t.logout}</span>
