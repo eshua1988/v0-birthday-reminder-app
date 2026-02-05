@@ -328,7 +328,7 @@ export async function GET(request: NextRequest) {
         
         console.log("[v0] Cron: Sending Telegram notification to chat:", telegramChatId)
         
-        const telegramResult = await sendBirthdayReminder(telegramChatId, fullName, 0, age)
+        const telegramResult = await sendBirthdayReminder(telegramChatId, fullName, 0, age, birthDate)
         
         if (telegramResult.ok) {
           console.log("[v0] Cron: Telegram notification sent successfully")

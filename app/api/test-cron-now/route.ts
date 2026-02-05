@@ -134,12 +134,14 @@ export async function GET(request: NextRequest) {
         if (settings?.telegram_chat_id) {
           // Импортируем функцию отправки
           const { sendBirthdayReminder } = await import("@/lib/telegram")
-          const age = new Date().getFullYear() - new Date(birthday.birth_date).getFullYear()
+          const birthDate = new Date(birthday.birth_date || birthday.date)
+          const age = new Date().getFullYear() - birthDate.getFullYear()
           await sendBirthdayReminder(
             settings.telegram_chat_id,
             birthday.name || `${birthday.first_name} ${birthday.last_name}`,
             0,
-            age
+            age,
+            birthDate
           )
         }
       }

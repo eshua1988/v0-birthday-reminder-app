@@ -29,12 +29,14 @@ export async function POST(request: NextRequest) {
     let result
 
     if (testBirthday) {
-      // Send test birthday reminder
+      // Send test birthday reminder with a sample birth date
+      const sampleBirthDate = new Date(1995, 4, 15) // May 15, 1995
       result = await sendBirthdayReminder(
         settings.telegram_chat_id,
         "Тест Тестович",
         0,
-        30
+        30,
+        sampleBirthDate
       )
     } else {
       // Send custom message

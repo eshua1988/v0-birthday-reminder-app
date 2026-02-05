@@ -83,22 +83,35 @@ export async function sendBirthdayReminder(
   chatId: string,
   birthdayPerson: string,
   daysUntil: number,
-  age?: number
+  age?: number,
+  birthDate?: Date
 ) {
   let text: string
+  let dateInfo = ""
+  
+  if (birthDate) {
+    const day = birthDate.getDate()
+    const monthNames = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+    const month = monthNames[birthDate.getMonth()]
+    const year = birthDate.getFullYear()
+    dateInfo = `\n📅 Дата рождения: ${day} ${month} ${year} г.`
+  }
 
   if (daysUntil === 0) {
     text = `🎂 <b>Сегодня день рождения!</b>\n\n` +
       `🎉 ${birthdayPerson}` +
-      (age ? ` — исполняется ${formatAge(age)}!` : "")
+      (age ? `\n🎈 Исполняется: ${formatAge(age)}` : "") +
+      dateInfo
   } else if (daysUntil === 1) {
     text = `🔔 <b>Напоминание</b>\n\n` +
       `Завтра день рождения у ${birthdayPerson}` +
-      (age ? ` (исполнится ${formatAge(age)})` : "")
+      (age ? `\n🎈 Исполнится: ${formatAge(age)}` : "") +
+      dateInfo
   } else {
     text = `🔔 <b>Напоминание</b>\n\n` +
       `Через ${formatDays(daysUntil)} день рождения у ${birthdayPerson}` +
-      (age ? ` (исполнится ${formatAge(age)})` : "")
+      (age ? `\n🎈 Исполнится: ${formatAge(age)}` : "") +
+      dateInfo
   }
 
   return sendTelegramMessage({ chatId, text })
