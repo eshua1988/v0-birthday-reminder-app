@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
 
       console.log('[v0] Found', birthdays?.length || 0, 'birthdays')
 
-      const header = ['ID', 'Фамилия', 'Имя', 'Дата рождения', 'Телефон', 'Email', 'Время оповещения', 'Оповещение включено', 'Удалить']
+      const header = ['ID', 'Фамилия', 'Имя', 'Дата рождения', 'Телефон', 'Email', 'Удалить']
       const values = [header]
 
       ;(birthdays || []).forEach((b: Birthday) => {
@@ -212,8 +212,6 @@ export async function POST(request: NextRequest) {
           b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
           b.phone || '',
           b.email || '',
-          b.notification_time || '',
-          b.notification_enabled ? 'Да' : 'Нет',
           '',
         ])
       })
