@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No service account configured' }, { status: 500 })
     }
 
-    console.log('[v0] Service account env found, length:', raw.length)
+    console.log('[v0] Service account env found, length:', (raw as string).length)
 
     let serviceAccount: any = raw
     try {
@@ -152,16 +152,16 @@ export async function POST(request: NextRequest) {
       console.log('[v0] Service account parsed successfully')
     } catch (e: any) {
       console.error('[v0] Error parsing service account:', e.message)
-      console.error('[v0] Raw string first 300 chars:', raw.substring(0, 300))
+      console.error('[v0] Raw string first 300 chars:', (raw as string).substring(0, 300))
       // Try to handle if it's a base64 encoded JSON
       try {
-        const decoded = Buffer.from(raw, 'base64').toString('utf-8')
+        const decoded = Buffer.from(raw as string, 'base64').toString('utf-8')
         serviceAccount = JSON.parse(decoded)
         console.log('[v0] Service account parsed from base64')
       } catch (e2: any) {
         console.error('[v0] Base64 parsing also failed:', e2.message)
         // Last resort: if raw is already an object
-        if (typeof raw === 'object' && raw.private_key) {
+        if (typeof raw === 'object' && raw && (raw as any).private_key) {
           serviceAccount = raw
           console.log('[v0] Service account is already an object')
         } else {
