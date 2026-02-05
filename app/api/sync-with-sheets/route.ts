@@ -47,64 +47,123 @@ export async function POST(request: NextRequest) {
     const { action } = body
     const supabase = createServiceRoleClient()
 
-    // Get user from request
+    console.log('[v0] Sync endpoint called with action:', action)
+
+    // Get user from request authorization header
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
     
     let userId: string | null = null
+    
     if (token) {
-      const { data: { user } } = await supabase.auth.getUser(token)
-      userId = user?.id || null
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser(token)
+        if (error) {
+          console.error('[v0] Error getting user from token:', error.message)
+        } else if (user) {
+          userId = user.id
+          console.log('[v0] Got user from token:', userId)
+        }
+      } catch (e: any) {
+        console.error('[v0] Exception getting user from token:', e.message)
+      }
     }
 
     if (!userId) {
-      // Try to get from supabase context
-      const { data: { user } } = await supabase.auth.getUser()
-      userId = user?.id || null
+      console.log('[v0] No user found in token, trying default context')
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        userId = user?.id || null
+        if (userId) console.log('[v0] Got user from default context:', userId)
+      } catch (e: any) {
+        console.error('[v0] Exception getting user from context:', e.message)
+      }
     }
 
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.error('[v0] Unauthorized - no user ID')
+      return NextResponse.json({ error: 'Unauthorized - no user ID' }, { status: 401 })
     }
 
     // Load settings for current user
-    const { data: settings } = await supabase
+    console.log('[v0] Loading settings for user:', userId)
+    const { data: settings, error: settingsError } = await supabase
       .from('settings')
-      .select('key,value')
+      .select('*')
       .eq('user_id', userId)
-      .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name'])
 
-    const spreadsheet_id = settings?.find(s => s.key === 'spreadsheet_id')?.value
-    const sheet_range = settings?.find(s => s.key === 'sheet_range')?.value || "'Data app'!A:Z"
-    const sheet_name = settings?.find(s => s.key === 'google_sheets_sheet_name')?.value
+    if (settingsError) {
+      console.error('[v0] Error loading settings:', settingsError.message)
+      return NextResponse.json({ error: 'Failed to load settings: ' + settingsError.message }, { status: 500 })
+    }
+
+    console.log('[v0] Settings loaded:', settings?.length || 0, 'rows')
+
+    // Find spreadsheet_id from either direct column or key-value pair
+    let spreadsheet_id = (settings as any)?.[0]?.spreadsheet_id
+    let sheet_range = (settings as any)?.[0]?.sheet_range || "'Data app'!A:Z"
+
+    if (!spreadsheet_id) {
+      // Try finding in key-value pairs
+      const spreadsheetSetting = settings?.find((s: any) => s.key === 'spreadsheet_id')
+      spreadsheet_id = spreadsheetSetting?.value
+    }
+
+    if (!sheet_range || sheet_range === "'Data app'!A:Z") {
+      const rangeSetting = settings?.find((s: any) => s.key === 'sheet_range')
+      sheet_range = rangeSetting?.value || "'Data app'!A:Z"
+    }
+
+    console.log('[v0] Spreadsheet ID:', spreadsheet_id ? 'set' : 'not set')
 
     if (!spreadsheet_id) {
       return NextResponse.json({ error: 'Google Sheets not configured' }, { status: 400 })
     }
 
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT || ''
-    if (!raw) return NextResponse.json({ error: 'No service account configured' }, { status: 500 })
+    if (!raw) {
+      console.error('[v0] No service account configured')
+      return NextResponse.json({ error: 'No service account configured' }, { status: 500 })
+    }
 
     let serviceAccount: any = raw
     try {
       serviceAccount = typeof raw === 'string' ? JSON.parse(raw.replace(/\\n/g, '\n')) : raw
-    } catch {
+    } catch (e: any) {
+      console.error('[v0] Error parsing service account:', e.message)
       serviceAccount = raw
     }
 
     if (!serviceAccount.private_key || !serviceAccount.client_email) {
+      console.error('[v0] Invalid service account structure')
       return NextResponse.json({ error: 'Invalid service account' }, { status: 500 })
     }
 
-    const accessToken = await fetchAccessToken(serviceAccount)
+    console.log('[v0] Getting access token...')
+    let accessToken: string
+    try {
+      accessToken = await fetchAccessToken(serviceAccount)
+      console.log('[v0] Access token obtained')
+    } catch (e: any) {
+      console.error('[v0] Error getting access token:', e.message)
+      return NextResponse.json({ error: 'Failed to get access token: ' + e.message }, { status: 500 })
+    }
 
     if (action === 'export') {
       // Export birthdays to Google Sheets
-      const { data: birthdays } = await supabase
+      console.log('[v0] Starting export...')
+      const { data: birthdays, error: bdayError } = await supabase
         .from('birthdays')
         .select('*')
         .eq('user_id', userId)
         .order('birth_date')
+
+      if (bdayError) {
+        console.error('[v0] Error fetching birthdays:', bdayError.message)
+        return NextResponse.json({ error: 'Failed to fetch birthdays: ' + bdayError.message }, { status: 500 })
+      }
+
+      console.log('[v0] Found', birthdays?.length || 0, 'birthdays')
 
       const header = ['ID', 'Фамилия', 'Имя', 'Дата рождения', 'Телефон', 'Email', 'Время оповещения', 'Оповещение включено', 'Удалить']
       const values = [header]
@@ -123,6 +182,7 @@ export async function POST(request: NextRequest) {
         ])
       })
 
+      console.log('[v0] Writing to Google Sheets:', sheet_range)
       const sheetsRes = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(sheet_range)}?valueInputOption=RAW`,
         {
@@ -137,12 +197,15 @@ export async function POST(request: NextRequest) {
 
       if (!sheetsRes.ok) {
         const error = await sheetsRes.text()
+        console.error('[v0] Google Sheets error:', error)
         throw new Error(`Failed to write to Google Sheets: ${error}`)
       }
 
+      console.log('[v0] Export completed')
       return NextResponse.json({ success: true, action: 'export', rows: values.length - 1 })
     } else if (action === 'import') {
       // Import from Google Sheets
+      console.log('[v0] Starting import...')
       const sheetsRes = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(sheet_range)}`,
         {
@@ -154,11 +217,15 @@ export async function POST(request: NextRequest) {
       )
 
       if (!sheetsRes.ok) {
-        throw new Error('Failed to read from Google Sheets')
+        const error = await sheetsRes.text()
+        console.error('[v0] Google Sheets read error:', error)
+        throw new Error('Failed to read from Google Sheets: ' + error)
       }
 
       const result = await sheetsRes.json()
       const rows = result.values || []
+
+      console.log('[v0] Read', rows.length, 'rows from Google Sheets')
 
       if (rows.length <= 1) {
         return NextResponse.json({ success: true, action: 'import', imported: 0, deleted: 0 })
@@ -206,9 +273,12 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      console.log('[v0] Found', records.length, 'records to import,', toDeleteById.length + toDeleteByFields.length, 'to delete')
+
       // Delete records
       if (toDeleteById.length > 0) {
-        await supabase.from('birthdays').delete().in('id', toDeleteById).eq('user_id', userId)
+        const { error: delError } = await supabase.from('birthdays').delete().in('id', toDeleteById).eq('user_id', userId)
+        if (delError) console.error('[v0] Error deleting by ID:', delError.message)
       }
 
       for (const del of toDeleteByFields) {
@@ -216,7 +286,8 @@ export async function POST(request: NextRequest) {
         if (del.first_name) q = q.eq('first_name', del.first_name)
         if (del.last_name) q = q.eq('last_name', del.last_name)
         if (del.birth_date) q = q.eq('birth_date', del.birth_date)
-        await q
+        const { error: delError } = await q
+        if (delError) console.error('[v0] Error deleting by fields:', delError.message)
       }
 
       // Import records
@@ -234,20 +305,23 @@ export async function POST(request: NextRequest) {
 
         if (existing?.id) {
           // Update existing
-          await supabase
+          const { error: updateError } = await supabase
             .from('birthdays')
             .update(rec)
             .eq('id', existing.id)
             .eq('user_id', userId)
+          if (updateError) console.error('[v0] Error updating birthday:', updateError.message)
         } else {
           // Insert new
-          await supabase
+          const { error: insertError } = await supabase
             .from('birthdays')
             .insert({ ...rec, user_id: userId })
+          if (insertError) console.error('[v0] Error inserting birthday:', insertError.message)
         }
         imported++
       }
 
+      console.log('[v0] Import completed, imported:', imported)
       return NextResponse.json({
         success: true,
         action: 'import',
@@ -258,7 +332,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error: any) {
-    console.error('[v0] Sync error:', error)
+    console.error('[v0] Sync error:', error.message || error)
+    console.error('[v0] Stack:', error.stack)
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }
 }

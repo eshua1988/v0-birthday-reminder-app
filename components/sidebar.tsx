@@ -71,8 +71,24 @@ export function Sidebar() {
       const exportOk = exportResult.status === 'fulfilled' && exportResult.value?.ok
       const importOk = importResult.status === 'fulfilled' && importResult.value?.ok
 
-      const exportData = exportOk ? await exportResult.value.json() : null
-      const importData = importOk ? await importResult.value.json() : null
+      let exportData = null
+      let importData = null
+
+      try {
+        if (exportResult.status === 'fulfilled' && exportResult.value) {
+          exportData = await exportResult.value.json()
+        }
+      } catch (e) {
+        console.error('[v0] Error parsing export result:', e)
+      }
+
+      try {
+        if (importResult.status === 'fulfilled' && importResult.value) {
+          importData = await importResult.value.json()
+        }
+      } catch (e) {
+        console.error('[v0] Error parsing import result:', e)
+      }
 
       if (exportOk && importOk) {
         toast({
