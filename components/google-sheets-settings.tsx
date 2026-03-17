@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog"
-import { Settings, ExternalLink } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Settings, ExternalLink, Plus, Trash2, Upload, Download, TableProperties } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 const supabase = createClient()
@@ -17,21 +18,50 @@ function extractSpreadsheetId(input: string) {
   if (!input) return input
   const urlMatch = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
   if (urlMatch) return urlMatch[1]
-  // if user pasted a full url with /edit#gid etc, try query
   const idOnly = input.trim()
   return idOnly
+}
+
+interface BirthdayList {
+  id: string
+  name: string
+}
+
+interface SheetConnection {
+  id: string
+  spreadsheet_input: string
+  spreadsheet_id: string
+  sheet_name: string
+  sheet_range: string
+  list_id: string | null
+  list_name: string
+}
+
+function makeConnection(overrides?: Partial<SheetConnection>): SheetConnection {
+  return {
+    id: crypto.randomUUID(),
+    spreadsheet_input: "",
+    spreadsheet_id: "",
+    sheet_name: "",
+    sheet_range: "'Data app'!A:Z",
+    list_id: null,
+    list_name: "Все участники",
+    ...overrides,
+  }
 }
 
 export const GoogleSheetsSettings: React.FC = () => {
   const { toast } = useToast()
   const [autoSync, setAutoSync] = useState(false)
   const [autoDeleteCheck, setAutoDeleteCheck] = useState(false)
-  const [spreadsheetInput, setSpreadsheetInput] = useState("")
-  const [sheetRange, setSheetRange] = useState("'Data app'!A:Z")
-  const [sheetName, setSheetName] = useState("")
-  const [sheetNameError, setSheetNameError] = useState(false)
+  const [connections, setConnections] = useState<SheetConnection[]>([])
+  const [lists, setLists] = useState<BirthdayList[]>([])
+  const [processingId, setProcessingId] = useState<string | null>(null)
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingConn, setEditingConn] = useState<SheetConnection>(makeConnection())
   const [isSaving, setIsSaving] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -39,21 +69,52 @@ export const GoogleSheetsSettings: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
+        // Load settings
         const { data: ss } = await supabase
           .from('settings')
           .select('key,value')
           .eq('user_id', user.id)
-          .in('key', ['spreadsheet_id','sheet_range','google_sheets_sheet_name','google_sheets_auto_sync','google_sheets_auto_delete_check'])
+          .in('key', ['google_sheets_connections', 'spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check'])
 
         if (ss && Array.isArray(ss)) {
+          let loadedConnections: SheetConnection[] = []
+          let legacySpreadsheetId = ''
+          let legacyRange = "'Data app'!A:Z"
+          let legacySheetName = ''
+
           ss.forEach((r: any) => {
-            if (r.key === 'spreadsheet_id') setSpreadsheetInput(r.value || '')
-            if (r.key === 'sheet_range') setSheetRange(r.value || "'Data app'!A:Z")
-            if (r.key === 'google_sheets_sheet_name') setSheetName(r.value || '')
+            if (r.key === 'google_sheets_connections') {
+              try { loadedConnections = JSON.parse(r.value || '[]') } catch {}
+            }
+            if (r.key === 'spreadsheet_id') legacySpreadsheetId = r.value || ''
+            if (r.key === 'sheet_range') legacyRange = r.value || "'Data app'!A:Z"
+            if (r.key === 'google_sheets_sheet_name') legacySheetName = r.value || ''
             if (r.key === 'google_sheets_auto_sync') setAutoSync(r.value === 'true')
             if (r.key === 'google_sheets_auto_delete_check') setAutoDeleteCheck(r.value === 'true')
           })
+
+          // Migrate legacy single connection
+          if (loadedConnections.length === 0 && legacySpreadsheetId) {
+            loadedConnections = [{
+              id: crypto.randomUUID(),
+              spreadsheet_input: legacySpreadsheetId,
+              spreadsheet_id: legacySpreadsheetId,
+              sheet_name: legacySheetName,
+              sheet_range: legacyRange,
+              list_id: null,
+              list_name: "Все участники",
+            }]
+          }
+          setConnections(loadedConnections)
         }
+
+        // Load birthday lists
+        const { data: listsData } = await supabase
+          .from('birthday_lists')
+          .select('id, name')
+          .eq('user_id', user.id)
+          .order('created_at')
+        setLists(listsData || [])
       } catch (e) {
         console.error('Failed to load sheets settings', e)
       }
@@ -61,46 +122,194 @@ export const GoogleSheetsSettings: React.FC = () => {
     load()
   }, [])
 
-  const handleSave = async () => {
-    setIsSaving(true)
+  const saveConnections = async (updated: SheetConnection[]) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      if (!user) return
+      await supabase.from('settings').upsert(
+        [{ user_id: user.id, key: 'google_sheets_connections', value: JSON.stringify(updated) }],
+        { onConflict: 'user_id,key' }
+      )
+    } catch (e) {
+      console.error('Failed to save connections', e)
+    }
+  }
 
-      const spreadsheetId = extractSpreadsheetId(spreadsheetInput)
-
-      // upsert multiple keys
-      const entries = [
-        { user_id: user.id, key: 'spreadsheet_id', value: spreadsheetId || null },
-        { user_id: user.id, key: 'google_sheets_sheet_name', value: sheetName || null },
-        { user_id: user.id, key: 'sheet_range', value: sheetRange || "'Data app'!A:Z" },
-        { user_id: user.id, key: 'google_sheets_auto_sync', value: autoSync ? 'true' : 'false' },
-        { user_id: user.id, key: 'google_sheets_auto_delete_check', value: autoDeleteCheck ? 'true' : 'false' },
-      ]
-
-      const { error } = await supabase.from('settings').upsert(entries, { onConflict: 'user_id,key' })
-      if (error) throw error
-
-      toast({ title: 'Сохранено', description: 'Настройки Google Sheets обновлены' })
+  const handleSaveConnection = async () => {
+    setIsSaving(true)
+    try {
+      const spreadsheetId = extractSpreadsheetId(editingConn.spreadsheet_input)
+      const conn: SheetConnection = {
+        ...editingConn,
+        spreadsheet_id: spreadsheetId,
+      }
+      const exists = connections.find(c => c.id === conn.id)
+      const updated = exists
+        ? connections.map(c => c.id === conn.id ? conn : c)
+        : [...connections, conn]
+      setConnections(updated)
+      await saveConnections(updated)
+      setDialogOpen(false)
+      toast({ title: 'Сохранено', description: 'Подключение Google Sheets добавлено' })
     } catch (e: any) {
-      console.error(e)
-      toast({ title: 'Ошибка', description: e?.message || 'Не удалось сохранить настройки', variant: 'destructive' })
+      toast({ title: 'Ошибка', description: e?.message || 'Не удалось сохранить', variant: 'destructive' })
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleDeleteConnection = async (id: string) => {
+    const updated = connections.filter(c => c.id !== id)
+    setConnections(updated)
+    await saveConnections(updated)
+    toast({ title: 'Удалено', description: 'Подключение удалено' })
   }
 
   const saveSingleSetting = async (key: string, value: string | null) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const entry = { user_id: user.id, key, value }
-      await supabase.from('settings').upsert([entry], { onConflict: 'user_id,key' })
+      await supabase.from('settings').upsert([{ user_id: user.id, key, value }], { onConflict: 'user_id,key' })
     } catch (e) {
       console.error('Failed to save setting', key, e)
       toast({ title: 'Ошибка', description: `Не удалось сохранить настройку ${key}`, variant: 'destructive' })
     }
   }
+
+  const handleExport = async (conn: SheetConnection) => {
+    setProcessingId(conn.id)
+    try {
+      let query = supabase.from('birthdays').select('*').order('birth_date')
+      if (conn.list_id) {
+        // @ts-ignore
+        query = query.eq('list_id', conn.list_id)
+      }
+      const { data: birthdays, error } = await query
+      if (error) throw error
+
+      const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
+      const values: any[] = [header]
+      ;(birthdays || []).forEach((b: any) => {
+        values.push([
+          b.id || '',
+          b.last_name || '',
+          b.first_name || '',
+          b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
+          b.phone || '',
+          b.email || '',
+          b.notification_time || '',
+          b.notification_enabled ? 'Да' : 'Нет',
+          '',
+        ])
+      })
+
+      const resp = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'write', spreadsheetId: conn.spreadsheet_id, range: conn.sheet_range || "'Data app'!A:Z", values }),
+      })
+      const body = await resp.json()
+      if (!resp.ok) throw new Error(body.error || 'Failed to write')
+      toast({ title: 'Экспорт', description: `Записано ${values.length - 1} строк` })
+    } catch (e: any) {
+      toast({ title: 'Ошибка экспорта', description: e.message || String(e), variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleImport = async (conn: SheetConnection) => {
+    setProcessingId(conn.id)
+    try {
+      const resp = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'read', spreadsheetId: conn.spreadsheet_id, range: conn.sheet_range || "'Data app'!A:Z" }),
+      })
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.error || 'Failed to read')
+
+      const rows = result.data?.values || []
+      if (rows.length <= 1) {
+        toast({ title: 'Импорт', description: 'Таблица пуста или только заголовки' })
+        return
+      }
+
+      const header = rows[0].map((h: any) => String(h || '').trim().toLowerCase())
+      const records: any[] = []
+      const toDeleteById: Array<{ id: string; rowIndex: number }> = []
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i]
+        const obj: any = {}
+        header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
+
+        const id = obj['id'] || obj['ид'] || ''
+        const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || ''
+        const first_name = obj['имя'] || obj['first name'] || obj['name'] || ''
+        const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
+        const deleteFlag = (obj['удалить'] || obj['delete'] || obj['remove'] || '')
+
+        let birth_date = null
+        if (rawDate) {
+          const parsed = new Date(String(rawDate))
+          if (!isNaN(parsed.getTime())) birth_date = parsed.toISOString().slice(0, 10)
+        }
+
+        if (String(deleteFlag).trim() !== '') {
+          if (id) toDeleteById.push({ id: String(id), rowIndex: i + 1 })
+          continue
+        }
+
+        records.push({
+          id: id || undefined,
+          first_name: first_name || '',
+          last_name: last_name || '',
+          birth_date: birth_date || null,
+          phone: obj['телефон'] || obj['phone'] || null,
+          email: obj['email'] || obj['e-mail'] || null,
+          list_id: conn.list_id || null,
+        })
+      }
+
+      for (const del of toDeleteById) {
+        try { await supabase.from('birthdays').delete().eq('id', del.id) } catch {}
+      }
+
+      if (records.length > 0) {
+        const { error } = await supabase.from('birthdays').upsert(records)
+        if (error) throw error
+      }
+
+      toast({ title: 'Импорт', description: `Импортировано ${records.length} записей, удалено ${toDeleteById.length}` })
+      setTimeout(() => window.location.reload(), 1200)
+    } catch (e: any) {
+      toast({ title: 'Ошибка импорта', description: e.message || String(e), variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const openAdd = () => {
+    setEditingConn(makeConnection())
+    setDialogOpen(true)
+  }
+
+  const openEdit = (conn: SheetConnection) => {
+    setEditingConn({ ...conn })
+    setDialogOpen(true)
+  }
+
+  const handleListSelect = (val: string) => {
+    if (val === '__all__') {
+      setEditingConn(prev => ({ ...prev, list_id: null, list_name: 'Все участники' }))
+    } else {
+      const found = lists.find(l => l.id === val)
+      setEditingConn(prev => ({ ...prev, list_id: val, list_name: found?.name || val }))
+    }
+  }
+
+  const isSavingNothing = false // placeholder
 
   return (
     <Card>
@@ -108,67 +317,19 @@ export const GoogleSheetsSettings: React.FC = () => {
         <div className="w-full flex items-start justify-between">
           <div>
             <CardTitle>Google Sheets</CardTitle>
-            <CardDescription>Синхронизация с вашей таблицей</CardDescription>
-          </div>
-          <div className="ml-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[520px]">
-                <DialogHeader>
-                  <DialogTitle>Настройки Google Sheets</DialogTitle>
-                  <DialogDescription>Укажите ID или ссылку на вашу таблицу и диапазон листа</DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <Label>ID или ссылка на таблицу</Label>
-                    <Input value={spreadsheetInput} onChange={(e) => setSpreadsheetInput(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/... или ID" />
-                  </div>
-
-                  <div>
-                    <Label>Название листа</Label>
-                    <Input value={sheetName} onChange={(e) => { setSheetName(e.target.value); if (sheetNameError) setSheetNameError(false) }} placeholder="Например: Data app или Лист1" className={sheetNameError ? 'ring-2 ring-red-600' : ''} />
-                    {sheetNameError ? <p className="text-sm text-red-400 mt-1">Укажите название листа для экспорта</p> : null}
-                  </div>
-
-                  <div>
-                    <Label>Диапазон листа</Label>
-                    <Input value={sheetRange} onChange={(e) => setSheetRange(e.target.value)} placeholder="'Data app'!A:Z" />
-                  </div>
-
-                  <div className="text-sm text-muted-foreground">
-                    <p>Как настроить:</p>
-                    <ol className="list-decimal ml-5">
-                      <li>Создайте новую Google таблицу</li>
-                      <li>Откройте доступ для сервисного аккаунта</li>
-                      <li>Скопируйте ссылку или ID таблицы</li>
-                      <li>Вставьте сюда и сохраните</li>
-                    </ol>
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="ghost">Отмена</Button>
-                  </DialogClose>
-                  <Button onClick={handleSave} disabled={isSaving}>{isSaving ? 'Сохранение...' : 'Сохранить настройки'}</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <CardDescription>Синхронизация с вашими таблицами</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+
+        {/* Global toggles */}
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
           <div className="space-y-0.5">
             <Label className="font-medium">Автоматическая синхронизация</Label>
             <p className="text-sm text-muted-foreground">Автосинхронизация данных в фоновом режиме</p>
           </div>
-          <Switch checked={autoSync} onCheckedChange={async (v) => { setAutoSync(!!v); await saveSingleSetting('google_sheets_auto_sync', !!v ? 'true' : 'false') }} />
+          <Switch checked={autoSync} onCheckedChange={async (v) => { setAutoSync(!!v); await saveSingleSetting('google_sheets_auto_sync', v ? 'true' : 'false') }} />
         </div>
 
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -176,172 +337,158 @@ export const GoogleSheetsSettings: React.FC = () => {
             <Label className="font-medium">Автопроверка удалений (каждую минуту)</Label>
             <p className="text-sm text-muted-foreground">Проверять удалённые строки в таблице</p>
           </div>
-          <Switch checked={autoDeleteCheck} onCheckedChange={async (v) => { setAutoDeleteCheck(!!v); await saveSingleSetting('google_sheets_auto_delete_check', !!v ? 'true' : 'false') }} />
+          <Switch checked={autoDeleteCheck} onCheckedChange={async (v) => { setAutoDeleteCheck(!!v); await saveSingleSetting('google_sheets_auto_delete_check', v ? 'true' : 'false') }} />
         </div>
 
-        <div className="flex gap-2">
-          <div className="ml-2 flex gap-2">
-            <Button onClick={async () => {
-              setIsProcessing(true)
-              try {
-                const spreadsheetId = extractSpreadsheetId(spreadsheetInput)
-                if (!spreadsheetId) throw new Error('Spreadsheet ID not configured')
-                const { data: birthdays, error } = await supabase.from('birthdays').select('*').order('birth_date')
-                if (error) throw error
-
-                const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
-                const values: any[] = [header]
-                ;(birthdays || []).forEach((b: any) => {
-                  values.push([
-                    b.id || '',
-                    b.last_name || '',
-                    b.first_name || '',
-                    b.birth_date ? (new Date(b.birth_date)).toLocaleDateString('ru-RU').split('.').reverse().join('.') : (b.birth_date ? b.birth_date : ''),
-                    b.phone || '',
-                    b.email || '',
-                    b.notification_time || '',
-                    b.notification_enabled ? 'Да' : 'Нет',
-                    '',
-                  ])
-                })
-
-                const resp = await fetch('/api/google-sheets', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'write', spreadsheetId, range: sheetRange || "'Data app'!A:Z", values }),
-                })
-                const body = await resp.json()
-                if (!resp.ok) throw new Error(body.error || 'Failed to write to Google Sheets')
-                toast({ title: 'Экспорт', description: `Записано ${values.length - 1} строк` })
-              } catch (e: any) {
-                console.error('Export to Google Sheets failed', e)
-                toast({ title: 'Ошибка экспорта', description: e.message || String(e), variant: 'destructive' })
-              } finally {
-                setIsProcessing(false)
-              }
-            }} disabled={isProcessing} variant="outline">Экспорт в Google Sheets</Button>
-
-            <Button onClick={async () => {
-              setIsProcessing(true)
-              try {
-                const spreadsheetId = extractSpreadsheetId(spreadsheetInput)
-                if (!spreadsheetId) throw new Error('Spreadsheet ID not configured')
-                const resp = await fetch('/api/google-sheets', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'read', spreadsheetId, range: sheetRange || "'Data app'!A:Z" }),
-                })
-                const result = await resp.json()
-                if (!resp.ok) throw new Error(result.error || 'Failed to read from Google Sheets')
-
-                const rows = result.data?.values || []
-                if (rows.length <= 1) {
-                  toast({ title: 'Импорт', description: 'Таблица пуста или только заголовки' })
-                  return
-                }
-
-                const header = rows[0].map((h: any) => String(h || '').trim().toLowerCase())
-                const records: any[] = []
-                const toDeleteById: Array<{ id: string, rowIndex: number }> = []
-                const toDeleteByFields: Array<{ first_name?: string, last_name?: string, birth_date?: string, rowIndex: number }> = []
-
-                for (let i = 1; i < rows.length; i++) {
-                  const r = rows[i]
-                  const obj: any = {}
-                  header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
-
-                  const id = obj['id'] || obj['ид'] || ''
-                  const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || ''
-                  const first_name = obj['имя'] || obj['first name'] || obj['name'] || ''
-                  const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
-                  const deleteFlag = (obj['удалить'] || obj['delete'] || obj['remove'] || '')
-
-                  let birth_date = null
-                  if (rawDate) {
-                    const parsed = new Date(String(rawDate))
-                    if (!isNaN(parsed.getTime())) birth_date = parsed.toISOString().slice(0,10)
-                  }
-
-                  if (String(deleteFlag).toString().trim() !== '') {
-                    if (id) toDeleteById.push({ id: String(id), rowIndex: i + 1 })
-                    else toDeleteByFields.push({ first_name: String(first_name || '').trim(), last_name: String(last_name || '').trim(), birth_date: birth_date || undefined, rowIndex: i + 1 })
-                    continue
-                  }
-
-                  records.push({ id: id || undefined, first_name: first_name || '', last_name: last_name || '', birth_date: birth_date || null, phone: obj['телефон'] || obj['phone'] || obj['telefon'] || null, email: obj['email'] || obj['e-mail'] || null })
-                }
-
-                // Process deletions first
-                if (toDeleteById.length > 0) {
-                  for (const del of toDeleteById) {
-                    try { await supabase.from('birthdays').delete().eq('id', del.id) } catch (err) { console.warn('Failed to delete by id', del.id, err) }
-                    try { await fetch('/api/google-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'write', spreadsheetId, range: `${sheetRange.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }) }) } catch (err) { console.warn('Failed to clear sheet row', del.rowIndex, err) }
-                  }
-                }
-
-                if (toDeleteByFields.length > 0) {
-                  for (const del of toDeleteByFields) {
-                    try {
-                      let query = supabase.from('birthdays').delete()
-                      if (del.birth_date) query = query.eq('birth_date', del.birth_date)
-                      if (del.first_name) query = query.eq('first_name', del.first_name)
-                      if (del.last_name) query = query.eq('last_name', del.last_name)
-                      await query
-                    } catch (err) { console.warn('Failed to delete by fields', del, err) }
-                    try { await fetch('/api/google-sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'write', spreadsheetId, range: `${sheetRange.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }) }) } catch (err) { console.warn('Failed to clear sheet row', del.rowIndex, err) }
-                  }
-                }
-
-                if (records.length > 0) {
-                  const { error } = await supabase.from('birthdays').upsert(records)
-                  if (error) throw error
-                }
-
-                toast({ title: 'Импорт', description: `Импортировано ${records.length} записей, удалено ${toDeleteById.length + toDeleteByFields.length}` })
-                setTimeout(() => window.location.reload(), 1200)
-              } catch (e: any) {
-                console.error('Import from Google Sheets failed', e)
-                toast({ title: 'Ошибка импорта', description: e.message || String(e), variant: 'destructive' })
-              } finally {
-                setIsProcessing(false)
-              }
-            }} disabled={isProcessing} variant="outline">Импорт из Google Sheets</Button>
-          </div>
-
-          {/* Открыть таблицу - располагаем после Экспорт/Импорт, стиль как primary */}
-          <div className="ml-2">
-            <Button onClick={async () => {
-                const id = extractSpreadsheetId(spreadsheetInput)
-                if (!id) return
-
-                // Try to open the specific sheet/tab from the configured sheet name or range
-                let url = `https://docs.google.com/spreadsheets/d/${id}`
-                try {
-                  const configuredName = (sheetName || '').toString().trim()
-                  let nameToUse = configuredName
-                  if (!nameToUse) {
-                    const rawRange = sheetRange || "'Data app'!A:Z"
-                    const sheetPart = String(rawRange).split('!')[0] || ''
-                    nameToUse = sheetPart.trim()
-                    if ((nameToUse.startsWith("'") && nameToUse.endsWith("'")) || (nameToUse.startsWith('"') && nameToUse.endsWith('"'))) {
-                      nameToUse = nameToUse.slice(1, -1)
-                    }
-                  }
-                  if (nameToUse) {
-                    const anchor = `${nameToUse}!A1`
-                    url = `https://docs.google.com/spreadsheets/d/${id}/edit#range=${encodeURIComponent(anchor)}`
-                  }
-                } catch (e) {
-                  // fallback to base spreadsheet url
-                  console.warn('Failed to build sheet-specific URL', e)
-                }
-
-                window.open(url, '_blank')
-              }} variant="default" size="icon" className="h-8 w-8">
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          </div>
+        {/* Connections list */}
+        <div className="space-y-2">
+          {connections.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-3">Нет подключённых таблиц</p>
+          )}
+          {connections.map((conn) => (
+            <div key={conn.id} className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+              <TableProperties className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {conn.sheet_name || conn.spreadsheet_id.slice(0, 20) + '…'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Список: <span className="text-foreground">{conn.list_name || 'Все участники'}</span>
+                  {conn.sheet_range ? <> · {conn.sheet_range}</> : null}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7"
+                  disabled={processingId === conn.id}
+                  onClick={() => handleExport(conn)}
+                  title="Экспорт"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7"
+                  disabled={processingId === conn.id}
+                  onClick={() => handleImport(conn)}
+                  title="Импорт"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7"
+                  onClick={() => {
+                    const id = conn.spreadsheet_id
+                    if (!id) return
+                    window.open(`https://docs.google.com/spreadsheets/d/${id}`, '_blank')
+                  }}
+                  title="Открыть таблицу"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7"
+                  onClick={() => openEdit(conn)}
+                  title="Настройки"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteConnection(conn.id)}
+                  title="Удалить"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
+
+        {/* Add connection button */}
+        <Button variant="outline" size="sm" className="w-full gap-2" onClick={openAdd}>
+          <Plus className="h-4 w-4" />
+          Добавить таблицу
+        </Button>
+
+        {/* Add/Edit dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>{connections.find(c => c.id === editingConn.id) ? 'Редактировать подключение' : 'Добавить Google Sheets'}</DialogTitle>
+              <DialogDescription>Укажите ID или ссылку на таблицу, диапазон и список участников</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label>ID или ссылка на таблицу</Label>
+                <Input
+                  value={editingConn.spreadsheet_input}
+                  onChange={(e) => setEditingConn(prev => ({ ...prev, spreadsheet_input: e.target.value }))}
+                  placeholder="https://docs.google.com/spreadsheets/d/... или ID"
+                />
+              </div>
+
+              <div>
+                <Label>Название листа (вкладки)</Label>
+                <Input
+                  value={editingConn.sheet_name}
+                  onChange={(e) => setEditingConn(prev => ({ ...prev, sheet_name: e.target.value }))}
+                  placeholder="Например: Data app или Лист1"
+                />
+              </div>
+
+              <div>
+                <Label>Диапазон листа</Label>
+                <Input
+                  value={editingConn.sheet_range}
+                  onChange={(e) => setEditingConn(prev => ({ ...prev, sheet_range: e.target.value }))}
+                  placeholder="'Data app'!A:Z"
+                />
+              </div>
+
+              <div>
+                <Label>Список участников</Label>
+                <Select
+                  value={editingConn.list_id ?? '__all__'}
+                  onValueChange={handleListSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите список" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Все участники</SelectItem>
+                    {lists.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Экспорт/импорт будет работать только с участниками выбранного списка
+                </p>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                <p>Как настроить:</p>
+                <ol className="list-decimal ml-5 space-y-0.5">
+                  <li>Создайте Google таблицу</li>
+                  <li>Откройте доступ для сервисного аккаунта</li>
+                  <li>Скопируйте ссылку или ID таблицы</li>
+                  <li>Вставьте сюда и сохраните</li>
+                </ol>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Отмена</Button>
+              </DialogClose>
+              <Button onClick={handleSaveConnection} disabled={isSaving || !editingConn.spreadsheet_input.trim()}>
+                {isSaving ? 'Сохранение...' : 'Сохранить'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </CardContent>
     </Card>
   )
