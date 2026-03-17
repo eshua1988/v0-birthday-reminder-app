@@ -466,19 +466,21 @@ export const PrayerAssignmentsCard: React.FC = () => {
             </p>
           )}
 
-          {warriors.map((w) => (
-            <div key={w.id} className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg">
-              <span className="text-sm">🙏 {w.name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:text-destructive"
-                onClick={() => removeWarrior(w.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ))}
+          <div className="flex flex-wrap gap-2">
+            {warriors.map((w) => (
+              <div key={w.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 rounded-lg">
+                <span className="text-sm">🙏 {w.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 text-destructive hover:text-destructive"
+                  onClick={() => removeWarrior(w.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
 
           <div className="flex gap-2 mt-1">
             <Input
