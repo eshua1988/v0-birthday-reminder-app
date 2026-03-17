@@ -398,6 +398,8 @@ export default function HomePage() {
       notification_enabled: m.notification_enabled ?? true,
       user_id: userId,
       list_id: activeListId,
+    }))
+
     const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id, list_id")
 
     if (error) {
