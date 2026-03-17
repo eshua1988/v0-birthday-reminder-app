@@ -179,12 +179,11 @@ export const GoogleSheetsSettings: React.FC = () => {
   const handleExport = async (conn: SheetConnection) => {
     setProcessingId(conn.id)
     try {
-      let query = supabase.from('birthdays').select('*').order('birth_date')
+      let query = supabase.from('birthdays').select('*')
       if (conn.list_id) {
-        // @ts-ignore
         query = query.eq('list_id', conn.list_id)
       }
-      const { data: birthdays, error } = await query
+      const { data: birthdays, error } = await query.order('birth_date')
       if (error) throw error
 
       const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
