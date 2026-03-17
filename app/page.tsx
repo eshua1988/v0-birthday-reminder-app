@@ -46,6 +46,7 @@ export default function HomePage() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [prayerListId, setPrayerListId] = useState<string>("__all__")
 
   // Lists (tabs/folders)
   const [lists, setLists] = useState<{ id: string; name: string }[]>([])
@@ -66,7 +67,7 @@ export default function HomePage() {
   // Load prayer list assignment
   useEffect(() => {
     if (!userId) return
-    supabase.from("settings").select("value").eq("user_id", userId).eq("key", "prayer_list_id").maybeSingle().then(({ data }) => {
+    supabase.from("settings").select("value").eq("user_id", userId).eq("key", "prayer_list_id").maybeSingle().then(({ data }: { data: { value: string } | null }) => {
       if (data?.value) setPrayerListId(data.value)
     })
   }, [userId])
