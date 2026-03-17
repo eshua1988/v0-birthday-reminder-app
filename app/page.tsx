@@ -56,6 +56,12 @@ export default function HomePage() {
   const { scheduleSync } = useAutoSync({ enabled: autoSyncEnabled })
   const router = useRouter()
 
+  // Reset selection when switching tabs
+  useEffect(() => {
+    setSelectedCards(new Set())
+    setIsSelectionMode(false)
+  }, [activeListId])
+
   // Handle URL query parameter for birthday navigation from push notification
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
