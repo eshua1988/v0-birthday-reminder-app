@@ -226,14 +226,14 @@ export const PrayerAssignmentsCard: React.FC = () => {
       // Load all recipients
       let q = supabase
         .from("birthdays")
-        .select("id,first_name,last_name,name")
+        .select("id,first_name,last_name")
         .eq("user_id", userId)
       if (selectedListId !== "__all__") q = q.eq("list_id", selectedListId)
       const { data: allBirthdays } = await q
 
       const allRecipients: Recipient[] = (allBirthdays || []).map((b: any) => ({
         id: b.id,
-        name: (b.name || `${b.first_name || ""} ${b.last_name || ""}`).trim(),
+        name: `${b.first_name || ""} ${b.last_name || ""}`.trim(),
       }))
 
       if (allRecipients.length === 0) {
