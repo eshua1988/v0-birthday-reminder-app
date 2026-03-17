@@ -424,7 +424,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5].map((n) => (
+                {Array.from({ length: 25 }, (_, i) => i + 1).map((n) => (
                   <SelectItem key={n} value={String(n)}>{n}</SelectItem>
                 ))}
               </SelectContent>
