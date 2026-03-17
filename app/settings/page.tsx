@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
+import { PrayerAssignmentsCard } from "@/components/prayer-assignments"
 import { GoogleSheetsSettings } from "@/components/google-sheets-settings"
 import { MultiSelectLanguages } from "@/components/multi-select-languages"
 import { useTheme } from "next-themes"
@@ -810,6 +811,7 @@ export default function SettingsPage() {
 
           <BackupManager />
           <GoogleSheetsSettings />
+          <PrayerAssignmentsCard />
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
