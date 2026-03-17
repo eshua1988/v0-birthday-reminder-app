@@ -14,7 +14,7 @@ import { BirthdayForm } from "@/components/birthday-form"
 import { BulkAddForm } from "@/components/bulk-add-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Users, Search } from "lucide-react"
+import { Plus, Users, Search, X } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -45,6 +45,12 @@ export default function HomePage() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [isSelectionMode, setIsSelectionMode] = useState(false)
+
+  // Lists (tabs/folders)
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([])
+  const [activeListId, setActiveListId] = useState<string | null>(null)
+  const [isAddingList, setIsAddingList] = useState(false)
+  const [newListName, setNewListName] = useState("")
 
   const supabase = createClient()
   const { scheduleSync } = useAutoSync({ enabled: autoSyncEnabled })
@@ -106,8 +112,12 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
+    if (userId) loadLists()
+  }, [userId])
+
+  useEffect(() => {
     filterAndSortBirthdays()
-  }, [searchQuery, birthdays, sortBy, sortDirection])
+  }, [searchQuery, birthdays, sortBy, sortDirection, activeListId])
 
   useEffect(() => {
     const loadAutoSyncSetting = async () => {
@@ -148,6 +158,39 @@ export default function HomePage() {
     }
   }, [userId])
 
+  const loadLists = async () => {
+    if (!userId) return
+    const { data } = await supabase
+      .from("birthday_lists")
+      .select("id, name")
+      .eq("user_id", userId)
+      .order("created_at")
+    if (data) setLists(data)
+  }
+
+  const createList = async () => {
+    if (!userId || !newListName.trim()) return
+    const { data, error } = await supabase
+      .from("birthday_lists")
+      .insert({ user_id: userId, name: newListName.trim() })
+      .select("id, name")
+      .single()
+    if (!error && data) {
+      setLists((prev) => [...prev, data])
+      setActiveListId(data.id)
+      setNewListName("")
+      setIsAddingList(false)
+    }
+  }
+
+  const deleteList = async (listId: string) => {
+    await supabase.from("birthdays").update({ list_id: null }).eq("list_id", listId)
+    await supabase.from("birthday_lists").delete().eq("id", listId)
+    setLists((prev) => prev.filter((l) => l.id !== listId))
+    if (activeListId === listId) setActiveListId(null)
+    await fetchBirthdays()
+  }
+
   const fetchBirthdays = async () => {
     if (!userId) {
       console.log("[v0] No user ID, skipping fetch")
@@ -162,7 +205,7 @@ export default function HomePage() {
       // Explicitly select only existing columns to avoid schema cache issues
       const { data, error } = await supabase
         .from("birthdays")
-        .select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
+        .select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id, list_id")
         .eq("user_id", userId)
         .order("birth_date", { ascending: true })
 
@@ -209,8 +252,13 @@ export default function HomePage() {
   const filterAndSortBirthdays = () => {
     let filtered = birthdays
 
+    // Filter by active list
+    if (activeListId !== null) {
+      filtered = filtered.filter((b) => b.list_id === activeListId)
+    }
+
     if (searchQuery) {
-      filtered = birthdays.filter(
+      filtered = filtered.filter(
         (b) =>
           b.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           b.last_name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -294,6 +342,7 @@ export default function HomePage() {
       notification_enabled: data.notification_enabled ?? true,
       user_id: userId,
       custom_fields: data.custom_fields || null,
+      list_id: activeListId,
     }
     console.log("[v0] Final birthdayData to save:", birthdayData)
 
@@ -303,7 +352,7 @@ export default function HomePage() {
         .from("birthdays")
         .update(birthdayData)
         .eq("id", editingBirthday.id)
-        .select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
+        .select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id, list_id")
 
       if (error) {
         console.error("[v0] Error updating birthday:", error)
@@ -317,7 +366,7 @@ export default function HomePage() {
       }
     } else {
       console.log("[v0] Inserting new birthday")
-      const { data: insertedData, error } = await supabase.from("birthdays").insert([birthdayData]).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
+      const { data: insertedData, error } = await supabase.from("birthdays").insert([birthdayData]).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id, list_id")
 
       if (error) {
         console.error("[v0] Error creating birthday:", error)
@@ -348,9 +397,8 @@ export default function HomePage() {
       notification_repeat_count: m.notification_repeat_count || 1,
       notification_enabled: m.notification_enabled ?? true,
       user_id: userId,
-    }))
-
-    const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id")
+      list_id: activeListId,
+    const { data: insertedData, error } = await supabase.from("birthdays").insert(membersWithUserId).select("id, first_name, last_name, photo_url, birth_date, phone, email, notification_time, notification_times, notification_repeat_count, notification_enabled, created_at, updated_at, user_id, list_id")
 
     if (error) {
       console.error("[v0] Error creating birthdays:", error)
@@ -483,11 +531,102 @@ export default function HomePage() {
 
         <main className={cn(isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-24 md:ml-16")}>
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col gap-4">
+            {/* Lists tab bar */}
+            <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border pb-0 -mb-px">
+              {/* All tab */}
+              <button
+                onClick={() => setActiveListId(null)}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap rounded-t-md border border-b-0 transition-colors",
+                  activeListId === null
+                    ? "bg-background border-border text-foreground"
+                    : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                Все участники
+                <span className={cn(
+                  "text-xs px-1.5 py-0.5 rounded-full",
+                  activeListId === null ? "bg-primary/10 text-primary" : "bg-muted-foreground/20"
+                )}>
+                  {birthdays.length}
+                </span>
+              </button>
+
+              {/* List tabs */}
+              {lists.map((list) => {
+                const count = birthdays.filter((b) => b.list_id === list.id).length
+                const isActive = activeListId === list.id
+                return (
+                  <div
+                    key={list.id}
+                    className={cn(
+                      "group flex items-center gap-1 px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-md border border-b-0 transition-colors",
+                      isActive
+                        ? "bg-background border-border text-foreground"
+                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <button onClick={() => setActiveListId(list.id)} className="flex items-center gap-1.5">
+                      {list.name}
+                      <span className={cn(
+                        "text-xs px-1.5 py-0.5 rounded-full",
+                        isActive ? "bg-primary/10 text-primary" : "bg-muted-foreground/20"
+                      )}>
+                        {count}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => deleteList(list.id)}
+                      className={cn(
+                        "ml-0.5 rounded p-0.5 transition-colors",
+                        isActive
+                          ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      )}
+                      title="Удалить список"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )
+              })}
+
+              {/* Add new list */}
+              {isAddingList ? (
+                <div className="flex items-center gap-1 px-2 py-1">
+                  <Input
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") createList()
+                      if (e.key === "Escape") { setIsAddingList(false); setNewListName("") }
+                    }}
+                    className="h-7 w-32 text-sm"
+                    autoFocus
+                    placeholder="Название..."
+                    maxLength={30}
+                  />
+                  <Button size="sm" className="h-7 px-2" onClick={createList} disabled={!newListName.trim()}>✓</Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => { setIsAddingList(false); setNewListName("") }}>✕</Button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsAddingList(true)}
+                  className="flex items-center justify-center w-8 h-8 ml-1 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Добавить новый список"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+          <div className="flex flex-col gap-4">
               <div>
-                <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>{t.upcomingBirthdays}</h1>
+                <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>
+                  {activeListId === null ? t.upcomingBirthdays : (lists.find(l => l.id === activeListId)?.name ?? t.upcomingBirthdays)}
+                </h1>
                 <p className="text-muted-foreground mt-1">
-                  {birthdays.length} {birthdays.length === 1 ? "member" : "members"}
+                  {filteredBirthdays.length} {filteredBirthdays.length === 1 ? "member" : "members"}
                 </p>
               </div>
 

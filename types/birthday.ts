@@ -13,6 +13,7 @@ export interface Birthday {
   notification_enabled: boolean
   created_at: string
   updated_at: string
+  list_id?: string | null
 }
 
 export type ViewMode = "cards" | "list" | "table"
