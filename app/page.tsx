@@ -49,7 +49,7 @@ export default function HomePage() {
   // Lists (tabs/folders)
   const [lists, setLists] = useState<{ id: string; name: string }[]>([])
   const [activeListId, setActiveListId] = useState<string | null>(null)
-  const [isAddingList, setIsAddingList] = useState(false)
+  const [editingListId, setEditingListId] = useState<string | null>(null)
   const [newListName, setNewListName] = useState("")
 
   const supabase = createClient()
@@ -168,6 +168,32 @@ export default function HomePage() {
     if (data) setLists(data)
   }
 
+  const createListImmediate = async () => {
+    if (!userId) return
+    const defaultName = `Список ${lists.length + 1}`
+    const { data, error } = await supabase
+      .from("birthday_lists")
+      .insert({ user_id: userId, name: defaultName })
+      .select("id, name")
+      .single()
+    if (!error && data) {
+      setLists((prev) => [...prev, data])
+      setActiveListId(data.id)
+      setEditingListId(data.id)
+      setNewListName(data.name)
+    }
+  }
+
+  const finishRename = async (listId: string) => {
+    const trimmed = newListName.trim()
+    if (trimmed) {
+      await supabase.from("birthday_lists").update({ name: trimmed }).eq("id", listId)
+      setLists((prev) => prev.map((l) => l.id === listId ? { ...l, name: trimmed } : l))
+    }
+    setEditingListId(null)
+    setNewListName("")
+  }
+
   const createList = async () => {
     if (!userId || !newListName.trim()) return
     const { data, error } = await supabase
@@ -179,7 +205,6 @@ export default function HomePage() {
       setLists((prev) => [...prev, data])
       setActiveListId(data.id)
       setNewListName("")
-      setIsAddingList(false)
     }
   }
 
@@ -531,98 +556,95 @@ export default function HomePage() {
           onRedo={handleRedo}
         />
 
-        <main className={cn(isMobile ? "p-4 pt-20" : "p-8 ml-16 pt-24 md:ml-16")}>
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Lists tab bar */}
-            <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border pb-0 -mb-px">
-              {/* All tab */}
-              <button
-                onClick={() => setActiveListId(null)}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap rounded-t-md border border-b-0 transition-colors",
-                  activeListId === null
-                    ? "bg-background border-border text-foreground"
-                    : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                Все участники
-                <span className={cn(
-                  "text-xs px-1.5 py-0.5 rounded-full",
-                  activeListId === null ? "bg-primary/10 text-primary" : "bg-muted-foreground/20"
-                )}>
-                  {birthdays.length}
-                </span>
-              </button>
+        <main className={cn(isMobile ? "p-0 pt-14" : "ml-16 pt-14")}>
 
-              {/* List tabs */}
-              {lists.map((list) => {
-                const count = birthdays.filter((b) => b.list_id === list.id).length
-                const isActive = activeListId === list.id
-                return (
-                  <div
-                    key={list.id}
-                    className={cn(
-                      "group flex items-center gap-1 px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-md border border-b-0 transition-colors",
-                      isActive
-                        ? "bg-background border-border text-foreground"
-                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <button onClick={() => setActiveListId(list.id)} className="flex items-center gap-1.5">
-                      {list.name}
+          {/* ===== Browser-style tab bar ===== */}
+          <div className="flex items-end gap-0 overflow-x-auto bg-muted/30 border-b border-border px-2 pt-1 min-h-[40px]">
+            {/* "All" tab */}
+            <button
+              onClick={() => setActiveListId(null)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium whitespace-nowrap rounded-t-lg border border-b-0 transition-all -mb-px",
+                activeListId === null
+                  ? "bg-background border-border text-foreground shadow-sm z-10"
+                  : "bg-muted/60 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <span>Все участники</span>
+              <span className={cn(
+                "text-xs px-1.5 py-0.5 rounded-full font-semibold",
+                activeListId === null ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+              )}>
+                {birthdays.length}
+              </span>
+            </button>
+
+            {/* Named list tabs */}
+            {lists.map((list) => {
+              const count = birthdays.filter((b) => b.list_id === list.id).length
+              const isActive = activeListId === list.id
+              return (
+                <div
+                  key={list.id}
+                  className={cn(
+                    "group flex items-center gap-0.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-t-lg border border-b-0 transition-all -mb-px",
+                    isActive
+                      ? "bg-background border-border text-foreground shadow-sm z-10"
+                      : "bg-muted/60 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {isActive && newListName !== "" && editingListId === list.id ? (
+                    <input
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      onBlur={() => finishRename(list.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") finishRename(list.id)
+                        if (e.key === "Escape") { setNewListName(""); setEditingListId(null) }
+                      }}
+                      className="bg-transparent outline-none border-b border-primary w-24 text-sm"
+                      autoFocus
+                      maxLength={30}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setActiveListId(list.id)}
+                      onDoubleClick={() => { setEditingListId(list.id); setNewListName(list.name) }}
+                      className="flex items-center gap-1.5"
+                    >
+                      <span>{list.name}</span>
                       <span className={cn(
-                        "text-xs px-1.5 py-0.5 rounded-full",
-                        isActive ? "bg-primary/10 text-primary" : "bg-muted-foreground/20"
+                        "text-xs px-1.5 py-0.5 rounded-full font-semibold",
+                        isActive ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
                       )}>
                         {count}
                       </span>
                     </button>
-                    <button
-                      onClick={() => deleteList(list.id)}
-                      className={cn(
-                        "ml-0.5 rounded p-0.5 transition-colors",
-                        isActive
-                          ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      )}
-                      title="Удалить список"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                )
-              })}
-
-              {/* Add new list */}
-              {isAddingList ? (
-                <div className="flex items-center gap-1 px-2 py-1">
-                  <Input
-                    value={newListName}
-                    onChange={(e) => setNewListName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") createList()
-                      if (e.key === "Escape") { setIsAddingList(false); setNewListName("") }
-                    }}
-                    className="h-7 w-32 text-sm"
-                    autoFocus
-                    placeholder="Название..."
-                    maxLength={30}
-                  />
-                  <Button size="sm" className="h-7 px-2" onClick={createList} disabled={!newListName.trim()}>✓</Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => { setIsAddingList(false); setNewListName("") }}>✕</Button>
+                  )}
+                  <button
+                    onClick={() => deleteList(list.id)}
+                    className="ml-1 rounded-full p-0.5 opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive transition-all text-muted-foreground"
+                    title="Удалить список"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setIsAddingList(true)}
-                  className="flex items-center justify-center w-8 h-8 ml-1 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  title="Добавить новый список"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+              )
+            })}
 
-          <div className="flex flex-col gap-4">
+            {/* Add tab button */}
+            <button
+              onClick={createListImmediate}
+              className="flex items-center justify-center w-7 h-7 mb-1 ml-1 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-shrink-0"
+              title="Новый список"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className={cn(isMobile ? "p-4 pb-20" : "p-8")}>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col gap-4">
               <div>
                 <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>
                   {activeListId === null ? t.upcomingBirthdays : (lists.find(l => l.id === activeListId)?.name ?? t.upcomingBirthdays)}
@@ -741,6 +763,7 @@ export default function HomePage() {
               </>
             )}
           </div>
+          </div>{/* end p-8 wrapper */}
         </main>
       </div>
 
