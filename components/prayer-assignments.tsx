@@ -625,12 +625,13 @@ export const PrayerAssignmentsCard: React.FC = () => {
               recipients.length > 0 ? (
                 <div key={warrior.id} className="p-3 bg-muted/30 rounded-lg space-y-1.5">
                   <p className="text-sm font-semibold text-primary">{warrior.name}</p>
-                  {recipients.map((r) => (
-                    <div key={r.id} className="flex items-center gap-2 text-sm pl-1">
-                      <span className="text-muted-foreground">→</span>
-                      <span>{r.recipient_name}</span>
-                    </div>
-                  ))}
+                  <div className="flex flex-wrap gap-1.5">
+                    {recipients.map((r) => (
+                      <Badge key={r.id} variant="secondary" className="text-xs">
+                        {r.recipient_name}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               ) : null
             )}
