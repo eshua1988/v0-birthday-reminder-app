@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Trash2, Shuffle, Heart } from "lucide-react"
+import { Plus, Trash2, Shuffle, Heart, Repeat2, RepeatIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 const supabase = createClient()
 
@@ -45,6 +47,11 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+const MONTH_NAMES_GEN = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+]
+
 const MONTH_NAMES = [
   "январь", "февраль", "март", "апрель", "май", "июнь",
   "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
@@ -53,6 +60,17 @@ const MONTH_NAMES = [
 function formatMonth(ym: string): string {
   const [year, month] = ym.split("-")
   return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`
+}
+
+// Returns first day of each week in the given month (weekly preset)
+function getWeeklyDays(year: number, month: number): number[] {
+  const days: number[] = []
+  const d = new Date(year, month - 1, 1)
+  while (d.getMonth() === month - 1) {
+    days.push(d.getDate())
+    d.setDate(d.getDate() + 7)
+  }
+  return days
 }
 
 export const PrayerAssignmentsCard: React.FC = () => {
@@ -68,6 +86,12 @@ export const PrayerAssignmentsCard: React.FC = () => {
   const [cycleNumber, setCycleNumber] = useState(1)
   const [cycleProgress, setCycleProgress] = useState({ assigned: 0, total: 0 })
 
+  // Notification schedule state
+  const [notifyDays, setNotifyDays] = useState<number[]>([])
+  const [notifyRepeat, setNotifyRepeat] = useState(true)
+  const [notifyFrequency, setNotifyFrequency] = useState<"custom" | "weekly" | "biweekly">("custom")
+  const [calendarMonth] = useState<Date>(new Date())
+
   const currentMonth = new Date().toISOString().slice(0, 7)
 
   const load = useCallback(async () => {
@@ -81,23 +105,35 @@ export const PrayerAssignmentsCard: React.FC = () => {
         .from("settings")
         .select("key,value")
         .eq("user_id", user.id)
-        .in("key", ["prayer_cycle_number", "prayer_assignments_per_warrior", "prayer_list_id"])
+        .in("key", [
+          "prayer_cycle_number", "prayer_assignments_per_warrior", "prayer_list_id",
+          "prayer_notify_days", "prayer_notify_repeat", "prayer_notify_frequency",
+        ])
 
       let cycleNum = 1
       let perWarrior = 2
       let listId = "__all__"
+      let savedDays: number[] = []
+      let repeat = true
+      let freq: "custom" | "weekly" | "biweekly" = "custom"
 
       if (settings) {
         for (const s of settings) {
           if (s.key === "prayer_cycle_number") cycleNum = parseInt(s.value) || 1
           if (s.key === "prayer_assignments_per_warrior") perWarrior = parseInt(s.value) || 2
           if (s.key === "prayer_list_id") listId = s.value || "__all__"
+          if (s.key === "prayer_notify_days") { try { savedDays = JSON.parse(s.value || "[]") } catch {} }
+          if (s.key === "prayer_notify_repeat") repeat = s.value !== "false"
+          if (s.key === "prayer_notify_frequency") freq = (s.value as any) || "custom"
         }
       }
 
       setCycleNumber(cycleNum)
       setAssignmentsPerWarrior(perWarrior)
       setSelectedListId(listId)
+      setNotifyDays(savedDays)
+      setNotifyRepeat(repeat)
+      setNotifyFrequency(freq)
 
       // Load warriors
       const { data: warriorsData } = await supabase
@@ -291,6 +327,40 @@ export const PrayerAssignmentsCard: React.FC = () => {
     }
   }
 
+  // Notification day helpers
+  const toggleDay = async (day: number, currentFreq: "custom" | "weekly" | "biweekly") => {
+    const base = currentFreq !== "custom"
+      ? (async () => {
+          setNotifyFrequency("custom")
+          await saveSetting("prayer_notify_frequency", "custom")
+        })()
+      : Promise.resolve()
+    await base
+    const updated = notifyDays.includes(day)
+      ? notifyDays.filter((d) => d !== day)
+      : [...notifyDays, day].sort((a, b) => a - b)
+    setNotifyDays(updated)
+    await saveSetting("prayer_notify_days", JSON.stringify(updated))
+  }
+
+  const applyFrequencyPreset = async (freq: "weekly" | "biweekly") => {
+    const year = calendarMonth.getFullYear()
+    const month = calendarMonth.getMonth() + 1
+    const days = freq === "weekly" ? getWeeklyDays(year, month) : [1, 15]
+    setNotifyDays(days)
+    setNotifyFrequency(freq)
+    await saveSetting("prayer_notify_days", JSON.stringify(days))
+    await saveSetting("prayer_notify_frequency", freq)
+  }
+
+  const toggleRepeat = async () => {
+    const updated = !notifyRepeat
+    setNotifyRepeat(updated)
+    await saveSetting("prayer_notify_repeat", String(updated))
+  }
+
+  const daysInCurrentMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate()
+
   const assignmentsByWarrior = warriors.map((w) => ({
     warrior: w,
     recipients: currentAssignments.filter((a) => a.warrior_id === w.id),
@@ -428,6 +498,107 @@ export const PrayerAssignmentsCard: React.FC = () => {
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Generate button */}
+        {/* Notification schedule */}
+        <div className="space-y-3 border rounded-xl p-4 bg-muted/20">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              📅 Дни уведомлений
+              {notifyDays.length > 0 && (
+                <Badge variant="secondary" className="text-xs px-1.5">{notifyDays.length} дн.</Badge>
+              )}
+            </Label>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant={notifyFrequency === "weekly" ? "default" : "outline"}
+                size="sm" className="h-7 text-xs px-2.5"
+                onClick={() => applyFrequencyPreset("weekly")}
+                title="Каждую неделю"
+              >
+                Еженедельно
+              </Button>
+              <Button
+                variant={notifyFrequency === "biweekly" ? "default" : "outline"}
+                size="sm" className="h-7 text-xs px-2.5"
+                onClick={() => applyFrequencyPreset("biweekly")}
+                title="1-е и 15-е числа"
+              >
+                2 раза/мес
+              </Button>
+            </div>
+          </div>
+
+          {/* Day grid */}
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1).map((day) => {
+              const selected = notifyDays.includes(day)
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => toggleDay(day, notifyFrequency)}
+                  className={cn(
+                    "h-8 w-8 rounded-full text-xs font-medium border transition-colors",
+                    selected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                  )}
+                >
+                  {day}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Selected days summary */}
+          {notifyDays.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+              <span>Выбрано:</span>
+              {notifyDays.map((d) => (
+                <Badge key={d} variant="outline" className="text-xs px-1.5 py-0">
+                  {d} {MONTH_NAMES_GEN[calendarMonth.getMonth()]}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Нажмите на числа, чтобы выбрать дни отправки уведомлений</p>
+          )}
+
+          {/* Repeat toggle */}
+          <button
+            type="button"
+            onClick={toggleRepeat}
+            className={cn(
+              "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border text-sm transition-colors text-left",
+              notifyRepeat
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "bg-background border-border text-muted-foreground hover:border-muted-foreground/40"
+            )}
+          >
+            {notifyRepeat
+              ? <Repeat2 className="h-4 w-4 shrink-0" />
+              : <RepeatIcon className="h-4 w-4 shrink-0 opacity-50" />}
+            <div className="flex-1">
+              <span className="font-medium">{notifyRepeat ? "Повторять каждый месяц" : "Не повторять"}</span>
+              <p className="text-xs opacity-70 mt-0.5">
+                {notifyRepeat
+                  ? "Уведомления будут отправляться в выбранные дни каждого месяца"
+                  : "Уведомления будут отправлены только в текущем месяце"}
+              </p>
+            </div>
+            {/* Toggle visual */}
+            <div className={cn(
+              "w-9 h-5 rounded-full relative transition-colors shrink-0",
+              notifyRepeat ? "bg-primary" : "bg-muted-foreground/30"
+            )}>
+              <div className={cn(
+                "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                notifyRepeat ? "translate-x-4" : "translate-x-0.5"
+              )} />
+            </div>
+          </button>
         </div>
 
         {/* Generate button */}
