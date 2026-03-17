@@ -2,12 +2,5 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": "nextjs",
-  "outputDirectory": ".next",
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "destination": "https://eshua1988.github.io/v0-birthday-reminder-app/$1",
-      "permanent": false
-    }
-  ]
+  "outputDirectory": ".next"
 }
