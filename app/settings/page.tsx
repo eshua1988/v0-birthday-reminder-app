@@ -18,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { BackupManager } from "@/components/backup-manager"
 import { GoogleSheetsSettings } from "@/components/google-sheets-settings"
+import { PrayerAssignmentsCard } from "@/components/prayer-assignments"
 import { MultiSelectLanguages } from "@/components/multi-select-languages"
 import { useTheme } from "next-themes"
 
@@ -810,6 +811,7 @@ export default function SettingsPage() {
 
           <BackupManager />
           <GoogleSheetsSettings />
+          <PrayerAssignmentsCard />
 
           <Card>
             <CardHeader className="pb-3">
