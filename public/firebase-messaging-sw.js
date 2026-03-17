@@ -31,9 +31,11 @@ messaging.onBackgroundMessage((payload) => {
   console.log("[FCM SW] Received background message:", payload)
 
   const birthdayId = payload.data?.birthdayId || ''
-  const notificationTitle = payload.notification?.title || "🎂 Напоминание о дне рождения"
+  const userEmail = payload.data?.userEmail || ''
+  const notificationTitle = payload.data?.title || payload.notification?.title || "🎂 Напоминание о дне рождения"
+  const baseBody = payload.data?.body || payload.notification?.body || ""
   const notificationOptions = {
-    body: payload.notification?.body || "",
+    body: userEmail ? `${baseBody}\n👤 ${userEmail}` : baseBody,
     icon: "/icon-192x192.png",
     badge: "/badge-72x72.png",
     tag: `birthday-${birthdayId || 'notification'}`,

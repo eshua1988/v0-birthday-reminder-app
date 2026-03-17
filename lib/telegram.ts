@@ -84,7 +84,8 @@ export async function sendBirthdayReminder(
   birthdayPerson: string,
   daysUntil: number,
   age?: number,
-  birthDate?: Date
+  birthDate?: Date,
+  userEmail?: string
 ) {
   let text: string
   let dateInfo = ""
@@ -97,21 +98,26 @@ export async function sendBirthdayReminder(
     dateInfo = `\n📅 Дата рождения: ${day} ${month} ${year} г.`
   }
 
+  const accountInfo = userEmail ? `\n\n👤 Аккаунт: ${userEmail}` : ""
+
   if (daysUntil === 0) {
     text = `🎂 <b>Сегодня день рождения!</b>\n\n` +
       `🎉 ${birthdayPerson}` +
       (age ? `\n🎈 Исполняется: ${formatAge(age)}` : "") +
-      dateInfo
+      dateInfo +
+      accountInfo
   } else if (daysUntil === 1) {
     text = `🔔 <b>Напоминание</b>\n\n` +
       `Завтра день рождения у ${birthdayPerson}` +
       (age ? `\n🎈 Исполнится: ${formatAge(age)}` : "") +
-      dateInfo
+      dateInfo +
+      accountInfo
   } else {
     text = `🔔 <b>Напоминание</b>\n\n` +
       `Через ${formatDays(daysUntil)} день рождения у ${birthdayPerson}` +
       (age ? `\n🎈 Исполнится: ${formatAge(age)}` : "") +
-      dateInfo
+      dateInfo +
+      accountInfo
   }
 
   return sendTelegramMessage({ chatId, text })

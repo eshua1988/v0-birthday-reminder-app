@@ -63,6 +63,19 @@ export async function GET(request: NextRequest) {
     const globalTimesMap = new Map<string, string[]>()
     const userTimezonesMap = new Map<string, string>()
     const userTelegramMap = new Map<string, string>() // user_id -> telegram_chat_id
+    const userEmailMap = new Map<string, string>() // user_id -> email
+
+    // Load user emails via admin API
+    try {
+      const { data: usersData } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+      if (usersData?.users) {
+        for (const u of usersData.users) {
+          if (u.email) userEmailMap.set(u.id, u.email)
+        }
+      }
+    } catch (e) {
+      console.error("[v0] Cron: Failed to load user emails:", e)
+    }
     
     if (globalSettings) {
       for (const setting of globalSettings) {
@@ -239,6 +252,7 @@ export async function GET(request: NextRequest) {
               data: {
                 title: "🎂 День рождения!",
                 body: `${fullName} — сегодня исполняется ${ageText}!`,
+                userEmail: userEmailMap.get(birthday.user_id) || '',
                 birthdayId: birthday.id.toString(),
                 firstName: birthday.first_name || birthday.name?.split(' ')[0] || '',
                 lastName: birthday.last_name || birthday.name?.split(' ').slice(1).join(' ') || '',
@@ -328,7 +342,8 @@ export async function GET(request: NextRequest) {
         
         console.log("[v0] Cron: Sending Telegram notification to chat:", telegramChatId)
         
-        const telegramResult = await sendBirthdayReminder(telegramChatId, fullName, 0, age, birthDate)
+        const userEmail = userEmailMap.get(birthday.user_id)
+        const telegramResult = await sendBirthdayReminder(telegramChatId, fullName, 0, age, birthDate, userEmail)
         
         if (telegramResult.ok) {
           console.log("[v0] Cron: Telegram notification sent successfully")
