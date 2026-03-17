@@ -22,6 +22,21 @@ function extractSpreadsheetId(input: string) {
   return idOnly
 }
 
+// Builds a valid Sheets range like 'Лист4'!A:Z from sheet_name + sheet_range
+function buildRange(sheetName: string, rangeInput: string): string {
+  const range = (rangeInput || 'A:Z').trim()
+  const name = (sheetName || '').trim()
+
+  // If range already contains '!' — use as-is (user provided full range)
+  if (range.includes('!')) return range
+
+  if (!name) return range
+
+  // Wrap sheet name in single quotes if it doesn't already have them
+  const quotedName = name.startsWith("'") ? name : `'${name.replace(/'/g, "\\'")}'`
+  return `${quotedName}!${range}`
+}
+
 interface BirthdayList {
   id: string
   name: string
@@ -205,7 +220,7 @@ export const GoogleSheetsSettings: React.FC = () => {
       const resp = await fetch('/api/google-sheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'write', spreadsheetId: conn.spreadsheet_id, range: conn.sheet_range || "'Data app'!A:Z", values }),
+        body: JSON.stringify({ action: 'write', spreadsheetId: conn.spreadsheet_id, range: buildRange(conn.sheet_name, conn.sheet_range), values }),
       })
       const body = await resp.json()
       if (!resp.ok) throw new Error(body.error || 'Failed to write')
@@ -223,7 +238,7 @@ export const GoogleSheetsSettings: React.FC = () => {
       const resp = await fetch('/api/google-sheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'read', spreadsheetId: conn.spreadsheet_id, range: conn.sheet_range || "'Data app'!A:Z" }),
+        body: JSON.stringify({ action: 'read', spreadsheetId: conn.spreadsheet_id, range: buildRange(conn.sheet_name, conn.sheet_range) }),
       })
       const result = await resp.json()
       if (!resp.ok) throw new Error(result.error || 'Failed to read')
