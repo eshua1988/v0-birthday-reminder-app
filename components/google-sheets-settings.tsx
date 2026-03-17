@@ -456,8 +456,16 @@ export const GoogleSheetsSettings: React.FC = () => {
                 <Input
                   value={editingConn.sheet_range}
                   onChange={(e) => setEditingConn(prev => ({ ...prev, sheet_range: e.target.value }))}
-                  placeholder="'Data app'!A:Z"
+                  placeholder="A:Z"
                 />
+                {(editingConn.sheet_name.trim() || editingConn.sheet_range.trim()) && (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>Итоговый диапазон:</span>
+                    <code className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono">
+                      {buildRange(editingConn.sheet_name, editingConn.sheet_range)}
+                    </code>
+                  </div>
+                )}
               </div>
 
               <div>
