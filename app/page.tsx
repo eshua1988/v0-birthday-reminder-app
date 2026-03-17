@@ -19,6 +19,7 @@ import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { useAutoSync } from "@/hooks/use-auto-sync"
+import { PrayerAssignmentsCard } from "@/components/prayer-assignments"
 
 
 interface HistoryState {
@@ -61,6 +62,14 @@ export default function HomePage() {
     setSelectedCards(new Set())
     setIsSelectionMode(false)
   }, [activeListId])
+
+  // Load prayer list assignment
+  useEffect(() => {
+    if (!userId) return
+    supabase.from("settings").select("value").eq("user_id", userId).eq("key", "prayer_list_id").maybeSingle().then(({ data }) => {
+      if (data?.value) setPrayerListId(data.value)
+    })
+  }, [userId])
 
   // Handle URL query parameter for birthday navigation from push notification
   useEffect(() => {
@@ -767,6 +776,13 @@ export default function HomePage() {
                   />
                 )}
               </>
+            )}
+
+            {/* Prayer assignments card — shown in the matching list tab */}
+            {(prayerListId === "__all__" ? activeListId === null : activeListId === prayerListId) && (
+              <div className="mt-4">
+                <PrayerAssignmentsCard />
+              </div>
             )}
           </div>
           </div>{/* end p-8 wrapper */}
