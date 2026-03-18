@@ -19,7 +19,6 @@ import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { useAutoSync } from "@/hooks/use-auto-sync"
-import { PrayerAssignmentsDisplay } from "@/components/prayer-assignments-display"
 
 
 interface HistoryState {
@@ -46,7 +45,6 @@ export default function HomePage() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [isSelectionMode, setIsSelectionMode] = useState(false)
-  const [prayerListId, setPrayerListId] = useState<string>("__all__")
 
   // Lists (tabs/folders)
   const [lists, setLists] = useState<{ id: string; name: string }[]>([])
@@ -63,14 +61,6 @@ export default function HomePage() {
     setSelectedCards(new Set())
     setIsSelectionMode(false)
   }, [activeListId])
-
-  // Load prayer list assignment
-  useEffect(() => {
-    if (!userId) return
-    supabase.from("settings").select("value").eq("user_id", userId).eq("key", "prayer_list_id").maybeSingle().then(({ data }: { data: { value: string } | null }) => {
-      if (data?.value) setPrayerListId(data.value)
-    })
-  }, [userId])
 
   // Handle URL query parameter for birthday navigation from push notification
   useEffect(() => {
@@ -780,11 +770,6 @@ export default function HomePage() {
             )}
 
           </div>
-
-          {/* Prayer assignments display — shown in matching list tab */}
-          {(prayerListId === "__all__" ? activeListId === null : activeListId === prayerListId) && (
-            <PrayerAssignmentsDisplay />
-          )}
 
           </div>{/* end p-8 wrapper */}
         </main>
