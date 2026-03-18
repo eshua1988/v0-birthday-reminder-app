@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { sendTelegramMessage } from "@/lib/telegram"
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const MONTH_NAMES_GEN = [
   "января","февраля","марта","апреля","мая","июня",
@@ -15,26 +21,24 @@ function formatMonth(ym: string): string {
 
 export async function POST() {
   try {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    // Get Telegram chat ID
-    const { data: settingsRow } = await supabase
+    // Get Telegram chat ID via service role (bypasses RLS)
+    const { data: allSettings } = await supabaseAdmin
       .from("settings")
       .select("telegram_chat_id")
       .eq("user_id", user.id)
-      .not("telegram_chat_id", "is", null)
-      .maybeSingle()
 
-    const chatId = settingsRow?.telegram_chat_id
+    const chatId = allSettings?.find((s: any) => s.telegram_chat_id)?.telegram_chat_id
     if (!chatId) {
       return NextResponse.json({ error: "Telegram не подключён. Подключите бота в настройках." }, { status: 400 })
     }
 
-    // Get current month assignments
+    // Get current month assignments via service role
     const currentMonth = new Date().toISOString().slice(0, 7)
-    const { data: assignments } = await supabase
+    const { data: assignments } = await supabaseAdmin
       .from("prayer_assignments")
       .select("warrior_id, recipient_name")
       .eq("user_id", user.id)
@@ -45,7 +49,7 @@ export async function POST() {
     }
 
     // Get warrior names
-    const { data: warriors } = await supabase
+    const { data: warriors } = await supabaseAdmin
       .from("prayer_warriors")
       .select("id, name")
       .eq("user_id", user.id)
