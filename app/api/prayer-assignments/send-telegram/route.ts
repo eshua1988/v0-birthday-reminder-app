@@ -24,6 +24,7 @@ export async function POST() {
       .from("settings")
       .select("telegram_chat_id")
       .eq("user_id", user.id)
+      .not("telegram_chat_id", "is", null)
       .maybeSingle()
 
     const chatId = settingsRow?.telegram_chat_id
