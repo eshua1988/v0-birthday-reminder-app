@@ -192,9 +192,10 @@ export function Sidebar() {
     }
   }
 
-  const links = [
+  const links: Array<{ href: string; icon?: typeof Home; emoji?: string; label: string }> = [
     { href: "/", icon: Home, label: t.home },
     { href: "/calendar", icon: Calendar, label: t.calendar },
+    { href: "/prayer-assignments", emoji: "🙏", label: "Молитвенные назначения" },
     { href: "/settings", icon: Settings, label: t.settings },
   ]
 
@@ -255,7 +256,11 @@ export function Sidebar() {
                           : "text-muted-foreground hover:bg-muted hover:text-foreground",
                       )}
                     >
-                      <Icon className="h-5 w-5" />
+                      {link.emoji ? (
+                        <span className="text-lg leading-none w-5 text-center">{link.emoji}</span>
+                      ) : Icon ? (
+                        <Icon className="h-5 w-5" />
+                      ) : null}
                       <span>{link.label}</span>
                     </Link>
                   )
@@ -315,7 +320,11 @@ export function Sidebar() {
                 )}
                 title={link.label}
               >
-                <Icon className="h-5 w-5" />
+                {link.emoji ? (
+                  <span className="text-xl leading-none">{link.emoji}</span>
+                ) : Icon ? (
+                  <Icon className="h-5 w-5" />
+                ) : null}
                 <span className="sr-only">{link.label}</span>
               </Link>
             )
