@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Trash2, Shuffle, Heart, Repeat2, RepeatIcon } from "lucide-react"
+import { Plus, Trash2, Shuffle, Heart, Repeat2, RepeatIcon, Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -91,6 +91,8 @@ export const PrayerAssignmentsCard: React.FC = () => {
   const [notifyRepeat, setNotifyRepeat] = useState(true)
   const [notifyFrequency, setNotifyFrequency] = useState<"custom" | "weekly" | "biweekly">("custom")
   const [calendarMonth] = useState<Date>(new Date())
+  const [telegramNotify, setTelegramNotify] = useState(false)
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false)
 
   const currentMonth = new Date().toISOString().slice(0, 7)
 
@@ -107,7 +109,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
         .eq("user_id", user.id)
         .in("key", [
           "prayer_cycle_number", "prayer_assignments_per_warrior", "prayer_list_id",
-          "prayer_notify_days", "prayer_notify_repeat", "prayer_notify_frequency",
+          "prayer_notify_days", "prayer_notify_repeat", "prayer_notify_frequency", "prayer_telegram_notify",
         ])
 
       let cycleNum = 1
@@ -125,6 +127,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
           if (s.key === "prayer_notify_days") { try { savedDays = JSON.parse(s.value || "[]") } catch {} }
           if (s.key === "prayer_notify_repeat") repeat = s.value !== "false"
           if (s.key === "prayer_notify_frequency") freq = (s.value as any) || "custom"
+          if (s.key === "prayer_telegram_notify") setTelegramNotify(s.value === "true")
         }
       }
 
@@ -320,6 +323,19 @@ export const PrayerAssignmentsCard: React.FC = () => {
         title: "Готово",
         description: `Назначено ${rows.length} человек на ${formatMonth(currentMonth)}`,
       })
+
+      // Auto-send to Telegram if enabled
+      if (telegramNotify) {
+        try {
+          const res = await fetch("/api/prayer-assignments/send-telegram", { method: "POST" })
+          const json = await res.json()
+          if (res.ok) {
+            toast({ title: "Telegram", description: "Назначения отправлены в Telegram 🙏" })
+          } else {
+            toast({ title: "Telegram", description: json.error || "Не удалось отправить", variant: "destructive" })
+          }
+        } catch {}
+      }
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" })
     } finally {
@@ -357,6 +373,26 @@ export const PrayerAssignmentsCard: React.FC = () => {
     const updated = !notifyRepeat
     setNotifyRepeat(updated)
     await saveSetting("prayer_notify_repeat", String(updated))
+  }
+
+  const toggleTelegramNotify = async () => {
+    const updated = !telegramNotify
+    setTelegramNotify(updated)
+    await saveSetting("prayer_telegram_notify", String(updated))
+  }
+
+  const sendToTelegram = async () => {
+    setIsSendingTelegram(true)
+    try {
+      const res = await fetch("/api/prayer-assignments/send-telegram", { method: "POST" })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Ошибка")
+      toast({ title: "Отправлено", description: "Назначения отправлены в Telegram 🙏" })
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" })
+    } finally {
+      setIsSendingTelegram(false)
+    }
   }
 
   const daysInCurrentMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate()
@@ -603,6 +639,37 @@ export const PrayerAssignmentsCard: React.FC = () => {
           </button>
         </div>
 
+        {/* Telegram notify toggle */}
+        <button
+          type="button"
+          onClick={toggleTelegramNotify}
+          className={cn(
+            "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border text-sm transition-colors text-left",
+            telegramNotify
+              ? "bg-[#0088cc]/10 border-[#0088cc]/30 text-[#0088cc]"
+              : "bg-background border-border text-muted-foreground hover:border-muted-foreground/40"
+          )}
+        >
+          <Send className="h-4 w-4 shrink-0" />
+          <div className="flex-1">
+            <span className="font-medium">{telegramNotify ? "Отправлять в Telegram" : "Не отправлять в Telegram"}</span>
+            <p className="text-xs opacity-70 mt-0.5">
+              {telegramNotify
+                ? "После назначения список будет отправлен в Telegram бот"
+                : "Назначения не будут отправляться в Telegram"}
+            </p>
+          </div>
+          <div className={cn(
+            "w-9 h-5 rounded-full relative transition-colors shrink-0",
+            telegramNotify ? "bg-[#0088cc]" : "bg-muted-foreground/30"
+          )}>
+            <div className={cn(
+              "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+              telegramNotify ? "translate-x-4" : "translate-x-0.5"
+            )} />
+          </div>
+        </button>
+
         {/* Generate button */}
         <Button
           onClick={generateAssignments}
@@ -620,9 +687,21 @@ export const PrayerAssignmentsCard: React.FC = () => {
         {/* Current month assignments */}
         {hasCurrentAssignments && (
           <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Назначения — {formatMonth(currentMonth)}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">
+                Назначения — {formatMonth(currentMonth)}
+              </Label>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs text-[#0088cc] border-[#0088cc]/30 hover:bg-[#0088cc]/10"
+                onClick={sendToTelegram}
+                disabled={isSendingTelegram}
+              >
+                <Send className="h-3.5 w-3.5" />
+                {isSendingTelegram ? "Отправка..." : "В Telegram"}
+              </Button>
+            </div>
             {assignmentsByWarrior.map(({ warrior, recipients }) =>
               recipients.length > 0 ? (
                 <div key={warrior.id} className="p-3 bg-muted/30 rounded-lg space-y-1.5">
