@@ -363,6 +363,118 @@ export async function GET(request: NextRequest) {
       timestamp: now.toISOString()
     })
 
+    // ===== Prayer assignment auto-generation =====
+    // Run once per day when the current day matches a user's prayer notify day
+    let prayerGenerated = 0
+    try {
+      const todayDay = now.getDate()
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+      const todayStr = now.toISOString().slice(0, 10)
+
+      // Load all prayer-related settings
+      const { data: prayerSettings } = await supabase
+        .from("settings")
+        .select("user_id, key, value")
+        .in("key", [
+          "prayer_notify_days", "prayer_telegram_notify", "prayer_list_id",
+          "prayer_assignments_per_warrior", "prayer_cycle_number",
+          "prayer_last_generated_date",
+        ])
+
+      // Group by user
+      const prayerMap = new Map<string, Record<string, string>>()
+      for (const row of prayerSettings || []) {
+        if (!prayerMap.has(row.user_id)) prayerMap.set(row.user_id, {})
+        if (row.key) prayerMap.get(row.user_id)![row.key] = row.value
+      }
+
+      for (const [userId, ps] of prayerMap.entries()) {
+        let notifyDays: number[] = []
+        try { notifyDays = JSON.parse(ps.prayer_notify_days || "[]") } catch {}
+        if (!notifyDays.includes(todayDay)) continue
+        if (ps.prayer_last_generated_date === todayStr) continue
+
+        // Load warriors
+        const { data: warriors } = await supabase
+          .from("prayer_warriors").select("id, name").eq("user_id", userId).order("created_at")
+        if (!warriors || warriors.length === 0) continue
+
+        const perWarrior = parseInt(ps.prayer_assignments_per_warrior || "2") || 2
+        let cycleNum = parseInt(ps.prayer_cycle_number || "1") || 1
+        const listId = ps.prayer_list_id || "__all__"
+
+        // Load recipients
+        let rq = supabase.from("birthdays").select("id, first_name, last_name").eq("user_id", userId)
+        if (listId !== "__all__") rq = rq.eq("list_id", listId)
+        const { data: allBdays } = await rq
+        const allRecipients = (allBdays || []).map((b: any) => ({
+          id: b.id,
+          name: `${b.first_name || ""} ${b.last_name || ""}`.trim(),
+        }))
+        if (allRecipients.length === 0) continue
+
+        // Remaining in current cycle
+        const { data: cycleRows } = await supabase
+          .from("prayer_assignments").select("recipient_id").eq("user_id", userId).eq("cycle_number", cycleNum)
+        const assignedIds = new Set((cycleRows || []).map((a: any) => a.recipient_id).filter(Boolean))
+        let remaining = allRecipients.filter((r: any) => !assignedIds.has(r.id))
+
+        if (remaining.length < warriors.length * perWarrior) {
+          cycleNum++
+          remaining = allRecipients
+          await supabase.from("settings").upsert(
+            [{ user_id: userId, key: "prayer_cycle_number", value: String(cycleNum) }], { onConflict: "user_id,key" }
+          )
+        }
+
+        // Delete current month, insert new
+        await supabase.from("prayer_assignments").delete().eq("user_id", userId).eq("assigned_month", currentMonth)
+
+        const shuffled = [...remaining].sort(() => Math.random() - 0.5)
+        const rows: any[] = []
+        let idx = 0
+        for (const w of warriors) {
+          for (let i = 0; i < perWarrior; i++) {
+            if (idx >= shuffled.length) break
+            const r = shuffled[idx++]
+            rows.push({ user_id: userId, warrior_id: w.id, recipient_name: r.name, recipient_id: r.id, assigned_month: currentMonth, cycle_number: cycleNum })
+          }
+        }
+        if (rows.length === 0) continue
+
+        await supabase.from("prayer_assignments").insert(rows)
+        await supabase.from("settings").upsert(
+          [{ user_id: userId, key: "prayer_last_generated_date", value: todayStr }], { onConflict: "user_id,key" }
+        )
+        prayerGenerated++
+        console.log("[v0] Prayer: Generated", rows.length, "assignments for user", userId)
+
+        // Send to Telegram if enabled
+        if (ps.prayer_telegram_notify === "true" && userTelegramMap.has(userId)) {
+          const chatId = userTelegramMap.get(userId)!
+          const monthNames = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"]
+          const [yr, mo] = currentMonth.split("-")
+          const wMap = new Map(warriors.map((w: any) => [w.id, w.name]))
+          const grouped = new Map<string, string[]>()
+          for (const r of rows) {
+            const wn = wMap.get(r.warrior_id) as string || "—"
+            if (!grouped.has(wn)) grouped.set(wn, [])
+            grouped.get(wn)!.push(r.recipient_name)
+          }
+          let text = `🙏 <b>Молитвенные назначения — ${monthNames[parseInt(mo)-1]} ${yr}</b>\n\n`
+          for (const [wn, recs] of grouped.entries()) {
+            text += `<b>${wn}</b>\n`
+            recs.forEach((rn, i) => { text += `  ${i+1}. ${rn}\n` })
+            text += "\n"
+          }
+          const { sendTelegramMessage: stm } = await import("@/lib/telegram")
+          await stm({ chatId, text, parseMode: "HTML" })
+        }
+      }
+    } catch (prayerError) {
+      console.error("[v0] Prayer assignment cron error:", prayerError)
+    }
+
     return NextResponse.json({
       success: true,
       message: `Checked ${birthdaysChecked} birthdays, found ${birthdaysMatched} today, sent ${notificationsSent} notifications`,
@@ -372,6 +484,7 @@ export async function GET(request: NextRequest) {
       birthdaysToday: birthdaysMatched,
       notificationsSent,
       notifications,
+      prayerGenerated,
     })
   } catch (error) {
     console.error("[v0] ========== CRON JOB ERROR ==========")
