@@ -415,32 +415,20 @@ export const PrayerAssignmentsCard: React.FC = () => {
   const buildSheetsData = (assignmentRows: any[]) => {
     // Group by warrior
     const warriorOrder: string[] = []
-    const grouped = new Map<string, Array<{ first: string; last: string }>>()
+    const grouped = new Map<string, string[]>()
     for (const a of assignmentRows) {
       const wname = warriors.find(w => w.id === a.warrior_id)?.name || a.recipient_name
       if (!grouped.has(wname)) { grouped.set(wname, []); warriorOrder.push(wname) }
-      // Split "first_name last_name" → separate cells
-      const parts = (a.recipient_name as string).trim().split(" ")
-      const first = parts[0] || ""
-      const last = parts.slice(1).join(" ") || ""
-      grouped.get(wname)!.push({ first, last })
+      // Keep full name as one cell
+      grouped.get(wname)!.push(a.recipient_name)
     }
     const maxPerWarrior = Math.max(...warriorOrder.map(w => (grouped.get(w) || []).length), 0)
-    // Header: Молящийся | Фамилия 1 | Имя 1 | Фамилия 2 | Имя 2 | ... | Месяц
-    const headers = ["Молящийся"]
-    for (let i = 1; i <= maxPerWarrior; i++) {
-      headers.push(`Фамилия ${i}`, `Имя ${i}`)
-    }
-    headers.push("Месяц")
+    const headers = ["Молящийся", ...Array.from({ length: maxPerWarrior }, (_, i) => `Участник ${i + 1}`), "Месяц"]
     const values: string[][] = [headers]
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
-      const row: string[] = [wname]
-      for (let i = 0; i < maxPerWarrior; i++) {
-        row.push(recs[i]?.last ?? "", recs[i]?.first ?? "")
-      }
-      row.push(formatMonth(currentMonth))
-      values.push(row)
+      const padded = [...recs, ...Array(Math.max(0, maxPerWarrior - recs.length)).fill("")]
+      values.push([wname, ...padded, formatMonth(currentMonth)])
     }
     return values
   }
