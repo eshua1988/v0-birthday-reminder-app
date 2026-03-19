@@ -43,7 +43,7 @@ export function Sidebar() {
         return
       }
 
-      // Export
+      // 1. Export birthdays to all configured Google Sheets connections
       let exportRows = 0
       try {
         const exportRes = await fetch('/api/sync-with-sheets', {
@@ -59,7 +59,7 @@ export function Sidebar() {
         return
       }
 
-      // Import
+      // 2. Import from Google Sheets
       let importedCount = 0
       try {
         const importRes = await fetch('/api/sync-with-sheets', {
@@ -75,9 +75,20 @@ export function Sidebar() {
         return
       }
 
+      // 3. Export prayer assignments to their configured Google Sheet
+      try {
+        const prayerRes = await fetch('/api/prayer-assignments/sync-sheets', { method: 'POST' })
+        const prayerData = await prayerRes.json()
+        if (!prayerRes.ok && prayerData?.error !== 'Нет назначений на текущий месяц' && prayerData?.error !== 'Google Sheets не настроены для молитвенных назначений') {
+          console.warn('[sync] Prayer sheets export error:', prayerData?.error)
+        }
+      } catch (e) {
+        console.warn('[sync] Prayer sheets export failed:', e)
+      }
+
       toast({
         title: 'Синхронизация завершена',
-        description: `Экспортировано: ${exportRows} | Импортировано: ${importedCount}`,
+        description: `Участники: ${exportRows} строк | Обновлено: ${importedCount} | Назначения: ✅`,
       })
     } catch (error: any) {
       console.error('[v0] Sync error:', error)

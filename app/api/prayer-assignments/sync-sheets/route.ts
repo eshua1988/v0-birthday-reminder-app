@@ -1,0 +1,104 @@
+import { NextResponse } from "next/server"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const MONTH_NAMES = [
+  "январь","февраль","март","апрель","май","июнь",
+  "июль","август","сентябрь","октябрь","ноябрь","декабрь",
+]
+
+function formatMonth(ym: string): string {
+  const [year, month] = ym.split("-")
+  return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`
+}
+
+export async function POST() {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    // Load prayer sheets settings
+    const { data: settingsRows } = await supabaseAdmin
+      .from("settings")
+      .select("key, value")
+      .eq("user_id", user.id)
+      .in("key", ["prayer_sheets_connection_id", "prayer_sheets_column", "google_sheets_connections"])
+
+    const settingsMap: Record<string, string> = {}
+    for (const s of settingsRows || []) settingsMap[s.key] = s.value
+
+    const connectionId = settingsMap["prayer_sheets_connection_id"]
+    const column = settingsMap["prayer_sheets_column"] || ""
+    let connections: any[] = []
+    try { connections = JSON.parse(settingsMap["google_sheets_connections"] || "[]") } catch {}
+
+    const conn = connections.find((c: any) => c.id === connectionId)
+    if (!conn || !conn.spreadsheet_id) {
+      return NextResponse.json({ error: "Google Sheets не настроены для молитвенных назначений" }, { status: 400 })
+    }
+
+    // Get current month assignments
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const { data: assignments } = await supabaseAdmin
+      .from("prayer_assignments")
+      .select("warrior_id, recipient_name")
+      .eq("user_id", user.id)
+      .eq("assigned_month", currentMonth)
+
+    if (!assignments || assignments.length === 0) {
+      return NextResponse.json({ error: "Нет назначений на текущий месяц" }, { status: 400 })
+    }
+
+    const { data: warriors } = await supabaseAdmin
+      .from("prayer_warriors")
+      .select("id, name")
+      .eq("user_id", user.id)
+
+    const warriorMap = new Map((warriors || []).map((w: any) => [w.id, w.name]))
+
+    // Build table data
+    const warriorOrder: string[] = []
+    const grouped = new Map<string, string[]>()
+    for (const a of assignments) {
+      const wname = warriorMap.get(a.warrior_id) || a.recipient_name
+      if (!grouped.has(wname)) { grouped.set(wname, []); warriorOrder.push(wname) }
+      grouped.get(wname)!.push(a.recipient_name)
+    }
+
+    const maxPerWarrior = Math.max(...warriorOrder.map(w => (grouped.get(w) || []).length), 0)
+    const headers = ["Молящийся", ...Array.from({ length: maxPerWarrior }, (_, i) => `Участник ${i + 1}`), "Месяц"]
+    const values: string[][] = [headers]
+    for (const wname of warriorOrder) {
+      const recs = grouped.get(wname) || []
+      const padded = [...recs, ...Array(Math.max(0, maxPerWarrior - recs.length)).fill("")]
+      values.push([wname, ...padded, formatMonth(currentMonth)])
+    }
+
+    // Determine range
+    let range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
+    if (column) {
+      const col = column.toUpperCase().replace(/[^A-Z]/g, "") || "A"
+      range = `'${conn.sheet_name}'!${col}1`
+    }
+
+    // Write to Google Sheets via existing /api/google-sheets route
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/google-sheets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "write", spreadsheetId: conn.spreadsheet_id, range, values }),
+    })
+    const resData = await res.json()
+    if (!res.ok) throw new Error(resData.error || "Ошибка записи в таблицу")
+
+    return NextResponse.json({ success: true, rows: values.length - 1 })
+  } catch (e: any) {
+    console.error("[prayer sync-sheets]", e)
+    return NextResponse.json({ error: e.message || "Ошибка" }, { status: 500 })
+  }
+}
