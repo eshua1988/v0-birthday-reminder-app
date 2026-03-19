@@ -114,24 +114,25 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Settings loaded:', settings?.length || 0, 'rows')
 
-    // Find spreadsheet_id from either direct column or key-value pair
-    let spreadsheet_id = (settings as any)?.[0]?.spreadsheet_id
-    let sheet_range = (settings as any)?.[0]?.sheet_range || "'Data app'!A:Z"
-
-    if (!spreadsheet_id) {
-      // Try finding in key-value pairs
-      const spreadsheetSetting = settings?.find((s: any) => s.key === 'spreadsheet_id')
-      spreadsheet_id = spreadsheetSetting?.value
+    // Load google_sheets_connections (new multi-connection format)
+    let connections: any[] = []
+    const connSetting = settings?.find((s: any) => s.key === 'google_sheets_connections')
+    if (connSetting?.value) {
+      try { connections = JSON.parse(connSetting.value) } catch {}
     }
 
-    if (!sheet_range || sheet_range === "'Data app'!A:Z") {
-      const rangeSetting = settings?.find((s: any) => s.key === 'sheet_range')
-      sheet_range = rangeSetting?.value || "'Data app'!A:Z"
+    // Fallback to legacy single spreadsheet_id
+    if (connections.length === 0) {
+      let spreadsheet_id = settings?.find((s: any) => s.key === 'spreadsheet_id')?.value
+      let sheet_range = settings?.find((s: any) => s.key === 'sheet_range')?.value || "'Data app'!A:Z"
+      if (spreadsheet_id) {
+        connections = [{ id: 'legacy', spreadsheet_id, sheet_range, list_id: null }]
+      }
     }
 
-    console.log('[v0] Spreadsheet ID:', spreadsheet_id ? 'set' : 'not set')
+    console.log('[v0] Connections found:', connections.length)
 
-    if (!spreadsheet_id) {
+    if (connections.length === 0) {
       return NextResponse.json({ error: 'Google Sheets not configured' }, { status: 400 })
     }
 
@@ -186,58 +187,71 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'export') {
-      // Export birthdays to Google Sheets
-      console.log('[v0] Starting export...')
-      const { data: birthdays, error: bdayError } = await supabase
-        .from('birthdays')
-        .select('*')
-        .eq('user_id', userId)
-        .order('birth_date')
+      // Export birthdays to all configured Google Sheets connections
+      console.log('[v0] Starting export for', connections.length, 'connection(s)...')
+      let totalRows = 0
 
-      if (bdayError) {
-        console.error('[v0] Error fetching birthdays:', bdayError.message)
-        return NextResponse.json({ error: 'Failed to fetch birthdays: ' + bdayError.message }, { status: 500 })
-      }
+      for (const conn of connections) {
+        if (!conn.spreadsheet_id) continue
 
-      console.log('[v0] Found', birthdays?.length || 0, 'birthdays')
-
-      const header = ['ID', 'Фамилия', 'Имя', 'Дата рождения', 'Телефон', 'Email', 'Удалить']
-      const values = [header]
-
-      ;(birthdays || []).forEach((b: Birthday) => {
-        values.push([
-          (b as any).id || '',
-          b.last_name || '',
-          b.first_name || '',
-          b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
-          b.phone || '',
-          b.email || '',
-          '',
-        ])
-      })
-
-      console.log('[v0] Writing to Google Sheets:', sheet_range)
-      const sheetsRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(sheet_range)}?valueInputOption=RAW`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ values }),
+        // Filter by list_id if connection is tied to a specific list
+        let query = supabase.from('birthdays').select('*').eq('user_id', userId).order('birth_date')
+        if (conn.list_id) query = (query as any).eq('list_id', conn.list_id)
+        const { data: birthdays, error: bdayError } = await query
+        if (bdayError) {
+          console.error('[v0] Error fetching birthdays for conn', conn.id, bdayError.message)
+          continue
         }
-      )
 
-      if (!sheetsRes.ok) {
-        const error = await sheetsRes.text()
-        console.error('[v0] Google Sheets error:', error)
-        throw new Error(`Failed to write to Google Sheets: ${error}`)
+        console.log('[v0] Connection', conn.id, '- found', birthdays?.length || 0, 'birthdays')
+
+        const header = ['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Удалить']
+        const values: string[][] = [header]
+        ;(birthdays || []).forEach((b: Birthday) => {
+          values.push([
+            (b as any).id || '',
+            [b.last_name, b.first_name].filter(Boolean).join(' '),
+            b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
+            b.phone || '',
+            b.email || '',
+            '',
+          ])
+        })
+
+        const range = conn.sheet_range || "'Data app'!A:Z"
+        console.log('[v0] Writing to', conn.spreadsheet_id, 'range', range)
+        const sheetsRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheet_id}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ values }),
+          }
+        )
+
+        if (!sheetsRes.ok) {
+          const errText = await sheetsRes.text()
+          console.error('[v0] Google Sheets write error for conn', conn.id, errText)
+          continue
+        }
+
+        totalRows += values.length - 1
       }
 
-      console.log('[v0] Export completed')
-      return NextResponse.json({ success: true, action: 'export', rows: values.length - 1 })
+      console.log('[v0] Export completed, total rows written:', totalRows)
+      return NextResponse.json({ success: true, action: 'export', rows: totalRows })
     } else if (action === 'import') {
+      // Import from first Google Sheets connection
+      const conn = connections[0]
+      if (!conn.spreadsheet_id) {
+        return NextResponse.json({ error: 'Google Sheets not configured' }, { status: 400 })
+      }
+      const sheet_range = conn.sheet_range || "'Data app'!A:Z"
+      const spreadsheet_id = conn.spreadsheet_id
+
       // Import from Google Sheets
       console.log('[v0] Starting import...')
       const sheetsRes = await fetch(
