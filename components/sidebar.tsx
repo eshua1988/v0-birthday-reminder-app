@@ -59,13 +59,13 @@ export function Sidebar() {
         return
       }
 
-      // 2. Import from Google Sheets
+      // 2. Import from ALL Google Sheets connections
       let importedCount = 0
       try {
         const importRes = await fetch('/api/sync-with-sheets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ action: 'import' }),
+          body: JSON.stringify({ action: 'import-all' }),
         })
         const importData = await importRes.json()
         if (!importRes.ok) throw new Error(importData?.error || 'Импорт не удался')

@@ -364,6 +364,88 @@ export async function POST(request: NextRequest) {
         imported,
         deleted: toDeleteById.length + toDeleteByFields.length,
       })
+    } else if (action === 'import-all') {
+      // Import from ALL Google Sheets connections, respecting list_id per connection
+      console.log('[v0] Starting import-all for', connections.length, 'connection(s)...')
+      let totalImported = 0
+      let totalDeleted = 0
+
+      for (const conn of connections) {
+        if (!conn.spreadsheet_id) continue
+        const range = conn.sheet_range || "'Data app'!A:Z"
+
+        const sheetsRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheet_id}/values/${encodeURIComponent(range)}`,
+          { method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` } }
+        )
+        if (!sheetsRes.ok) {
+          console.error('[v0] Failed to read conn', conn.id, await sheetsRes.text())
+          continue
+        }
+        const result = await sheetsRes.json()
+        const rows = result.values || []
+        if (rows.length <= 1) continue
+
+        const header = rows[0].map((h: any) => String(h || '').trim().toLowerCase())
+        const records: any[] = []
+        const toDeleteById: string[] = []
+
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i]
+          const obj: any = {}
+          header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
+
+          const id = obj['id'] || obj['ид'] || ''
+          const fio = obj['фио'] || obj['fio'] || ''
+          const fioLast = fio ? fio.split(' ')[0] : ''
+          const fioFirst = fio ? fio.split(' ').slice(1).join(' ') : ''
+          const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || fioLast
+          const first_name = obj['имя'] || obj['first name'] || obj['name'] || fioFirst
+          const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
+          const deleteFlag = obj['удалить'] || obj['delete'] || obj['remove'] || ''
+
+          let birth_date = null
+          if (rawDate) {
+            const parsed = parse(String(rawDate), 'dd.MM.yyyy', new Date())
+            if (!isNaN(parsed.getTime())) birth_date = format(parsed, 'yyyy-MM-dd')
+            else {
+              const iso = new Date(String(rawDate))
+              if (!isNaN(iso.getTime())) birth_date = format(iso, 'yyyy-MM-dd')
+            }
+          }
+
+          if (String(deleteFlag).trim() !== '') {
+            if (id) toDeleteById.push(String(id))
+            continue
+          }
+
+          if (!first_name && !last_name) continue
+          records.push({
+            id: id || undefined,
+            first_name: first_name || '',
+            last_name: last_name || '',
+            birth_date: birth_date || null,
+            phone: obj['телефон'] || obj['phone'] || null,
+            email: obj['email'] || obj['e-mail'] || null,
+            list_id: conn.list_id || null,
+            user_id: userId,
+          })
+        }
+
+        if (toDeleteById.length > 0) {
+          await supabase.from('birthdays').delete().in('id', toDeleteById).eq('user_id', userId!)
+          totalDeleted += toDeleteById.length
+        }
+
+        if (records.length > 0) {
+          const { error } = await supabase.from('birthdays').upsert(records)
+          if (error) console.error('[v0] Upsert error for conn', conn.id, error.message)
+          else totalImported += records.length
+        }
+      }
+
+      console.log('[v0] Import-all completed, imported:', totalImported, 'deleted:', totalDeleted)
+      return NextResponse.json({ success: true, action: 'import-all', imported: totalImported, deleted: totalDeleted })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
