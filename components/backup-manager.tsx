@@ -19,7 +19,7 @@ export function BackupManager() {
   const { t } = useLocale()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const [sheetSettings, setSheetSettings] = useState<{ spreadsheet_id?: string; sheet_range?: string; autoSync?: boolean } | null>(null)
+  const [sheetSettings, setSheetSettings] = useState<{ spreadsheet_id?: string; sheet_range?: string; autoSync?: boolean; autoDeleteCheck?: boolean; connections?: any[] } | null>(null)
 
   // Load Google Sheets settings for current user
   const loadSheetSettings = async () => {
@@ -30,7 +30,7 @@ export function BackupManager() {
         .from('settings')
         .select('key,value')
         .eq('user_id', user.id)
-        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check'])
+        .in('key', ['spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check', 'google_sheets_connections'])
       const res: any = {}
       ;(rows || []).forEach((r: any) => {
         if (r.key === 'spreadsheet_id') res.spreadsheet_id = r.value
@@ -38,7 +38,18 @@ export function BackupManager() {
         if (r.key === 'google_sheets_auto_sync') res.autoSync = r.value === 'true'
         if (r.key === 'google_sheets_auto_delete_check') res.autoDeleteCheck = r.value === 'true'
         if (r.key === 'google_sheets_sheet_name') res.sheet_name = r.value
+        if (r.key === 'google_sheets_connections') {
+          try { res.connections = JSON.parse(r.value || '[]') } catch { res.connections = [] }
+        }
       })
+      // Fallback to legacy single connection
+      if (!res.connections || res.connections.length === 0) {
+        if (res.spreadsheet_id) {
+          res.connections = [{ id: 'legacy', spreadsheet_id: res.spreadsheet_id, sheet_range: res.sheet_range || "'Data app'!A:Z", list_id: null }]
+        } else {
+          res.connections = []
+        }
+      }
       setSheetSettings(res)
       return res
     } catch (e) {
@@ -54,23 +65,23 @@ export function BackupManager() {
     let active = true
     ;(async () => {
       const s = await loadSheetSettings()
-      if (!s) return
+      if (!s || !s.connections || s.connections.length === 0) return
       if (s.autoSync) {
-        // initial sync
-        try { await handleGoogleExport() } catch (e) { console.error('Auto sync failed', e) }
+        try { await handleGoogleExport(s) } catch (e) { console.error('Auto sync failed', e) }
         interval = setInterval(async () => {
           if (!active) return
-          try { await handleGoogleExport() } catch (e) { console.error('Auto sync failed', e) }
+          try { await handleGoogleExport(s) } catch (e) { console.error('Auto sync failed', e) }
         }, 60_000)
       }
-
-      // Always run background delete-check every minute when spreadsheet is configured
-      if (s.spreadsheet_id) {
-        // initial run
-        try { await handleGoogleDeleteCheck(s.spreadsheet_id, s.sheet_range) } catch (e) { console.error('Initial delete-check failed', e) }
+      if (s.autoDeleteCheck !== false) {
+        for (const conn of s.connections) {
+          try { await handleGoogleDeleteCheck(conn.spreadsheet_id, conn.sheet_range) } catch (e) { console.error('Initial delete-check failed', e) }
+        }
         deleteInterval = setInterval(async () => {
           if (!active) return
-          try { await handleGoogleDeleteCheck(s.spreadsheet_id, s.sheet_range) } catch (e) { console.error('Background delete-check failed', e) }
+          for (const conn of (s.connections || [])) {
+            try { await handleGoogleDeleteCheck(conn.spreadsheet_id, conn.sheet_range) } catch (e) { console.error('Background delete-check failed', e) }
+          }
         }, 60_000)
       }
     })()
@@ -243,41 +254,49 @@ export function BackupManager() {
   }
 
   // Export to Google Sheets
-  const handleGoogleExport = async () => {
+  const handleGoogleExport = async (overrideSettings?: any) => {
     setIsLoading(true)
     try {
-      const settings = sheetSettings || (await loadSheetSettings())
-      if (!settings || !settings.spreadsheet_id) throw new Error('Google Sheets not configured')
+      const settings = overrideSettings || sheetSettings || (await loadSheetSettings())
+      const connections: any[] = settings?.connections || []
+      if (connections.length === 0) throw new Error('Google Sheets not configured')
 
-      const { data: birthdays, error } = await supabase.from('birthdays').select('*').order('birth_date')
-      if (error) throw error
+      let totalRows = 0
+      for (const conn of connections) {
+        if (!conn.spreadsheet_id) continue
 
-      // Include ID and Delete column to allow remote deletion marking
-      const header = ['ID','ФИО','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
-      const values = [header]
-      ;(birthdays || []).forEach((b: Birthday) => {
-        values.push([
-          // include id if present for safe matching on import
-          (b as any).id || '',
-          [b.last_name, b.first_name].filter(Boolean).join(' '),
-          b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
-          b.phone || '',
-          b.email || '',
-          b.notification_time || '',
-          b.notification_enabled ? 'Да' : 'Нет',
-          '', // empty 'Удалить' column for users to mark
-        ])
-      })
+        // Fetch birthdays filtered by list_id if set
+        let query = supabase.from('birthdays').select('*').order('birth_date')
+        if (conn.list_id) query = (query as any).eq('list_id', conn.list_id)
+        const { data: birthdays, error } = await query
+        if (error) throw error
 
-      const resp = await fetch('/api/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'write', spreadsheetId: settings.spreadsheet_id, range: settings.sheet_range || "'Data app'!A:Z", values }),
-      })
-      const data = await resp.json()
-      if (!resp.ok) throw new Error(data.error || 'Failed to write to Google Sheets')
+        const header = ['ID','ФИО','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
+        const values = [header]
+        ;(birthdays || []).forEach((b: Birthday) => {
+          values.push([
+            (b as any).id || '',
+            [b.last_name, b.first_name].filter(Boolean).join(' '),
+            b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
+            b.phone || '',
+            b.email || '',
+            b.notification_time || '',
+            b.notification_enabled ? 'Да' : 'Нет',
+            '',
+          ])
+        })
 
-      toast({ title: 'Экспорт в Google Sheets', description: `Записано ${values.length - 1} строк` })
+        const resp = await fetch('/api/google-sheets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'write', spreadsheetId: conn.spreadsheet_id, range: conn.sheet_range || "'Data app'!A:Z", values }),
+        })
+        const data = await resp.json()
+        if (!resp.ok) throw new Error(data.error || 'Failed to write to Google Sheets')
+        totalRows += values.length - 1
+      }
+
+      toast({ title: 'Экспорт в Google Sheets', description: `Записано ${totalRows} строк` })
     } catch (e: any) {
       console.error('Google export error', e)
       toast({ title: 'Ошибка', description: e.message || String(e), variant: 'destructive' })
@@ -292,12 +311,17 @@ export function BackupManager() {
     setIsLoading(true)
     try {
       const settings = sheetSettings || (await loadSheetSettings())
-      if (!settings || !settings.spreadsheet_id) throw new Error('Google Sheets not configured')
+      const connections: any[] = settings?.connections || []
+      if (connections.length === 0) throw new Error('Google Sheets not configured')
+
+      // Import from first connection
+      const conn = connections[0]
+      if (!conn.spreadsheet_id) throw new Error('Google Sheets not configured')
 
       const resp = await fetch('/api/google-sheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'read', spreadsheetId: settings.spreadsheet_id, range: settings.sheet_range || "'Data app'!A:Z" }),
+        body: JSON.stringify({ action: 'read', spreadsheetId: conn.spreadsheet_id, range: conn.sheet_range || "'Data app'!A:Z" }),
       })
       const result = await resp.json()
       if (!resp.ok) throw new Error(result.error || 'Failed to read from Google Sheets')
@@ -357,7 +381,7 @@ export function BackupManager() {
               await fetch('/api/google-sheets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'write', spreadsheetId: settings.spreadsheet_id, range: `${settings.sheet_range?.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }),
+                body: JSON.stringify({ action: 'write', spreadsheetId: conn.spreadsheet_id, range: `${conn.sheet_range?.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }),
               })
             } catch (err) {
               console.warn('Failed to clear sheet row', del.rowIndex, err)
@@ -380,7 +404,7 @@ export function BackupManager() {
               await fetch('/api/google-sheets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'write', spreadsheetId: settings.spreadsheet_id, range: `${settings.sheet_range?.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }),
+                body: JSON.stringify({ action: 'write', spreadsheetId: conn.spreadsheet_id, range: `${conn.sheet_range?.split('!')[0] || "'Data app'"}!A${del.rowIndex}:Z${del.rowIndex}`, values: [Array(header.length).fill('')] }),
               })
             } catch (err) {
               console.warn('Failed to clear sheet row', del.rowIndex, err)
