@@ -71,11 +71,11 @@ export async function POST() {
       grouped.get(wname)!.push(a.recipient_name)
     }
 
-    const headers = ["Молящийся", "Участники", "Месяц"]
+    const headers = ["Молящийся", "Участники"]
     const values: string[][] = [headers]
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
-      values.push([wname, recs.join(", "), formatMonth(currentMonth)])
+      values.push([wname, recs.join(", ")])
     }
 
     // Determine range
