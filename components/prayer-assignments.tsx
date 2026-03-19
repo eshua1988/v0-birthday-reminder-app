@@ -450,7 +450,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "write",
+          action: "insert-shift",
           spreadsheetId: conn.spreadsheet_id,
           range,
           values,

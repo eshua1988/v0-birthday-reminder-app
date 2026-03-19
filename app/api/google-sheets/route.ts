@@ -113,6 +113,76 @@ export async function POST(req: Request) {
       return NextResponse.json({ data })
     }
 
+    if (action === 'insert-shift') {
+      // Insert N blank columns at the specified position, then write data there
+      // 1. Get spreadsheet metadata to find sheetId
+      const metaRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (!metaRes.ok) {
+        const text = await metaRes.text()
+        return NextResponse.json({ error: text }, { status: metaRes.status })
+      }
+      const meta = await metaRes.json()
+
+      // Find sheetId by name from range like 'SheetName'!A1 or SheetName!A1
+      const sheetNameMatch = range.match(/^'?([^'!]+)'?!/)
+      const sheetName = sheetNameMatch ? sheetNameMatch[1] : ''
+      const sheet = meta.sheets?.find((s: any) =>
+        s.properties.title === sheetName || (!sheetName && s.properties.index === 0)
+      )
+      const sheetId = sheet?.properties?.sheetId ?? 0
+
+      // Parse column index from range (e.g. 'Sheet1'!F1 → 5, A1 → 0)
+      const colMatch = range.match(/!([A-Z]+)/i)
+      const colStr = colMatch ? colMatch[1].toUpperCase() : 'A'
+      let colIndex = 0
+      for (let i = 0; i < colStr.length; i++) {
+        colIndex = colIndex * 26 + (colStr.charCodeAt(i) - 64)
+      }
+      colIndex -= 1 // convert to 0-based
+
+      const numCols = (values as any[][])[0]?.length || 1
+
+      // 2. Insert blank columns at colIndex
+      const batchRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requests: [{
+              insertDimension: {
+                range: { sheetId, dimension: 'COLUMNS', startIndex: colIndex, endIndex: colIndex + numCols },
+                inheritFromBefore: false,
+              }
+            }]
+          }),
+        }
+      )
+      if (!batchRes.ok) {
+        const text = await batchRes.text()
+        return NextResponse.json({ error: text }, { status: batchRes.status })
+      }
+
+      // 3. Write data into the newly inserted columns
+      const writeRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values }),
+        }
+      )
+      if (!writeRes.ok) {
+        const text = await writeRes.text()
+        return NextResponse.json({ error: text }, { status: writeRes.status })
+      }
+      const data = await writeRes.json()
+      return NextResponse.json({ data })
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || String(error) }, { status: 500 })

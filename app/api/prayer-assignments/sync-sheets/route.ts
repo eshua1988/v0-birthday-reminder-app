@@ -89,7 +89,7 @@ export async function POST() {
     const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/google-sheets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "write", spreadsheetId: conn.spreadsheet_id, range, values }),
+      body: JSON.stringify({ action: "insert-shift", spreadsheetId: conn.spreadsheet_id, range, values }),
     })
     const resData = await res.json()
     if (!res.ok) throw new Error(resData.error || "Ошибка записи в таблицу")
