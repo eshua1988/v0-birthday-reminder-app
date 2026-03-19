@@ -43,7 +43,7 @@ export function Sidebar() {
         return
       }
 
-      // 1. Export birthdays to all configured Google Sheets connections
+      // Экспорт участников во все настроенные таблицы
       let exportRows = 0
       try {
         const exportRes = await fetch('/api/sync-with-sheets', {
@@ -59,23 +59,7 @@ export function Sidebar() {
         return
       }
 
-      // 2. Import from ALL Google Sheets connections
-      let importedCount = 0
-      try {
-        const importRes = await fetch('/api/sync-with-sheets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ action: 'import-all' }),
-        })
-        const importData = await importRes.json()
-        if (!importRes.ok) throw new Error(importData?.error || 'Импорт не удался')
-        importedCount = importData?.imported || 0
-      } catch (e: any) {
-        toast({ title: 'Ошибка импорта', description: e.message || String(e), variant: 'destructive' })
-        return
-      }
-
-      // 3. Export prayer assignments to their configured Google Sheet
+      // Экспорт молитвенных назначений в таблицу из настроек
       try {
         const prayerRes = await fetch('/api/prayer-assignments/sync-sheets', { method: 'POST' })
         const prayerData = await prayerRes.json()
@@ -88,7 +72,7 @@ export function Sidebar() {
 
       toast({
         title: 'Синхронизация завершена',
-        description: `Участники: ${exportRows} строк | Обновлено: ${importedCount} | Назначения: ✅`,
+        description: `Записано ${exportRows} строк`,
       })
     } catch (error: any) {
       console.error('[v0] Sync error:', error)
