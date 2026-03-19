@@ -253,14 +253,13 @@ export function BackupManager() {
       if (error) throw error
 
       // Include ID and Delete column to allow remote deletion marking
-      const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
+      const header = ['ID','ФИО','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
       const values = [header]
       ;(birthdays || []).forEach((b: Birthday) => {
         values.push([
           // include id if present for safe matching on import
           (b as any).id || '',
-          b.last_name || '',
-          b.first_name || '',
+          [b.last_name, b.first_name].filter(Boolean).join(' '),
           b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
           b.phone || '',
           b.email || '',
@@ -320,8 +319,11 @@ export function BackupManager() {
         header.forEach((h: string, idx: number) => { obj[h] = r[idx] })
 
         const id = obj['id'] || obj['ид'] || ''
-        const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || ''
-        const first_name = obj['имя'] || obj['first name'] || obj['name'] || ''
+        const fio = obj['фио'] || obj['fio'] || ''
+        const fioLast = fio ? fio.split(' ')[0] : ''
+        const fioFirst = fio ? fio.split(' ').slice(1).join(' ') : ''
+        const last_name = obj['фамилия'] || obj['last name'] || obj['surname'] || fioLast
+        const first_name = obj['имя'] || obj['first name'] || obj['name'] || fioFirst
         const rawDate = obj['дата рождения'] || obj['birth date'] || obj['date'] || ''
         const deleteFlag = (obj['удалить'] || obj['delete'] || obj['remove'] || '')
 
