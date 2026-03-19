@@ -33,85 +33,55 @@ export function Sidebar() {
   const handleSync = async () => {
     if (isSyncing) return
     setIsSyncing(true)
+    toast({ title: 'Синхронизация...', description: 'Экспорт в Google Sheets' })
     try {
-      // Get user session
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
 
       if (!token) {
-        toast({
-          title: 'Ошибка',
-          description: 'Не удалось получить токен доступа',
-          variant: 'destructive',
-        })
-        setIsSyncing(false)
+        toast({ title: 'Ошибка', description: 'Не авторизован', variant: 'destructive' })
         return
       }
 
-      // Выполнить одновременно экспорт и импорт
-      const [exportResult, importResult] = await Promise.allSettled([
-        fetch('/api/sync-with-sheets', {
+      // Export
+      let exportRows = 0
+      try {
+        const exportRes = await fetch('/api/sync-with-sheets', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ action: 'export' }),
-        }),
-        fetch('/api/sync-with-sheets', {
+        })
+        const exportData = await exportRes.json()
+        if (!exportRes.ok) throw new Error(exportData?.error || 'Экспорт не удался')
+        exportRows = exportData?.rows || 0
+      } catch (e: any) {
+        toast({ title: 'Ошибка экспорта', description: e.message || String(e), variant: 'destructive' })
+        return
+      }
+
+      // Import
+      let importedCount = 0
+      try {
+        const importRes = await fetch('/api/sync-with-sheets', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ action: 'import' }),
-        }),
-      ])
-
-      const exportOk = exportResult.status === 'fulfilled' && exportResult.value?.ok
-      const importOk = importResult.status === 'fulfilled' && importResult.value?.ok
-
-      let exportData = null
-      let importData = null
-
-      try {
-        if (exportResult.status === 'fulfilled' && exportResult.value) {
-          exportData = await exportResult.value.json()
-        }
-      } catch (e) {
-        console.error('[v0] Error parsing export result:', e)
-      }
-
-      try {
-        if (importResult.status === 'fulfilled' && importResult.value) {
-          importData = await importResult.value.json()
-        }
-      } catch (e) {
-        console.error('[v0] Error parsing import result:', e)
-      }
-
-      if (exportOk && importOk) {
-        toast({
-          title: 'Синхронизация успешна',
-          description: `Экспортировано: ${exportData?.rows || 0} строк | Импортировано: ${importData?.imported || 0}`,
         })
-      } else {
-        const errors = []
-        if (!exportOk) errors.push('Экспорт не удался')
-        if (!importOk) errors.push('Импорт не удался')
-        toast({
-          title: 'Частичная ошибка синхронизации',
-          description: errors.join(' | '),
-          variant: 'destructive',
-        })
+        const importData = await importRes.json()
+        if (!importRes.ok) throw new Error(importData?.error || 'Импорт не удался')
+        importedCount = importData?.imported || 0
+      } catch (e: any) {
+        toast({ title: 'Ошибка импорта', description: e.message || String(e), variant: 'destructive' })
+        return
       }
-    } catch (error) {
-      console.error('[v0] Sync error:', error)
+
       toast({
-        title: 'Ошибка синхронизации',
-        description: 'Убедитесь, что Google Sheets настроены в параметрах',
-        variant: 'destructive',
+        title: 'Синхронизация завершена',
+        description: `Экспортировано: ${exportRows} | Импортировано: ${importedCount}`,
       })
+    } catch (error: any) {
+      console.error('[v0] Sync error:', error)
+      toast({ title: 'Ошибка синхронизации', description: error.message || 'Неизвестная ошибка', variant: 'destructive' })
     } finally {
       setIsSyncing(false)
     }
