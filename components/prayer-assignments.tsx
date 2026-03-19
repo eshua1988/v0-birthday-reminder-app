@@ -94,6 +94,13 @@ export const PrayerAssignmentsCard: React.FC = () => {
   const [telegramNotify, setTelegramNotify] = useState(false)
   const [isSendingTelegram, setIsSendingTelegram] = useState(false)
 
+  // Google Sheets state
+  interface SheetConnection { id: string; spreadsheet_id: string; sheet_name: string; sheet_range: string; list_name: string; list_id: string | null }
+  const [sheetConnections, setSheetConnections] = useState<SheetConnection[]>([])
+  const [selectedSheetId, setSelectedSheetId] = useState<string>("__none__")
+  const [sheetsColumn, setSheetsColumn] = useState<string>("")
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false)
+
   const currentMonth = new Date().toISOString().slice(0, 7)
 
   const load = useCallback(async () => {
@@ -110,6 +117,8 @@ export const PrayerAssignmentsCard: React.FC = () => {
         .in("key", [
           "prayer_cycle_number", "prayer_assignments_per_warrior", "prayer_list_id",
           "prayer_notify_days", "prayer_notify_repeat", "prayer_notify_frequency", "prayer_telegram_notify",
+          "google_sheets_connections",
+          "prayer_sheets_connection_id", "prayer_sheets_column",
         ])
 
       let cycleNum = 1
@@ -128,6 +137,11 @@ export const PrayerAssignmentsCard: React.FC = () => {
           if (s.key === "prayer_notify_repeat") repeat = s.value !== "false"
           if (s.key === "prayer_notify_frequency") freq = (s.value as any) || "custom"
           if (s.key === "prayer_telegram_notify") setTelegramNotify(s.value === "true")
+          if (s.key === "google_sheets_connections") {
+            try { setSheetConnections(JSON.parse(s.value || "[]")) } catch {}
+          }
+          if (s.key === "prayer_sheets_connection_id") setSelectedSheetId(s.value || "__none__")
+          if (s.key === "prayer_sheets_column") setSheetsColumn(s.value || "")
         }
       }
 
@@ -383,10 +397,74 @@ export const PrayerAssignmentsCard: React.FC = () => {
           }
         } catch {}
       }
+
+      // Auto-export to Google Sheets if configured
+      if (selectedSheetId !== "__none__") {
+        try {
+          await exportToSheets(inserted || rows)
+        } catch {}
+      }
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" })
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  // Build Google Sheets values from assignments
+  const buildSheetsData = (assignmentRows: any[]) => {
+    // Group by warrior
+    const warriorOrder: string[] = []
+    const grouped = new Map<string, string[]>()
+    for (const a of assignmentRows) {
+      const wname = warriors.find(w => w.id === a.warrior_id)?.name || a.recipient_name
+      if (!grouped.has(wname)) { grouped.set(wname, []); warriorOrder.push(wname) }
+      grouped.get(wname)!.push(a.recipient_name)
+    }
+    // Header row
+    const values: string[][] = [["Молящийся", "Участники молитвы", "Месяц"]]
+    for (const wname of warriorOrder) {
+      const recs = grouped.get(wname) || []
+      values.push([wname, recs.join(", "), formatMonth(currentMonth)])
+    }
+    return values
+  }
+
+  const exportToSheets = async (assignmentRows?: any[]) => {
+    const conn = sheetConnections.find(c => c.id === selectedSheetId)
+    if (!conn) return
+    setIsSyncingSheets(true)
+    try {
+      const sourceRows = assignmentRows || currentAssignments
+      const values = buildSheetsData(sourceRows)
+
+      // Determine range: use custom column if set, else use connection's sheet range
+      let range = conn.sheet_range || `'${conn.sheet_name}'!A:C`
+      if (sheetsColumn) {
+        // e.g. column "F" → write from F1
+        const colLetter = sheetsColumn.toUpperCase().replace(/[^A-Z]/g, "") || "A"
+        range = `'${conn.sheet_name}'!${colLetter}1`
+      }
+
+      const res = await fetch("/api/google-sheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "write",
+          spreadsheetId: conn.spreadsheet_id,
+          range,
+          values,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Ошибка записи в таблицу")
+      }
+      toast({ title: "Google Sheets", description: "Назначения обновлены в таблице ✅" })
+    } catch (e: any) {
+      toast({ title: "Ошибка Google Sheets", description: e.message, variant: "destructive" })
+    } finally {
+      setIsSyncingSheets(false)
     }
   }
 
@@ -684,6 +762,75 @@ export const PrayerAssignmentsCard: React.FC = () => {
               )} />
             </div>
           </button>
+        </div>
+
+        {/* Google Sheets integration */}
+        <div className="space-y-3 border rounded-xl p-4 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5 0h-3v-2h3v2zm0-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+            </svg>
+            <Label className="text-sm font-medium">Google Sheets</Label>
+          </div>
+
+          {sheetConnections.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Добавьте таблицу в <strong>Настройки → Google Sheets</strong></p>
+          ) : (
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Таблица</Label>
+                <Select
+                  value={selectedSheetId}
+                  onValueChange={async (v) => {
+                    setSelectedSheetId(v)
+                    await saveSetting("prayer_sheets_connection_id", v)
+                  }}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Не выбрано" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Не экспортировать —</SelectItem>
+                    {sheetConnections.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.list_name || "Таблица"} · {c.sheet_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedSheetId !== "__none__" && (
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1 block">
+                    Начальная колонка (напр. A, F, J)
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={sheetsColumn}
+                      onChange={(e) => setSheetsColumn(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))}
+                      onBlur={() => saveSetting("prayer_sheets_column", sheetsColumn)}
+                      placeholder="A"
+                      maxLength={3}
+                      className="h-9 w-24 uppercase"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                      disabled={isSyncingSheets}
+                      onClick={() => exportToSheets()}
+                    >
+                      {isSyncingSheets ? "Запись..." : "Записать сейчас"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Запись начнётся с этой колонки. Пусто = по умолчанию диапазон таблицы
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Telegram notify toggle */}
