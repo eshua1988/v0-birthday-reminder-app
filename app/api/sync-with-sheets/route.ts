@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 import { format, parse } from 'date-fns'
 import { Birthday } from '@/types/birthday'
@@ -57,41 +58,28 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Sync endpoint called with action:', action)
 
-    // Get user from request authorization header
-    const authHeader = request.headers.get('authorization')
-    console.log('[v0] Authorization header present:', !!authHeader)
-    const token = authHeader?.replace('Bearer ', '')
-    console.log('[v0] Token extracted:', !!token, token?.substring(0, 20) + '...')
-    
+    // Get user via server client (cookies-based session)
     let userId: string | null = null
-    
-    if (token) {
-      try {
-        console.log('[v0] Attempting to get user from token...')
-        const { data: { user }, error } = await supabase.auth.getUser(token)
-        if (error) {
-          console.error('[v0] Error getting user from token:', error.message, error.code)
-        } else if (user) {
-          userId = user.id
-          console.log('[v0] Got user from token:', userId)
-        } else {
-          console.log('[v0] No user in response, user is null')
-        }
-      } catch (e: any) {
-        console.error('[v0] Exception getting user from token:', e.message, e.cause)
-      }
-    } else {
-      console.log('[v0] No token provided in authorization header')
+    try {
+      const serverClient = await createServerClient()
+      const { data: { user } } = await serverClient.auth.getUser()
+      userId = user?.id || null
+      if (userId) console.log('[v0] Got user from cookie session:', userId)
+    } catch (e: any) {
+      console.error('[v0] Error getting user from cookie session:', e.message)
     }
 
+    // Fallback: try Authorization header token via service role
     if (!userId) {
-      console.log('[v0] No user found in token, trying default context')
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        userId = user?.id || null
-        if (userId) console.log('[v0] Got user from default context:', userId)
-      } catch (e: any) {
-        console.error('[v0] Exception getting user from context:', e.message)
+      const token = request.headers.get('authorization')?.replace('Bearer ', '')
+      if (token) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser(token)
+          userId = user?.id || null
+          if (userId) console.log('[v0] Got user from token:', userId)
+        } catch (e: any) {
+          console.error('[v0] Error getting user from token:', e.message)
+        }
       }
     }
 
