@@ -413,31 +413,52 @@ export async function GET(request: NextRequest) {
         }))
         if (allRecipients.length === 0) continue
 
-        // Remaining in current cycle
-        const { data: cycleRows } = await supabase
-          .from("prayer_assignments").select("recipient_id").eq("user_id", userId).eq("cycle_number", cycleNum)
-        const assignedIds = new Set((cycleRows || []).map((a: any) => a.recipient_id).filter(Boolean))
-        let remaining = allRecipients.filter((r: any) => !assignedIds.has(r.id))
+        // Load per-warrior cycle settings
+        const { data: warriorCycleRows } = await supabase
+          .from("settings")
+          .select("key, value")
+          .eq("user_id", userId)
+          .like("key", "prayer_warrior_cycle_%")
 
-        if (remaining.length < warriors.length * perWarrior) {
-          cycleNum++
-          remaining = allRecipients
-          await supabase.from("settings").upsert(
-            [{ user_id: userId, key: "prayer_cycle_number", value: String(cycleNum) }], { onConflict: "user_id,key" }
-          )
+        const warriorCycleMap = new Map<string, number>()
+        for (const s of warriorCycleRows || []) {
+          const wid = s.key.replace("prayer_warrior_cycle_", "")
+          warriorCycleMap.set(wid, parseInt(s.value) || 1)
         }
 
-        // Delete current month, insert new
+        // Delete current month, insert new per-warrior
         await supabase.from("prayer_assignments").delete().eq("user_id", userId).eq("assigned_month", currentMonth)
 
-        const shuffled = [...remaining].sort(() => Math.random() - 0.5)
         const rows: any[] = []
-        let idx = 0
         for (const w of warriors) {
+          const wCycle = warriorCycleMap.get(w.id) || 1
+
+          // Find already assigned to this warrior in their current cycle
+          const { data: wAssigned } = await supabase
+            .from("prayer_assignments")
+            .select("recipient_id")
+            .eq("user_id", userId)
+            .eq("warrior_id", w.id)
+            .eq("cycle_number", wCycle)
+
+          const assignedIds = new Set((wAssigned || []).map((a: any) => a.recipient_id).filter(Boolean))
+          let remaining = allRecipients.filter((r: any) => !assignedIds.has(r.id))
+
+          let thisCycle = wCycle
+          if (remaining.length < perWarrior) {
+            thisCycle = wCycle + 1
+            remaining = allRecipients
+            await supabase.from("settings").upsert(
+              [{ user_id: userId, key: `prayer_warrior_cycle_${w.id}`, value: String(thisCycle) }],
+              { onConflict: "user_id,key" }
+            )
+          }
+
+          const shuffled = [...remaining].sort(() => Math.random() - 0.5)
           for (let i = 0; i < perWarrior; i++) {
-            if (idx >= shuffled.length) break
-            const r = shuffled[idx++]
-            rows.push({ user_id: userId, warrior_id: w.id, recipient_name: r.name, recipient_id: r.id, assigned_month: currentMonth, cycle_number: cycleNum })
+            if (i >= shuffled.length) break
+            const r = shuffled[i]
+            rows.push({ user_id: userId, warrior_id: w.id, recipient_name: r.name, recipient_id: r.id, assigned_month: currentMonth, cycle_number: thisCycle })
           }
         }
         if (rows.length === 0) continue

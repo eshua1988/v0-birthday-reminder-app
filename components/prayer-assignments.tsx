@@ -155,13 +155,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
         .order("created_at")
       setCurrentAssignments(assignmentsData || [])
 
-      // Load cycle progress (unique recipients assigned in this cycle)
-      const { data: cycleData } = await supabase
-        .from("prayer_assignments")
-        .select("recipient_id")
-        .eq("user_id", user.id)
-        .eq("cycle_number", cycleNum)
-
       // Load birthday lists
       const { data: listsData } = await supabase
         .from("birthday_lists")
@@ -176,12 +169,49 @@ export const PrayerAssignmentsCard: React.FC = () => {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
       if (listId !== "__all__") recipientsQuery = recipientsQuery.eq("list_id", listId)
-      const { count } = await recipientsQuery
+      const { count: totalCount } = await recipientsQuery
+      const total = totalCount || 0
 
-      const assignedIds = new Set(
-        (cycleData || []).map((a: any) => a.recipient_id).filter(Boolean)
-      )
-      setCycleProgress({ assigned: assignedIds.size, total: count || 0 })
+      // Per-warrior cycle progress: find the warrior who has covered the LEAST
+      // (they are the "bottleneck" — when they finish, the group finished one round)
+      const { data: warriorCycleSettings } = await supabase
+        .from("settings")
+        .select("key, value")
+        .eq("user_id", user.id)
+        .like("key", "prayer_warrior_cycle_%")
+
+      const warriorCycleMap = new Map<string, number>()
+      for (const s of warriorCycleSettings || []) {
+        const wid = s.key.replace("prayer_warrior_cycle_", "")
+        warriorCycleMap.set(wid, parseInt(s.value) || 1)
+      }
+
+      if (warriorsData && warriorsData.length > 0 && total > 0) {
+        // For each warrior find how many unique recipients they've covered in their current cycle
+        let minCovered = total
+        let minCycleNum = cycleNum
+
+        for (const w of warriorsData) {
+          const wCycle = warriorCycleMap.get(w.id) || 1
+          const { data: wData } = await supabase
+            .from("prayer_assignments")
+            .select("recipient_id")
+            .eq("user_id", user.id)
+            .eq("warrior_id", w.id)
+            .eq("cycle_number", wCycle)
+
+          const covered = new Set((wData || []).map((a: any) => a.recipient_id).filter(Boolean)).size
+          if (covered < minCovered) {
+            minCovered = covered
+            minCycleNum = wCycle
+          }
+        }
+
+        setCycleNumber(minCycleNum)
+        setCycleProgress({ assigned: minCovered, total })
+      } else {
+        setCycleProgress({ assigned: 0, total })
+      }
     } catch (e) {
       console.error("Failed to load prayer assignments", e)
     }
@@ -244,30 +274,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
         return
       }
 
-      // Recipients already assigned in current cycle
-      const { data: cycleAssignments } = await supabase
-        .from("prayer_assignments")
-        .select("recipient_id")
-        .eq("user_id", userId)
-        .eq("cycle_number", cycleNumber)
-
-      const assignedInCycleIds = new Set(
-        (cycleAssignments || []).map((a: any) => a.recipient_id).filter(Boolean)
-      )
-      let remaining = allRecipients.filter((r) => !assignedInCycleIds.has(r.id))
-
-      const needed = warriors.length * assignmentsPerWarrior
-      let newCycleNumber = cycleNumber
-
-      // Not enough remaining — start new cycle
-      if (remaining.length < needed) {
-        newCycleNumber = cycleNumber + 1
-        remaining = allRecipients
-        await saveSetting("prayer_cycle_number", String(newCycleNumber))
-        setCycleNumber(newCycleNumber)
-        toast({ title: "Новый цикл!", description: "Все участники получили молитву. Начинается новый цикл 🙏" })
-      }
-
       // Delete existing assignments for this month (if regenerating)
       await supabase
         .from("prayer_assignments")
@@ -275,21 +281,61 @@ export const PrayerAssignmentsCard: React.FC = () => {
         .eq("user_id", userId)
         .eq("assigned_month", currentMonth)
 
-      // Shuffle and assign
-      const shuffled = shuffle(remaining)
+      // --- Per-warrior independent cycling ---
+      // Each warrior has their own cycle: they go through ALL recipients
+      // without repeats until they finish, then their personal cycle resets.
       const rows: any[] = []
-      let idx = 0
+      let anyNewCycle = false
+
+      // Load per-warrior cycle settings in one batch
+      const { data: warriorCycleSettings } = await supabase
+        .from("settings")
+        .select("key, value")
+        .eq("user_id", userId)
+        .like("key", "prayer_warrior_cycle_%")
+
+      const warriorCycleMap = new Map<string, number>()
+      for (const s of warriorCycleSettings || []) {
+        const wid = s.key.replace("prayer_warrior_cycle_", "")
+        warriorCycleMap.set(wid, parseInt(s.value) || 1)
+      }
+
       for (const warrior of warriors) {
+        const warriorCycle = warriorCycleMap.get(warrior.id) || 1
+
+        // Find recipients already assigned to this warrior in their current personal cycle
+        const { data: warriorAssigned } = await supabase
+          .from("prayer_assignments")
+          .select("recipient_id")
+          .eq("user_id", userId)
+          .eq("warrior_id", warrior.id)
+          .eq("cycle_number", warriorCycle)
+
+        const assignedToWarrior = new Set(
+          (warriorAssigned || []).map((a: any) => a.recipient_id).filter(Boolean)
+        )
+        let remaining = allRecipients.filter((r) => !assignedToWarrior.has(r.id))
+
+        // This warrior finished their cycle — start fresh for them
+        let thisCycle = warriorCycle
+        if (remaining.length < assignmentsPerWarrior) {
+          thisCycle = warriorCycle + 1
+          remaining = allRecipients
+          anyNewCycle = true
+          await saveSetting(`prayer_warrior_cycle_${warrior.id}`, String(thisCycle))
+          warriorCycleMap.set(warrior.id, thisCycle)
+        }
+
+        const shuffledRemaining = shuffle(remaining)
         for (let i = 0; i < assignmentsPerWarrior; i++) {
-          if (idx >= shuffled.length) break
-          const recipient = shuffled[idx++]
+          if (i >= shuffledRemaining.length) break
           rows.push({
             user_id: userId,
             warrior_id: warrior.id,
-            recipient_name: recipient.name,
-            recipient_id: recipient.id,
+            recipient_name: shuffledRemaining[i].name,
+            recipient_id: shuffledRemaining[i].id,
             assigned_month: currentMonth,
-            cycle_number: newCycleNumber,
+            cycle_number: thisCycle,
           })
         }
       }
@@ -297,6 +343,10 @@ export const PrayerAssignmentsCard: React.FC = () => {
       if (rows.length === 0) {
         toast({ title: "Ошибка", description: "Нет доступных участников", variant: "destructive" })
         return
+      }
+
+      if (anyNewCycle) {
+        toast({ title: "Новый цикл!", description: "Один из молящихся завершил список. Начинается новый цикл 🙏" })
       }
 
       const { data: inserted, error } = await supabase
@@ -307,17 +357,14 @@ export const PrayerAssignmentsCard: React.FC = () => {
 
       setCurrentAssignments(inserted || [])
 
-      // Refresh cycle progress
-      const { data: updatedCycle } = await supabase
-        .from("prayer_assignments")
-        .select("recipient_id")
-        .eq("user_id", userId)
-        .eq("cycle_number", newCycleNumber)
+      // Update cycle progress display: show the warrior who has covered the most
+      // (total unique recipients assigned to them in their current cycle)
+      const minCycleNum = Math.min(...Array.from(warriorCycleMap.values()).filter(Boolean), 1)
+      setCycleNumber(minCycleNum)
 
-      const newAssignedIds = new Set(
-        (updatedCycle || []).map((a: any) => a.recipient_id).filter(Boolean)
-      )
-      setCycleProgress({ assigned: newAssignedIds.size, total: allRecipients.length })
+      // Count total unique recipients covered across all warriors in their current cycles
+      const coveredIds = new Set(rows.map((r: any) => r.recipient_id).filter(Boolean))
+      setCycleProgress({ assigned: coveredIds.size, total: allRecipients.length })
 
       toast({
         title: "Готово",
@@ -472,7 +519,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
         {cycleProgress.total > 0 && (
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Цикл {cycleNumber} — охвачено</span>
+              <span>Цикл {cycleNumber} — охвачено (мин.)</span>
               <span>{cycleProgress.assigned} из {cycleProgress.total}</span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -483,8 +530,8 @@ export const PrayerAssignmentsCard: React.FC = () => {
             </div>
             <p className="text-xs text-muted-foreground">
               {cycleProgress.assigned >= cycleProgress.total
-                ? "✅ Все помолились! При следующем назначении начнётся новый цикл."
-                : `Осталось ${cycleProgress.total - cycleProgress.assigned} участников в этом цикле`}
+                ? "✅ Все помолились за всех! При следующем назначении начнётся новый цикл."
+                : `Наименее продвинутый молящийся охватил ${cycleProgress.assigned} из ${cycleProgress.total} — осталось ${cycleProgress.total - cycleProgress.assigned}`}
             </p>
           </div>
         )}
