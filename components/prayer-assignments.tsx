@@ -419,13 +419,18 @@ export const PrayerAssignmentsCard: React.FC = () => {
     for (const a of assignmentRows) {
       const wname = warriors.find(w => w.id === a.warrior_id)?.name || a.recipient_name
       if (!grouped.has(wname)) { grouped.set(wname, []); warriorOrder.push(wname) }
+      // recipient_name is already "FirstName LastName" — keep as one cell
       grouped.get(wname)!.push(a.recipient_name)
     }
-    // Header row
-    const values: string[][] = [["Молящийся", "Участники молитвы", "Месяц"]]
+    // Header row: warrior | participant1 | participant2 | ... | month
+    const maxPerWarrior = Math.max(...warriorOrder.map(w => (grouped.get(w) || []).length), 0)
+    const headers = ["Молящийся", ...Array.from({ length: maxPerWarrior }, (_, i) => `Участник ${i + 1}`), "Месяц"]
+    const values: string[][] = [headers]
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
-      values.push([wname, recs.join(", "), formatMonth(currentMonth)])
+      // Pad with empty strings so all rows have the same length
+      const padded = [...recs, ...Array(Math.max(0, maxPerWarrior - recs.length)).fill("")]
+      values.push([wname, ...padded, formatMonth(currentMonth)])
     }
     return values
   }
