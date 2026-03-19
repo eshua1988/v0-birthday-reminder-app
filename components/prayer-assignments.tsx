@@ -415,22 +415,32 @@ export const PrayerAssignmentsCard: React.FC = () => {
   const buildSheetsData = (assignmentRows: any[]) => {
     // Group by warrior
     const warriorOrder: string[] = []
-    const grouped = new Map<string, string[]>()
+    const grouped = new Map<string, Array<{ first: string; last: string }>>()
     for (const a of assignmentRows) {
       const wname = warriors.find(w => w.id === a.warrior_id)?.name || a.recipient_name
       if (!grouped.has(wname)) { grouped.set(wname, []); warriorOrder.push(wname) }
-      // recipient_name is already "FirstName LastName" — keep as one cell
-      grouped.get(wname)!.push(a.recipient_name)
+      // Split "first_name last_name" → separate cells
+      const parts = (a.recipient_name as string).trim().split(" ")
+      const first = parts[0] || ""
+      const last = parts.slice(1).join(" ") || ""
+      grouped.get(wname)!.push({ first, last })
     }
-    // Header row: warrior | participant1 | participant2 | ... | month
     const maxPerWarrior = Math.max(...warriorOrder.map(w => (grouped.get(w) || []).length), 0)
-    const headers = ["Молящийся", ...Array.from({ length: maxPerWarrior }, (_, i) => `Участник ${i + 1}`), "Месяц"]
+    // Header: Молящийся | Фамилия 1 | Имя 1 | Фамилия 2 | Имя 2 | ... | Месяц
+    const headers = ["Молящийся"]
+    for (let i = 1; i <= maxPerWarrior; i++) {
+      headers.push(`Фамилия ${i}`, `Имя ${i}`)
+    }
+    headers.push("Месяц")
     const values: string[][] = [headers]
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
-      // Pad with empty strings so all rows have the same length
-      const padded = [...recs, ...Array(Math.max(0, maxPerWarrior - recs.length)).fill("")]
-      values.push([wname, ...padded, formatMonth(currentMonth)])
+      const row: string[] = [wname]
+      for (let i = 0; i < maxPerWarrior; i++) {
+        row.push(recs[i]?.last ?? "", recs[i]?.first ?? "")
+      }
+      row.push(formatMonth(currentMonth))
+      values.push(row)
     }
     return values
   }
