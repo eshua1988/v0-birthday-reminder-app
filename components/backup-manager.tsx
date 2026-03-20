@@ -271,7 +271,7 @@ export function BackupManager() {
         const { data: birthdays, error } = await query
         if (error) throw error
 
-        const header = ['ID','ФИО','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
+        const header = ['ID','ФИО','Дата рождения','Телефон','Email','Удалить']
         const values = [header]
         ;(birthdays || []).forEach((b: Birthday) => {
           values.push([
@@ -280,8 +280,6 @@ export function BackupManager() {
             b.birth_date ? format(new Date(b.birth_date), 'dd.MM.yyyy') : '',
             b.phone || '',
             b.email || '',
-            b.notification_time || '',
-            b.notification_enabled ? 'Да' : 'Нет',
             '',
           ])
         })

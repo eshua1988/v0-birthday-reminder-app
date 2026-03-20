@@ -246,7 +246,7 @@ export const GoogleSheetsSettings: React.FC = () => {
       if (error) throw error
 
       if (birthdays && birthdays.length > 0) {
-        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Время оповещения', 'Оповещение включено', 'Удалить'])
+        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Удалить'])
         ;(birthdays || []).forEach((b: any) => {
           values.push([
             b.id || '',
@@ -254,13 +254,11 @@ export const GoogleSheetsSettings: React.FC = () => {
             b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
             b.phone || '',
             b.email || '',
-            b.notification_time || '',
-            b.notification_enabled ? 'Да' : 'Нет',
             '',
           ])
         })
       } else if (!isPrayerConn) {
-        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Время оповещения', 'Оповещение включено', 'Удалить'])
+        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Удалить'])
       }
 
       if (values.length === 0) {
