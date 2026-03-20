@@ -436,8 +436,35 @@ export const PrayerAssignmentsCard: React.FC = () => {
       const sourceRows = assignmentRows || currentAssignments
       const values = buildSheetsData(sourceRows)
 
+      // If connection has a participants list — append participants below prayer assignments
+      if (conn.list_id && userId) {
+        const { data: birthdays } = await supabase
+          .from("birthdays")
+          .select("id, first_name, last_name, birth_date, phone, email")
+          .eq("user_id", userId)
+          .eq("list_id", conn.list_id)
+          .order("birth_date")
+        if (birthdays && birthdays.length > 0) {
+          values.push([""])  // separator row
+          values.push(["ID", "ФИО", "Дата рождения", "Телефон", "Email"])
+          for (const b of birthdays as any[]) {
+            const d = b.birth_date ? new Date(b.birth_date) : null
+            const dateStr = d
+              ? `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`
+              : ""
+            values.push([
+              b.id || "",
+              [b.last_name, b.first_name].filter(Boolean).join(" "),
+              dateStr,
+              b.phone || "",
+              b.email || "",
+            ])
+          }
+        }
+      }
+
       // Determine range
-      const range = conn.sheet_range || `'${conn.sheet_name}'!A:C`
+      const range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
 
       const res = await fetch("/api/google-sheets", {
         method: "POST",
@@ -453,7 +480,8 @@ export const PrayerAssignmentsCard: React.FC = () => {
         const err = await res.json()
         throw new Error(err.error || "Ошибка записи в таблицу")
       }
-      toast({ title: "Google Sheets", description: "Назначения обновлены в таблице ✅" })
+      const hasParticipants = conn.list_id && values.length > buildSheetsData(sourceRows).length
+      toast({ title: "Google Sheets", description: hasParticipants ? "Назначения и участники обновлены в таблице ✅" : "Назначения обновлены в таблице ✅" })
     } catch (e: any) {
       toast({ title: "Ошибка Google Sheets", description: e.message, variant: "destructive" })
     } finally {

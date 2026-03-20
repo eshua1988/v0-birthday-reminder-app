@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient } from "@supabase/supabase-js"
+import { format } from "date-fns"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -75,6 +76,29 @@ export async function POST() {
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
       values.push([wname, recs.join(", ")])
+    }
+
+    // If connection has a participants list — append participants below prayer assignments
+    if (conn.list_id) {
+      const { data: birthdays } = await supabaseAdmin
+        .from("birthdays")
+        .select("id, first_name, last_name, birth_date, phone, email")
+        .eq("user_id", user.id)
+        .eq("list_id", conn.list_id)
+        .order("birth_date")
+      if (birthdays && birthdays.length > 0) {
+        values.push([""]) // separator row
+        values.push(["ID", "ФИО", "Дата рождения", "Телефон", "Email"])
+        for (const b of birthdays as any[]) {
+          values.push([
+            b.id || "",
+            [b.last_name, b.first_name].filter(Boolean).join(" "),
+            b.birth_date ? format(new Date(b.birth_date), "dd.MM.yyyy") : "",
+            b.phone || "",
+            b.email || "",
+          ])
+        }
+      }
     }
 
     // Determine range
