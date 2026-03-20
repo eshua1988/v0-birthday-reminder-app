@@ -220,9 +220,9 @@ export const GoogleSheetsSettings: React.FC = () => {
             const order: string[] = []
             const grouped = new Map<string, string[]>()
             for (const a of assignments) {
-              const wname = warriorMap.get(a.warrior_id) || '—'
+              const wname: string = (warriorMap.get(a.warrior_id) as string) || '—'
               if (!grouped.has(wname)) { grouped.set(wname, []); order.push(wname) }
-              grouped.get(wname)!.push(a.recipient_name)
+              grouped.get(wname)!.push(a.recipient_name as string)
             }
             values.push(['Молящийся', 'Участники'])
             for (const wname of order) {
