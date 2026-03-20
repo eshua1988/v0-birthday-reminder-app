@@ -72,6 +72,8 @@ export const GoogleSheetsSettings: React.FC = () => {
   const [connections, setConnections] = useState<SheetConnection[]>([])
   const [lists, setLists] = useState<BirthdayList[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [prayerConnectionId, setPrayerConnectionId] = useState<string | null>(null)
+  const [prayerListId, setPrayerListId] = useState<string | null>(null)
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -89,7 +91,7 @@ export const GoogleSheetsSettings: React.FC = () => {
           .from('settings')
           .select('key,value')
           .eq('user_id', user.id)
-          .in('key', ['google_sheets_connections', 'spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check'])
+          .in('key', ['google_sheets_connections', 'spreadsheet_id', 'sheet_range', 'google_sheets_sheet_name', 'google_sheets_auto_sync', 'google_sheets_auto_delete_check', 'prayer_sheets_connection_id', 'prayer_list_id'])
 
         if (ss && Array.isArray(ss)) {
           let loadedConnections: SheetConnection[] = []
@@ -106,6 +108,8 @@ export const GoogleSheetsSettings: React.FC = () => {
             if (r.key === 'google_sheets_sheet_name') legacySheetName = r.value || ''
             if (r.key === 'google_sheets_auto_sync') setAutoSync(r.value === 'true')
             if (r.key === 'google_sheets_auto_delete_check') setAutoDeleteCheck(r.value === 'true')
+            if (r.key === 'prayer_sheets_connection_id') setPrayerConnectionId(r.value || null)
+            if (r.key === 'prayer_list_id') setPrayerListId(r.value || null)
           })
 
           // Migrate legacy single connection
@@ -193,29 +197,76 @@ export const GoogleSheetsSettings: React.FC = () => {
 
   const handleExport = async (conn: SheetConnection) => {
     setProcessingId(conn.id)
+    const isPrayerConn = prayerConnectionId && conn.id === prayerConnectionId
     try {
+      const values: any[] = []
+
+      // If this is the prayer connection — write prayer assignments first
+      if (isPrayerConn) {
+        const currentMonth = new Date().toISOString().slice(0, 7)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: assignments } = await supabase
+            .from('prayer_assignments')
+            .select('warrior_id, recipient_name')
+            .eq('user_id', user.id)
+            .eq('assigned_month', currentMonth)
+          const { data: warriors } = await supabase
+            .from('prayer_warriors')
+            .select('id, name')
+            .eq('user_id', user.id)
+          if (assignments && assignments.length > 0) {
+            const warriorMap = new Map((warriors || []).map((w: any) => [w.id, w.name]))
+            const order: string[] = []
+            const grouped = new Map<string, string[]>()
+            for (const a of assignments) {
+              const wname = warriorMap.get(a.warrior_id) || '—'
+              if (!grouped.has(wname)) { grouped.set(wname, []); order.push(wname) }
+              grouped.get(wname)!.push(a.recipient_name)
+            }
+            values.push(['Молящийся', 'Участники'])
+            for (const wname of order) {
+              values.push([wname, (grouped.get(wname) || []).join(', ')])
+            }
+            values.push(['']) // separator
+          }
+        }
+      }
+
+      // Export participants
       let query = supabase.from('birthdays').select('*')
       if (conn.list_id) {
         query = query.eq('list_id', conn.list_id)
       }
+      // If prayer connection has a specific list — use that list for participants
+      if (isPrayerConn && prayerListId && prayerListId !== '__all__') {
+        query = supabase.from('birthdays').select('*').eq('list_id', prayerListId)
+      }
       const { data: birthdays, error } = await query.order('birth_date')
       if (error) throw error
 
-      const header = ['ID','Фамилия','Имя','Дата рождения','Телефон','Email','Время оповещения','Оповещение включено','Удалить']
-      const values: any[] = [header]
-      ;(birthdays || []).forEach((b: any) => {
-        values.push([
-          b.id || '',
-          b.last_name || '',
-          b.first_name || '',
-          b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
-          b.phone || '',
-          b.email || '',
-          b.notification_time || '',
-          b.notification_enabled ? 'Да' : 'Нет',
-          '',
-        ])
-      })
+      if (birthdays && birthdays.length > 0) {
+        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Время оповещения', 'Оповещение включено', 'Удалить'])
+        ;(birthdays || []).forEach((b: any) => {
+          values.push([
+            b.id || '',
+            [b.last_name, b.first_name].filter(Boolean).join(' '),
+            b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
+            b.phone || '',
+            b.email || '',
+            b.notification_time || '',
+            b.notification_enabled ? 'Да' : 'Нет',
+            '',
+          ])
+        })
+      } else if (!isPrayerConn) {
+        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Время оповещения', 'Оповещение включено', 'Удалить'])
+      }
+
+      if (values.length === 0) {
+        toast({ title: 'Экспорт', description: 'Нет данных для экспорта' })
+        return
+      }
 
       const resp = await fetch('/api/google-sheets', {
         method: 'POST',
@@ -224,7 +275,7 @@ export const GoogleSheetsSettings: React.FC = () => {
       })
       const body = await resp.json()
       if (!resp.ok) throw new Error(body.error || 'Failed to write')
-      toast({ title: 'Экспорт', description: `Записано ${values.length - 1} строк` })
+      toast({ title: 'Экспорт', description: `Записано строк: ${values.filter(r => r.length > 1 || (r[0] && r[0] !== '')).length}` })
     } catch (e: any) {
       toast({ title: 'Ошибка экспорта', description: e.message || String(e), variant: 'destructive' })
     } finally {
