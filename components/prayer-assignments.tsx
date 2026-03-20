@@ -410,7 +410,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
   }
 
   // Build Google Sheets values from assignments
-  const buildSheetsData = (assignmentRows: any[]) => {
+  const buildSheetsData = (assignmentRows: any[], birthdayNames?: Set<string>) => {
     // Group by warrior
     const warriorOrder: string[] = []
     const grouped = new Map<string, string[]>()
@@ -419,11 +419,12 @@ export const PrayerAssignmentsCard: React.FC = () => {
       if (!grouped.has(wname)) { grouped.set(wname, []); warriorOrder.push(wname) }
       grouped.get(wname)!.push(a.recipient_name)
     }
-    const headers = ["Молящийся", "Участники"]
+    const headers = ["Молящийся", "Участники", "Именинники"]
     const values: string[][] = [headers]
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
-      values.push([wname, recs.join(", ")])
+      const bdays = birthdayNames ? recs.filter(r => birthdayNames.has(r)) : []
+      values.push([wname, recs.join(", "), bdays.join(", ")])
     }
     return values
   }
@@ -434,54 +435,55 @@ export const PrayerAssignmentsCard: React.FC = () => {
     setIsSyncingSheets(true)
     try {
       const sourceRows = assignmentRows || currentAssignments
-      const values = buildSheetsData(sourceRows)
 
-      // If a specific participants list is selected for prayer — append participants below prayer assignments
-      if (selectedListId !== "__all__" && userId) {
-        const { data: birthdays } = await supabase
+      // Fetch participant birthdays for birthday detection and optional list appending
+      let participantData: any[] = []
+      if (userId) {
+        let bdayQuery = supabase
           .from("birthdays")
           .select("id, first_name, last_name, birth_date, phone, email")
           .eq("user_id", userId)
-          .eq("list_id", selectedListId)
           .order("birth_date")
-        if (birthdays && birthdays.length > 0) {
-          values.push([""])  // separator row
-          values.push(["ID", "ФИО", "Дата рождения", "Телефон", "Email"])
-          for (const b of birthdays as any[]) {
-            const d = b.birth_date ? new Date(b.birth_date) : null
-            const dateStr = d
-              ? `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`
-              : ""
-            values.push([
-              b.id || "",
-              [b.last_name, b.first_name].filter(Boolean).join(" "),
-              dateStr,
-              b.phone || "",
-              b.email || "",
-            ])
-          }
+        if (selectedListId !== "__all__") bdayQuery = (bdayQuery as any).eq("list_id", selectedListId)
+        const { data } = await bdayQuery
+        participantData = data || []
+      }
+
+      // Build set of names with birthday in current month (for column C)
+      const currentMonthNum = new Date().getMonth() + 1
+      const birthdayNamesThisMonth = new Set<string>()
+      for (const b of participantData) {
+        if (b.birth_date && new Date(b.birth_date).getMonth() + 1 === currentMonthNum) {
+          birthdayNamesThisMonth.add(`${b.first_name || ""} ${b.last_name || ""}`.trim())
         }
       }
 
-      // Determine range
-      const range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
+      const values = buildSheetsData(sourceRows, birthdayNamesThisMonth)
 
+      // If specific list — append participants list below prayer assignments
+      if (selectedListId !== "__all__" && participantData.length > 0) {
+        values.push([""])
+        values.push(["ID", "ФИО", "Дата рождения", "Телефон", "Email"])
+        for (const b of participantData) {
+          const d = b.birth_date ? new Date(b.birth_date) : null
+          const dateStr = d
+            ? `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`
+            : ""
+          values.push([b.id || "", [b.last_name, b.first_name].filter(Boolean).join(" "), dateStr, b.phone || "", b.email || ""])
+        }
+      }
+
+      const range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
       const res = await fetch("/api/google-sheets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "write",
-          spreadsheetId: conn.spreadsheet_id,
-          range,
-          values,
-        }),
+        body: JSON.stringify({ action: "write", spreadsheetId: conn.spreadsheet_id, range, values }),
       })
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error || "Ошибка записи в таблицу")
       }
-      const hasParticipants = selectedListId !== "__all__" && values.length > buildSheetsData(sourceRows).length
-      toast({ title: "Google Sheets", description: hasParticipants ? "Назначения и участники обновлены в таблице ✅" : "Назначения обновлены в таблице ✅" })
+      toast({ title: "Google Sheets", description: "Назначения обновлены в таблице ✅" })
     } catch (e: any) {
       toast({ title: "Ошибка Google Sheets", description: e.message, variant: "destructive" })
     } finally {

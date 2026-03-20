@@ -224,9 +224,22 @@ export const GoogleSheetsSettings: React.FC = () => {
               if (!grouped.has(wname)) { grouped.set(wname, []); order.push(wname) }
               grouped.get(wname)!.push(a.recipient_name as string)
             }
-            values.push(['Молящийся', 'Участники'])
+            // Fetch birthdays for current month to populate column C
+            const birthMonthNum = new Date().getMonth() + 1
+            let bdayQb = supabase.from('birthdays').select('first_name, last_name, birth_date').eq('user_id', user.id)
+            if (prayerListId && prayerListId !== '__all__') bdayQb = (bdayQb as any).eq('list_id', prayerListId)
+            const { data: bdayRows } = await bdayQb
+            const birthdayNamesSet = new Set<string>()
+            for (const b of (bdayRows || []) as any[]) {
+              if (b.birth_date && new Date(b.birth_date).getMonth() + 1 === birthMonthNum) {
+                birthdayNamesSet.add(`${b.first_name || ''} ${b.last_name || ''}`.trim())
+              }
+            }
+            values.push(['Молящийся', 'Участники', 'Именинники'])
             for (const wname of order) {
-              values.push([wname, (grouped.get(wname) || []).join(', ')])
+              const recs = grouped.get(wname) || []
+              const bdays = recs.filter(r => birthdayNamesSet.has(r))
+              values.push([wname, recs.join(', '), bdays.join(', ')])
             }
             values.push(['']) // separator
           }

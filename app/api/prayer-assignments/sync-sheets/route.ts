@@ -72,11 +72,27 @@ export async function POST() {
       grouped.get(wname)!.push(a.recipient_name)
     }
 
-    const headers = ["Молящийся", "Участники"]
+    // Fetch birthdays for current month to populate column C (Именинники)
+    const birthMonthNum = new Date().getMonth() + 1
+    let bdayQ = supabaseAdmin
+      .from("birthdays")
+      .select("first_name, last_name, birth_date")
+      .eq("user_id", user.id)
+    if (prayerListId !== "__all__") bdayQ = (bdayQ as any).eq("list_id", prayerListId)
+    const { data: bdayData } = await bdayQ
+    const birthdayNamesThisMonth = new Set<string>()
+    for (const b of (bdayData || []) as any[]) {
+      if (b.birth_date && new Date(b.birth_date).getMonth() + 1 === birthMonthNum) {
+        birthdayNamesThisMonth.add(`${b.first_name || ""} ${b.last_name || ""}`.trim())
+      }
+    }
+
+    const headers = ["Молящийся", "Участники", "Именинники"]
     const values: string[][] = [headers]
     for (const wname of warriorOrder) {
       const recs = grouped.get(wname) || []
-      values.push([wname, recs.join(", ")])
+      const bdays = recs.filter(r => birthdayNamesThisMonth.has(r))
+      values.push([wname, recs.join(", "), bdays.join(", ")])
     }
 
     // If a specific participants list is selected for prayer — append participants below prayer assignments
