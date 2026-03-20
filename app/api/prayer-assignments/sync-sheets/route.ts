@@ -29,12 +29,13 @@ export async function POST() {
       .from("settings")
       .select("key, value")
       .eq("user_id", user.id)
-      .in("key", ["prayer_sheets_connection_id", "google_sheets_connections"])
+      .in("key", ["prayer_sheets_connection_id", "google_sheets_connections", "prayer_list_id"])
 
     const settingsMap: Record<string, string> = {}
     for (const s of settingsRows || []) settingsMap[s.key] = s.value
 
     const connectionId = settingsMap["prayer_sheets_connection_id"]
+    const prayerListId = settingsMap["prayer_list_id"] || "__all__"
     let connections: any[] = []
     try { connections = JSON.parse(settingsMap["google_sheets_connections"] || "[]") } catch {}
 
@@ -78,13 +79,13 @@ export async function POST() {
       values.push([wname, recs.join(", ")])
     }
 
-    // If connection has a participants list — append participants below prayer assignments
-    if (conn.list_id) {
+    // If a specific participants list is selected for prayer — append participants below prayer assignments
+    if (prayerListId !== "__all__") {
       const { data: birthdays } = await supabaseAdmin
         .from("birthdays")
         .select("id, first_name, last_name, birth_date, phone, email")
         .eq("user_id", user.id)
-        .eq("list_id", conn.list_id)
+        .eq("list_id", prayerListId)
         .order("birth_date")
       if (birthdays && birthdays.length > 0) {
         values.push([""]) // separator row
