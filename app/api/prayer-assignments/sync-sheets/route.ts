@@ -28,13 +28,12 @@ export async function POST() {
       .from("settings")
       .select("key, value")
       .eq("user_id", user.id)
-      .in("key", ["prayer_sheets_connection_id", "prayer_sheets_column", "google_sheets_connections"])
+      .in("key", ["prayer_sheets_connection_id", "google_sheets_connections"])
 
     const settingsMap: Record<string, string> = {}
     for (const s of settingsRows || []) settingsMap[s.key] = s.value
 
     const connectionId = settingsMap["prayer_sheets_connection_id"]
-    const column = settingsMap["prayer_sheets_column"] || ""
     let connections: any[] = []
     try { connections = JSON.parse(settingsMap["google_sheets_connections"] || "[]") } catch {}
 
@@ -79,17 +78,13 @@ export async function POST() {
     }
 
     // Determine range
-    let range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
-    if (column) {
-      const col = column.toUpperCase().replace(/[^A-Z]/g, "") || "A"
-      range = `'${conn.sheet_name}'!${col}1`
-    }
+    const range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
 
     // Write to Google Sheets via existing /api/google-sheets route
     const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/google-sheets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "insert-shift", spreadsheetId: conn.spreadsheet_id, range, values }),
+      body: JSON.stringify({ action: "write", spreadsheetId: conn.spreadsheet_id, range, values }),
     })
     const resData = await res.json()
     if (!res.ok) throw new Error(resData.error || "Ошибка записи в таблицу")

@@ -98,7 +98,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
   interface SheetConnection { id: string; spreadsheet_id: string; sheet_name: string; sheet_range: string; list_name: string; list_id: string | null }
   const [sheetConnections, setSheetConnections] = useState<SheetConnection[]>([])
   const [selectedSheetId, setSelectedSheetId] = useState<string>("__none__")
-  const [sheetsColumn, setSheetsColumn] = useState<string>("")
   const [isSyncingSheets, setIsSyncingSheets] = useState(false)
 
   const currentMonth = new Date().toISOString().slice(0, 7)
@@ -118,7 +117,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
           "prayer_cycle_number", "prayer_assignments_per_warrior", "prayer_list_id",
           "prayer_notify_days", "prayer_notify_repeat", "prayer_notify_frequency", "prayer_telegram_notify",
           "google_sheets_connections",
-          "prayer_sheets_connection_id", "prayer_sheets_column",
+          "prayer_sheets_connection_id",
         ])
 
       let cycleNum = 1
@@ -141,7 +140,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
             try { setSheetConnections(JSON.parse(s.value || "[]")) } catch {}
           }
           if (s.key === "prayer_sheets_connection_id") setSelectedSheetId(s.value || "__none__")
-          if (s.key === "prayer_sheets_column") setSheetsColumn(s.value || "")
         }
       }
 
@@ -438,19 +436,14 @@ export const PrayerAssignmentsCard: React.FC = () => {
       const sourceRows = assignmentRows || currentAssignments
       const values = buildSheetsData(sourceRows)
 
-      // Determine range: use custom column if set, else use connection's sheet range
-      let range = conn.sheet_range || `'${conn.sheet_name}'!A:C`
-      if (sheetsColumn) {
-        // e.g. column "F" → write from F1
-        const colLetter = sheetsColumn.toUpperCase().replace(/[^A-Z]/g, "") || "A"
-        range = `'${conn.sheet_name}'!${colLetter}1`
-      }
+      // Determine range
+      const range = conn.sheet_range || `'${conn.sheet_name}'!A:C`
 
       const res = await fetch("/api/google-sheets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "insert-shift",
+          action: "write",
           spreadsheetId: conn.spreadsheet_id,
           range,
           values,
@@ -801,33 +794,15 @@ export const PrayerAssignmentsCard: React.FC = () => {
               </div>
 
               {selectedSheetId !== "__none__" && (
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">
-                    Начальная колонка (напр. A, F, J)
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={sheetsColumn}
-                      onChange={(e) => setSheetsColumn(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))}
-                      onBlur={() => saveSetting("prayer_sheets_column", sheetsColumn)}
-                      placeholder="A"
-                      maxLength={3}
-                      className="h-9 w-24 uppercase"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9"
-                      disabled={isSyncingSheets}
-                      onClick={() => exportToSheets()}
-                    >
-                      {isSyncingSheets ? "Запись..." : "Записать сейчас"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Запись начнётся с этой колонки. Пусто = по умолчанию диапазон таблицы
-                  </p>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  disabled={isSyncingSheets}
+                  onClick={() => exportToSheets()}
+                >
+                  {isSyncingSheets ? "Запись..." : "Записать сейчас"}
+                </Button>
               )}
             </div>
           )}
