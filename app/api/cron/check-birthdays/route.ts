@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
     const userTimezonesMap = new Map<string, string>()
     const userTelegramMap = new Map<string, string>() // user_id -> telegram_chat_id
     const userEmailMap = new Map<string, string>() // user_id -> email
+    const userNotificationsEnabledMap = new Map<string, boolean>() // user_id -> notifications_enabled
 
     // Load user emails via admin API
     try {
@@ -88,6 +89,11 @@ export async function GET(request: NextRequest) {
         // Load timezone
         if (setting.key === "timezone") {
           userTimezonesMap.set(setting.user_id, setting.value)
+        }
+        
+        // Load global notifications enabled flag
+        if (setting.key === "notifications_enabled") {
+          userNotificationsEnabledMap.set(setting.user_id, setting.value === "true")
         }
         
         // Load notification times
@@ -127,6 +133,14 @@ export async function GET(request: NextRequest) {
 
     for (const birthday of birthdays || []) {
       birthdaysChecked++
+
+      // Check if user has globally disabled notifications (default = enabled if not set)
+      const notificationsEnabled = userNotificationsEnabledMap.get(birthday.user_id)
+      if (notificationsEnabled === false) {
+        console.log("[v0] Cron: Skipping - notifications globally disabled for user", birthday.user_id)
+        continue
+      }
+
       // Support both 'date' and 'birth_date' fields
       const birthDate = new Date(birthday.date || birthday.birth_date)
       

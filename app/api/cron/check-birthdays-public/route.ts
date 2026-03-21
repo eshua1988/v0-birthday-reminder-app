@@ -85,15 +85,18 @@ export async function GET(request: NextRequest) {
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .in("key", ["default_notification_time", "default_notification_times", "timezone"])
+      .in("key", ["default_notification_time", "default_notification_times", "timezone", "notifications_enabled"])
 
     const globalTimesMap = new Map<string, string[]>()
     const userTimezonesMap = new Map<string, string>()
+    const userNotificationsEnabledMap = new Map<string, boolean>()
     
     if (globalSettings) {
       for (const setting of globalSettings) {
         if (setting.key === "timezone") {
           userTimezonesMap.set(setting.user_id, setting.value)
+        } else if (setting.key === "notifications_enabled") {
+          userNotificationsEnabledMap.set(setting.user_id, setting.value === "true")
         } else {
           if (!globalTimesMap.has(setting.user_id)) {
             globalTimesMap.set(setting.user_id, [])
@@ -125,6 +128,13 @@ export async function GET(request: NextRequest) {
 
     for (const birthday of birthdays || []) {
       birthdaysChecked++
+
+      // Check if user has globally disabled notifications (default = enabled if not set)
+      const notificationsEnabled = userNotificationsEnabledMap.get(birthday.user_id)
+      if (notificationsEnabled === false) {
+        console.log("[v0] Cron: Skipping - notifications globally disabled for user", birthday.user_id)
+        continue
+      }
       
       // Get user's timezone (default to UTC if not set)
       const userTimezone = userTimezonesMap.get(birthday.user_id) || 'UTC'
