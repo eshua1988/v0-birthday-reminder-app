@@ -851,6 +851,17 @@ export const PrayerAssignmentsCard: React.FC = () => {
                   : "Назначения не будут отправляться в Telegram"}
               </p>
             </div>
+            {hasCurrentAssignments && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 w-7 p-0 text-[#0088cc] border-[#0088cc]/30 hover:bg-[#0088cc]/10 shrink-0 mr-2"
+                onClick={(e) => { e.stopPropagation(); sendToTelegram() }}
+                disabled={isSendingTelegram}
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <div className={cn(
               "w-9 h-5 rounded-full relative transition-colors shrink-0",
               telegramNotify ? "bg-[#0088cc]" : "bg-muted-foreground/30"
@@ -861,23 +872,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
               )} />
             </div>
           </button>
-          {hasCurrentAssignments && (
-            <div className={cn(
-              "flex items-center justify-between px-3 py-2 border-t",
-              telegramNotify ? "border-[#0088cc]/20" : "border-border"
-            )}>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1.5 text-xs text-[#0088cc] border-[#0088cc]/30 hover:bg-[#0088cc]/10"
-                onClick={sendToTelegram}
-                disabled={isSendingTelegram}
-              >
-                <Send className="h-3.5 w-3.5" />
-                {isSendingTelegram ? "Отправка..." : "В Telegram"}
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Generate button */}
