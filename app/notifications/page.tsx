@@ -24,6 +24,7 @@ export default function NotificationsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [deepLinkClicked, setDeepLinkClicked] = useState(false);
+  const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
   const [linkCode, setLinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const supabase = createClient();
@@ -58,6 +59,7 @@ export default function NotificationsPage() {
       const data = await response.json();
       if (response.ok && data.url) {
         window.open(data.url, "_blank");
+        setDeepLinkToken(data.token);
         setDeepLinkClicked(true);
       } else {
         toast({ title: t.error || "Ошибка", description: data.error || "Не удалось создать ссылку", variant: "destructive" });
@@ -189,10 +191,22 @@ export default function NotificationsPage() {
                     </Button>
                     {deepLinkClicked && (
                       <>
-                        <p className="text-sm text-muted-foreground text-center animate-pulse">
-                          Ожидаю подтверждения из Telegram...
-                        </p>
-                        <p className="text-xs text-muted-foreground text-center">Если бот отправил вам код — введите его здесь:</p>
+                        <div className="rounded-lg border border-[#0088cc]/30 bg-[#0088cc]/5 p-3 space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            Если бот не открылся автоматически — отправьте боту эту команду:
+                          </p>
+                          {deepLinkToken && (
+                            <div
+                              className="font-mono text-sm font-bold text-center cursor-pointer select-all rounded bg-muted px-3 py-2 tracking-widest"
+                              onClick={() => { navigator.clipboard.writeText(`/start ${deepLinkToken}`); toast({ description: "Скопировано" }); }}
+                              title="Нажмите чтобы скопировать"
+                            >
+                              /start {deepLinkToken}
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground text-center animate-pulse">Ожидаю подтверждения...</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center">Или если бот отправил вам код — введите его здесь:</p>
                         <div className="flex gap-2">
                           <Input
                             placeholder="КОД"

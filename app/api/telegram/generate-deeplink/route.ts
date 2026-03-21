@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const botName = process.env.TELEGRAM_BOT_NAME || "ChurchBirthdayReminderBot"
     const url = `https://t.me/${botName}?start=${token}`
 
-    return NextResponse.json({ url })
+    return NextResponse.json({ url, token })
   } catch (error: any) {
     console.error("[Generate DeepLink] Unexpected error:", error)
     return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 })
