@@ -829,35 +829,59 @@ export const PrayerAssignmentsCard: React.FC = () => {
         </div>
 
         {/* Telegram notify toggle */}
-        <button
-          type="button"
-          onClick={toggleTelegramNotify}
+        <div
           className={cn(
-            "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border text-sm transition-colors text-left",
+            "rounded-lg border text-sm transition-colors",
             telegramNotify
               ? "bg-[#0088cc]/10 border-[#0088cc]/30 text-[#0088cc]"
-              : "bg-background border-border text-muted-foreground hover:border-muted-foreground/40"
+              : "bg-background border-border text-muted-foreground"
           )}
         >
-          <Send className="h-4 w-4 shrink-0" />
-          <div className="flex-1">
-            <span className="font-medium">{telegramNotify ? "Отправлять в Telegram" : "Не отправлять в Telegram"}</span>
-            <p className="text-xs opacity-70 mt-0.5">
-              {telegramNotify
-                ? "После назначения список будет отправлен в Telegram бот"
-                : "Назначения не будут отправляться в Telegram"}
-            </p>
-          </div>
-          <div className={cn(
-            "w-9 h-5 rounded-full relative transition-colors shrink-0",
-            telegramNotify ? "bg-[#0088cc]" : "bg-muted-foreground/30"
-          )}>
+          <button
+            type="button"
+            onClick={toggleTelegramNotify}
+            className="flex items-center gap-3 w-full px-3 py-2.5 text-left"
+          >
+            <Send className="h-4 w-4 shrink-0" />
+            <div className="flex-1">
+              <span className="font-medium">{telegramNotify ? "Отправлять в Telegram" : "Не отправлять в Telegram"}</span>
+              <p className="text-xs opacity-70 mt-0.5">
+                {telegramNotify
+                  ? "После назначения список будет отправлен в Telegram бот"
+                  : "Назначения не будут отправляться в Telegram"}
+              </p>
+            </div>
             <div className={cn(
-              "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
-              telegramNotify ? "translate-x-4" : "translate-x-0.5"
-            )} />
-          </div>
-        </button>
+              "w-9 h-5 rounded-full relative transition-colors shrink-0",
+              telegramNotify ? "bg-[#0088cc]" : "bg-muted-foreground/30"
+            )}>
+              <div className={cn(
+                "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                telegramNotify ? "translate-x-4" : "translate-x-0.5"
+              )} />
+            </div>
+          </button>
+          {hasCurrentAssignments && (
+            <div className={cn(
+              "flex items-center justify-between px-3 py-2 border-t",
+              telegramNotify ? "border-[#0088cc]/20" : "border-border"
+            )}>
+              <Label className="text-sm font-medium">
+                Назначения — {formatMonth(currentMonth)}
+              </Label>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs text-[#0088cc] border-[#0088cc]/30 hover:bg-[#0088cc]/10"
+                onClick={sendToTelegram}
+                disabled={isSendingTelegram}
+              >
+                <Send className="h-3.5 w-3.5" />
+                {isSendingTelegram ? "Отправка..." : "В Telegram"}
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Generate button */}
         <Button
@@ -876,21 +900,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
         {/* Current month assignments */}
         {hasCurrentAssignments && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">
-                Назначения — {formatMonth(currentMonth)}
-              </Label>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1.5 text-xs text-[#0088cc] border-[#0088cc]/30 hover:bg-[#0088cc]/10"
-                onClick={sendToTelegram}
-                disabled={isSendingTelegram}
-              >
-                <Send className="h-3.5 w-3.5" />
-                {isSendingTelegram ? "Отправка..." : "В Telegram"}
-              </Button>
-            </div>
             {assignmentsByWarrior.map(({ warrior, recipients }) =>
               recipients.length > 0 ? (
                 <div key={warrior.id} className="p-3 bg-muted/30 rounded-lg space-y-1.5">
