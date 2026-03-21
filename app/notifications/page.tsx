@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 import { useLocale } from "@/lib/locale-context"
 import { useToast } from "@/hooks/use-toast"
@@ -21,9 +20,9 @@ export default function NotificationsPage() {
   const isMobile = useIsMobile();
   const [telegramLinked, setTelegramLinked] = useState(false);
   const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
-  const [linkCode, setLinkCode] = useState("");
-  const [isLinking, setIsLinking] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [deepLinkClicked, setDeepLinkClicked] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -44,29 +43,49 @@ export default function NotificationsPage() {
     loadTelegram();
   }, []);
 
-  const handleLinkTelegram = async () => {
-    if (!userId || !linkCode.trim()) return;
-    setIsLinking(true);
+  const handleConnectTelegram = async () => {
+    if (!userId) return;
+    setIsGeneratingLink(true);
     try {
-      const response = await fetch("/api/telegram/link", {
+      const response = await fetch("/api/telegram/generate-deeplink", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, linkCode: linkCode.trim() }),
+        body: JSON.stringify({ userId }),
       });
       const data = await response.json();
-      if (response.ok) {
-        setTelegramLinked(true);
-        setTelegramUsername(data.username);
-        toast({ title: t.success || "Успешно", description: t.telegramLinked || "Telegram успешно подключен!" });
+      if (response.ok && data.url) {
+        window.open(data.url, "_blank");
+        setDeepLinkClicked(true);
       } else {
-        toast({ title: t.error || "Ошибка", description: data.message || (t.telegramLinkFailed || "Не удалось подключить Telegram"), variant: "destructive" });
+        toast({ title: t.error || "Ошибка", description: data.error || "Не удалось создать ссылку", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: t.error || "Ошибка", description: t.telegramLinkFailed || "Не удалось подключить Telegram", variant: "destructive" });
+      toast({ title: t.error || "Ошибка", description: "Не удалось создать ссылку", variant: "destructive" });
     } finally {
-      setIsLinking(false);
+      setIsGeneratingLink(false);
     }
   };
+
+  useEffect(() => {
+    if (!deepLinkClicked || !userId || telegramLinked) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("telegram_chat_id, telegram_username")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
+      if (data?.telegram_chat_id) {
+        setTelegramLinked(true);
+        setTelegramUsername(data.telegram_username);
+        setDeepLinkClicked(false);
+        toast({ title: t.success || "Успешно", description: t.telegramLinked || "Telegram успешно подключен!" });
+        clearInterval(interval);
+      }
+    }, 3000);
+    const timeout = setTimeout(() => clearInterval(interval), 2 * 60 * 1000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [deepLinkClicked, userId, telegramLinked]);
 
   const handleUnlinkTelegram = async () => {
     if (!userId) return;
@@ -128,47 +147,23 @@ export default function NotificationsPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">1.</span>
-                      <a 
-                        href="https://t.me/ChurchBirthdayReminderBot" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-[#0088cc] hover:underline flex items-center gap-1"
-                      >
+                    <Button
+                      onClick={handleConnectTelegram}
+                      disabled={isGeneratingLink}
+                      className="w-full gap-2 bg-[#0088cc] hover:bg-[#0077bb] text-white"
+                    >
+                      {isGeneratingLink ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
                         <Send className="h-4 w-4" />
-                        {t.openTelegramBot || "Открыть бота в Telegram"}
-                      </a>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">2.</span>
-                      <span className="text-sm text-muted-foreground">
-                        {t.sendStartCommand || "Нажмите /start и скопируйте код"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">3.</span>
-                      <div className="flex-1 flex gap-2">
-                        <Input
-                          placeholder={t.enterCode || "Введите код"}
-                          value={linkCode}
-                          onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
-                          className="max-w-[150px] uppercase"
-                          maxLength={8}
-                        />
-                        <Button 
-                          onClick={handleLinkTelegram} 
-                          disabled={isLinking || !linkCode.trim()}
-                          size="sm"
-                        >
-                          {isLinking ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            t.connect || "Подключить"
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                      )}
+                      Подключить Telegram
+                    </Button>
+                    {deepLinkClicked && (
+                      <p className="text-sm text-muted-foreground text-center animate-pulse">
+                        Ожидаю подтверждения из Telegram...
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>

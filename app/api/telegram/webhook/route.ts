@@ -70,7 +70,71 @@ export async function POST(request: NextRequest) {
       const firstName = update.message.from.first_name
 
       try {
-        if (text === "/start") {
+        if (text.startsWith("/start ")) {
+          // Deep link flow: /start TOKEN
+          const token = text.split(" ")[1]?.trim().toUpperCase()
+
+          if (!token) {
+            await sendTelegramMessage(chatId, "❌ Недействительная ссылка. Попробуйте снова через приложение.")
+          } else {
+            const { data: pending } = await supabase
+              .from("telegram_pending_links")
+              .select("*")
+              .eq("link_code", token)
+              .not("user_id", "is", null)
+              .maybeSingle()
+
+            if (!pending) {
+              await sendTelegramMessage(chatId, "❌ Ссылка недействительна или уже использована.\n\nПопробуйте снова — нажмите кнопку подключения в приложении.")
+            } else {
+              const age = Date.now() - new Date(pending.created_at).getTime()
+              if (age > 10 * 60 * 1000) {
+                await supabase.from("telegram_pending_links").delete().eq("id", pending.id)
+                await sendTelegramMessage(chatId, "❌ Ссылка устарела. Откройте приложение и попробуйте снова.")
+              } else {
+                // Link the user account
+                const { data: existingSettings } = await supabase
+                  .from("settings")
+                  .select("id")
+                  .eq("user_id", pending.user_id)
+                  .limit(1)
+                  .maybeSingle()
+
+                if (existingSettings) {
+                  await supabase
+                    .from("settings")
+                    .update({
+                      telegram_chat_id: chatId.toString(),
+                      telegram_username: username || null,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("user_id", pending.user_id)
+                } else {
+                  await supabase
+                    .from("settings")
+                    .insert({
+                      user_id: pending.user_id,
+                      key: "telegram_linked",
+                      value: "true",
+                      telegram_chat_id: chatId.toString(),
+                      telegram_username: username || null,
+                    })
+                }
+
+                await supabase.from("telegram_pending_links").delete().eq("id", pending.id)
+
+                const displayName = username ? `@${username}` : firstName
+                await sendTelegramMessage(
+                  chatId,
+                  `✅ <b>Telegram успешно привязан!</b>\n\n` +
+                  `Привет, ${displayName}! Ваш аккаунт подключён.\n` +
+                  `Теперь вы будете получать напоминания о днях рождения здесь.`
+                )
+              }
+            }
+          }
+
+        } else if (text === "/start") {
           const linkCode = Math.random().toString(36).substring(2, 10).toUpperCase()
 
           try {
