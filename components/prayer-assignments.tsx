@@ -823,17 +823,7 @@ export const PrayerAssignmentsCard: React.FC = () => {
                 </Select>
               </div>
 
-              {selectedSheetId !== "__none__" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                  disabled={isSyncingSheets}
-                  onClick={() => exportToSheets()}
-                >
-                  {isSyncingSheets ? "Запись..." : "Записать сейчас"}
-                </Button>
-              )}
+
             </div>
           )}
         </div>
