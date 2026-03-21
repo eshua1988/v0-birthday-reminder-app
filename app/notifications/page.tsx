@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 import { useLocale } from "@/lib/locale-context"
 import { useToast } from "@/hooks/use-toast"
@@ -23,6 +24,8 @@ export default function NotificationsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [deepLinkClicked, setDeepLinkClicked] = useState(false);
+  const [linkCode, setLinkCode] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -86,6 +89,31 @@ export default function NotificationsPage() {
     const timeout = setTimeout(() => clearInterval(interval), 2 * 60 * 1000);
     return () => { clearInterval(interval); clearTimeout(timeout); };
   }, [deepLinkClicked, userId, telegramLinked]);
+
+  const handleLinkTelegram = async () => {
+    if (!userId || !linkCode.trim()) return;
+    setIsLinking(true);
+    try {
+      const response = await fetch("/api/telegram/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, linkCode: linkCode.trim() }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setTelegramLinked(true);
+        setTelegramUsername(data.username);
+        setDeepLinkClicked(false);
+        toast({ title: t.success || "Успешно", description: t.telegramLinked || "Telegram успешно подключен!" });
+      } else {
+        toast({ title: t.error || "Ошибка", description: data.message || (t.telegramLinkFailed || "Не удалось подключить Telegram"), variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: t.error || "Ошибка", description: t.telegramLinkFailed || "Не удалось подключить Telegram", variant: "destructive" });
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   const handleUnlinkTelegram = async () => {
     if (!userId) return;
@@ -160,9 +188,29 @@ export default function NotificationsPage() {
                       Подключить Telegram
                     </Button>
                     {deepLinkClicked && (
-                      <p className="text-sm text-muted-foreground text-center animate-pulse">
-                        Ожидаю подтверждения из Telegram...
-                      </p>
+                      <>
+                        <p className="text-sm text-muted-foreground text-center animate-pulse">
+                          Ожидаю подтверждения из Telegram...
+                        </p>
+                        <p className="text-xs text-muted-foreground text-center">Если бот отправил вам код — введите его здесь:</p>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="КОД"
+                            value={linkCode}
+                            onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
+                            className="uppercase"
+                            maxLength={8}
+                          />
+                          <Button
+                            onClick={handleLinkTelegram}
+                            disabled={isLinking || !linkCode.trim()}
+                            size="sm"
+                            variant="outline"
+                          >
+                            {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ок"}
+                          </Button>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
