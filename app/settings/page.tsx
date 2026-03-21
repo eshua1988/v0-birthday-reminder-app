@@ -304,56 +304,6 @@ export default function SettingsPage() {
     return () => { clearInterval(interval); clearTimeout(timeout) }
   }, [deepLinkClicked, userId, telegramLinked])
 
-  const handleLinkTelegram = async () => {
-    if (!userId || !linkCode.trim()) return
-    setIsLinking(true)
-    try {
-      const response = await fetch("/api/telegram/link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, linkCode: linkCode.trim() }),
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setTelegramLinked(true)
-        setTelegramUsername(data.username)
-        setDeepLinkClicked(false)
-        toast({ title: t.success || "Успешно", description: t.telegramLinked || "Telegram успешно подключен!" })
-      } else {
-        toast({ title: t.error || "Ошибка", description: data.message || (t.telegramLinkFailed || "Не удалось подключить Telegram"), variant: "destructive" })
-      }
-    } catch (error) {
-      toast({ title: t.error || "Ошибка", description: t.telegramLinkFailed || "Не удалось подключить Telegram", variant: "destructive" })
-    } finally {
-      setIsLinking(false)
-    }
-  }
-
-  const handleLinkTelegram = async () => {
-    if (!userId || !linkCode.trim()) return
-    setIsLinking(true)
-    try {
-      const response = await fetch("/api/telegram/link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, linkCode: linkCode.trim() }),
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setTelegramLinked(true)
-        setTelegramUsername(data.username)
-        setDeepLinkClicked(false)
-        toast({ title: t.success || "Успешно", description: t.telegramLinked || "Telegram успешно подключен!" })
-      } else {
-        toast({ title: t.error || "Ошибка", description: data.message || (t.telegramLinkFailed || "Не удалось подключить Telegram"), variant: "destructive" })
-      }
-    } catch (error) {
-      toast({ title: t.error || "Ошибка", description: t.telegramLinkFailed || "Не удалось подключить Telegram", variant: "destructive" })
-    } finally {
-      setIsLinking(false)
-    }
-  }
-
   const handleUnlinkTelegram = async () => {
     if (!userId) return
     try {
