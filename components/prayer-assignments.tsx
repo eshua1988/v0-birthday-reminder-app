@@ -866,9 +866,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
               "flex items-center justify-between px-3 py-2 border-t",
               telegramNotify ? "border-[#0088cc]/20" : "border-border"
             )}>
-              <Label className="text-sm font-medium">
-                Назначения — {formatMonth(currentMonth)}
-              </Label>
               <Button
                 size="sm"
                 variant="outline"
