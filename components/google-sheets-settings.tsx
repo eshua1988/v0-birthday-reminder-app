@@ -58,7 +58,7 @@ function makeConnection(overrides?: Partial<SheetConnection>): SheetConnection {
     spreadsheet_input: "",
     spreadsheet_id: "",
     sheet_name: "",
-    sheet_range: "'Data app'!A:Z",
+    sheet_range: "",
     list_id: null,
     list_name: "Все участники",
     ...overrides,
