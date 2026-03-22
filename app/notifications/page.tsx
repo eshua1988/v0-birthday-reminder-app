@@ -25,6 +25,7 @@ export default function NotificationsPage() {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [deepLinkClicked, setDeepLinkClicked] = useState(false);
   const [deepLinkToken, setDeepLinkToken] = useState<string | null>(null);
+  const [deepLinkUrl, setDeepLinkUrl] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function NotificationsPage() {
       });
       const data = await response.json();
       if (response.ok && data.url) {
-        window.open(data.url, "_blank");
+        setDeepLinkUrl(data.url);
         setDeepLinkToken(data.token);
         setDeepLinkClicked(true);
       } else {
@@ -168,12 +169,25 @@ export default function NotificationsPage() {
                       </Button>
                     ) : (
                       <div className="rounded-lg border border-[#0088cc]/30 bg-[#0088cc]/5 p-4 space-y-3 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-[#0088cc] mx-auto" />
-                        <p className="text-sm font-medium">Ожидаю подтверждения в Telegram...</p>
-                        <p className="text-xs text-muted-foreground">Нажмите <b>Start</b> в открывшемся боте</p>
+                        {deepLinkUrl && (
+                          <a
+                            href={deepLinkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full rounded-lg bg-[#0088cc] hover:bg-[#0077bb] text-white text-sm font-medium py-2.5 px-4 transition-colors"
+                          >
+                            <Send className="h-4 w-4" />
+                            Открыть в Telegram
+                          </a>
+                        )}
+                        <div className="flex items-center gap-2 justify-center text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin text-[#0088cc]" />
+                          <p className="text-sm">Ожидаю подтверждения...</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Нажмите кнопку выше → откроется Telegram → нажмите <b>Start</b></p>
                         <button
                           className="text-xs text-muted-foreground underline"
-                          onClick={() => setDeepLinkClicked(false)}
+                          onClick={() => { setDeepLinkClicked(false); setDeepLinkUrl(null); }}
                         >
                           Отмена
                         </button>
