@@ -644,6 +644,25 @@ export const PrayerAssignmentsCard: React.FC = () => {
             <span className="ml-1.5 text-xs text-muted-foreground font-normal">({warriors.length})</span>
           </Label>
 
+          <div className="flex gap-2">
+            <Input
+              value={newWarriorName}
+              onChange={(e) => setNewWarriorName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addWarrior()}
+              placeholder="Имя молящегося..."
+              className="h-9"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={addWarrior}
+              disabled={!newWarriorName.trim()}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+
           {warriors.length === 0 && (
             <p className="text-sm text-muted-foreground py-1">
               Добавьте людей, которые будут молиться за других
@@ -664,25 +683,6 @@ export const PrayerAssignmentsCard: React.FC = () => {
                 </Button>
               </div>
             ))}
-          </div>
-
-          <div className="flex gap-2 mt-1">
-            <Input
-              value={newWarriorName}
-              onChange={(e) => setNewWarriorName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addWarrior()}
-              placeholder="Имя молящегося..."
-              className="h-9"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={addWarrior}
-              disabled={!newWarriorName.trim()}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
@@ -788,44 +788,36 @@ export const PrayerAssignmentsCard: React.FC = () => {
         </div>
 
         {/* Google Sheets integration */}
-        <div className="space-y-3 border rounded-xl p-4 bg-muted/20">
+        <div className="border rounded-xl p-4 bg-muted/20">
           <div className="flex items-center gap-2">
             <svg className="h-4 w-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5 0h-3v-2h3v2zm0-4H7v-2h10v2zm0-4H7V7h10v2z"/>
             </svg>
-            <Label className="text-sm font-medium">Google Sheets</Label>
+            <Label className="text-sm font-medium shrink-0">Google Sheets</Label>
+            {sheetConnections.length === 0 ? (
+              <p className="text-xs text-muted-foreground ml-1">Добавьте таблицу в <strong>Настройки → Google Sheets</strong></p>
+            ) : (
+              <Select
+                value={selectedSheetId}
+                onValueChange={async (v) => {
+                  setSelectedSheetId(v)
+                  await saveSetting("prayer_sheets_connection_id", v)
+                }}
+              >
+                <SelectTrigger className="h-8 ml-auto">
+                  <SelectValue placeholder="Не выбрано" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Не экспортировать —</SelectItem>
+                  {sheetConnections.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.list_name || "Таблица"} · {c.sheet_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-
-          {sheetConnections.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Добавьте таблицу в <strong>Настройки → Google Sheets</strong></p>
-          ) : (
-            <div className="space-y-2">
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Таблица</Label>
-                <Select
-                  value={selectedSheetId}
-                  onValueChange={async (v) => {
-                    setSelectedSheetId(v)
-                    await saveSetting("prayer_sheets_connection_id", v)
-                  }}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Не выбрано" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— Не экспортировать —</SelectItem>
-                    {sheetConnections.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.list_name || "Таблица"} · {c.sheet_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-
-            </div>
-          )}
         </div>
 
         {/* Telegram notify toggle */}
