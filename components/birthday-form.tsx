@@ -41,12 +41,12 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
 
   useEffect(() => {
     if (birthday) {
-      const times =
+      const firstTime =
         birthday.notification_times && birthday.notification_times.length > 0
-          ? birthday.notification_times
-          : [birthday.notification_time || "08:00"]
+          ? birthday.notification_times[0]
+          : (birthday.notification_time || "08:00")
 
-      setNotificationTimes(times)
+      setNotificationTimes([firstTime])
       
       // Load custom fields from phone/email
       const fields: Array<{ name: string; value: string }> = []
@@ -97,8 +97,8 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
         notification_enabled: formData.notification_enabled,
         phone: phoneField?.value || "",
         email: emailField?.value || "",
-        notification_times: notificationTimes,
-        notification_repeat_count: notificationTimes.length,
+        notification_times: [notificationTimes[0] || "08:00"],
+        notification_repeat_count: 1,
         custom_fields: customFields // <-- добавляем все дополнительные поля
       }
 
@@ -357,76 +357,42 @@ export function BirthdayForm({ birthday, open, onOpenChange, onSave, onSwitchToB
             </div>
 
             <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label>{t.notificationTime}</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={addNotificationTime}
-                  disabled={!formData.notification_enabled || notificationTimes.length >= 5}
-                  className="h-8"
+              <Label>{t.notificationTime}</Label>
+              <div className="flex gap-2 items-center">
+                {/* Часы */}
+                <select
+                  value={notificationTimes[0].split(":")[0]}
+                  onChange={e => {
+                    const newHour = e.target.value.padStart(2, "0");
+                    const minute = notificationTimes[0].split(":")[1] || "00";
+                    updateNotificationTime(0, `${newHour}:${minute}`);
+                  }}
+                  disabled={!formData.notification_enabled}
+                  className={cn("border rounded px-2 py-1", !formData.notification_enabled && "opacity-50 cursor-not-allowed")}
+                  required
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  {t.addNotificationTime}
-                </Button>
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={h.toString().padStart(2, "0")}>{h.toString().padStart(2, "0")}</option>
+                  ))}
+                </select>
+                :
+                {/* Минуты */}
+                <select
+                  value={notificationTimes[0].split(":")[1] || "00"}
+                  onChange={e => {
+                    const hour = notificationTimes[0].split(":")[0].padStart(2, "0");
+                    const newMinute = e.target.value.padStart(2, "0");
+                    updateNotificationTime(0, `${hour}:${newMinute}`);
+                  }}
+                  disabled={!formData.notification_enabled}
+                  className={cn("border rounded px-2 py-1", !formData.notification_enabled && "opacity-50 cursor-not-allowed")}
+                  required
+                >
+                  {Array.from({ length: 60 }, (_, m) => (
+                    <option key={m} value={m.toString().padStart(2, "0")}>{m.toString().padStart(2, "0")}</option>
+                  ))}
+                </select>
               </div>
-
-              <div className="space-y-2">
-                {notificationTimes.map((time, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    {/* Часы */}
-                    <select
-                      value={time.split(":")[0]}
-                      onChange={e => {
-                        const newHour = e.target.value.padStart(2, "0");
-                        const minute = time.split(":")[1] || "00";
-                        updateNotificationTime(index, `${newHour}:${minute}`);
-                      }}
-                      disabled={!formData.notification_enabled}
-                      className={cn("border rounded px-2 py-1", !formData.notification_enabled && "opacity-50 cursor-not-allowed")}
-                      required
-                    >
-                      {Array.from({ length: 24 }, (_, h) => (
-                        <option key={h} value={h.toString().padStart(2, "0")}>{h.toString().padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    :
-                    {/* Минуты */}
-                    <select
-                      value={time.split(":")[1] || "00"}
-                      onChange={e => {
-                        const hour = time.split(":")[0].padStart(2, "0");
-                        const newMinute = e.target.value.padStart(2, "0");
-                        updateNotificationTime(index, `${hour}:${newMinute}`);
-                      }}
-                      disabled={!formData.notification_enabled}
-                      className={cn("border rounded px-2 py-1", !formData.notification_enabled && "opacity-50 cursor-not-allowed")}
-                      required
-                    >
-                      {Array.from({ length: 60 }, (_, m) => (
-                        <option key={m} value={m.toString().padStart(2, "0")}>{m.toString().padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    {notificationTimes.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeNotificationTime(index)}
-                        disabled={!formData.notification_enabled}
-                        className="h-10 w-10 shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {t.notificationTimeDescription} ({t.maxNotificationTimes})
-              </p>
             </div>
           </div>
 
