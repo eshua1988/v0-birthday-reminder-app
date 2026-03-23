@@ -46,17 +46,12 @@ export function NotificationManager() {
     }
 
     const now = new Date()
-    // Use system timezone for time comparison
-    const currentTime = now.toLocaleTimeString("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    })
+    // Use HH:MM format to match stored notification times
+    const currentTimeHHMM = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
     const currentDate = now.toISOString().split("T")[0]
 
     // Prevent duplicate notifications within the same minute
-    const checkKey = `${currentDate}-${currentTime}`
+    const checkKey = `${currentDate}-${currentTimeHHMM}`
     if (lastCheck === checkKey) {
       return
     }
@@ -64,7 +59,7 @@ export function NotificationManager() {
 
     console.log(
       "[v0] Browser notification check:",
-      currentTime,
+      currentTimeHHMM,
       "Date:",
       currentDate,
       "Timezone:",
@@ -89,8 +84,18 @@ export function NotificationManager() {
       const birthDate = new Date(birthday.birth_date)
       const isBirthdayToday = birthDate.getMonth() === now.getMonth() && birthDate.getDate() === now.getDate()
 
-      // Match time including seconds
-      if (isBirthdayToday && birthday.notification_time === currentTime) {
+      if (!isBirthdayToday) return
+
+      // Check against notification_times array (HH:MM:00) and legacy notification_time (HH:MM)
+      const times: string[] = []
+      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
+        times.push(...birthday.notification_times.map((t: string) => t.slice(0, 5)))
+      }
+      if (birthday.notification_time) {
+        times.push(birthday.notification_time.slice(0, 5))
+      }
+
+      if (times.includes(currentTimeHHMM)) {
         const age = now.getFullYear() - birthDate.getFullYear()
         const ageText = formatAge(age)
         const message = `${birthday.first_name} ${birthday.last_name} — сегодня исполняется ${ageText}!`

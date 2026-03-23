@@ -80,9 +80,27 @@ self.addEventListener('notificationclick', function(event) {
   )
 })
 
-// Firebase background message handler
+// Firebase background message handler (data-only messages)
 messaging.onBackgroundMessage(function(payload) {
   console.log('[SW v6] Background message:', payload)
+
+  const data = payload.data || {}
+  const title = data.title || '🎂 День рождения!'
+  const options = {
+    body: data.body || 'У кого-то сегодня день рождения!',
+    icon: '/icon-192x192.png',
+    badge: '/badge-72x72.png',
+    tag: data.tag || ('birthday-' + (data.birthdayId || Date.now())),
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || '/',
+      birthdayId: data.birthdayId || '',
+    }
+  }
+
+  return self.registration.showNotification(title, options)
 })
 
 // Install

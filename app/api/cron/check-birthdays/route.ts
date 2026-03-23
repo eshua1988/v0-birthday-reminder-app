@@ -259,13 +259,16 @@ export async function GET(request: NextRequest) {
             const age = userNow.getFullYear() - birthDate.getFullYear()
             const fullName = birthday.name || `${birthday.first_name} ${birthday.last_name}`
 
-            // DATA-ONLY message for PWA background delivery
-            // Service Worker will handle showing the notification
             const ageText = formatAge(age)
+            const notifBody = `${fullName} — сегодня исполняется ${ageText}!`
             const message = {
+              notification: {
+                title: "🎂 День рождения!",
+                body: notifBody,
+              },
               data: {
                 title: "🎂 День рождения!",
-                body: `${fullName} — сегодня исполняется ${ageText}!`,
+                body: notifBody,
                 userEmail: userEmailMap.get(birthday.user_id) || '',
                 birthdayId: birthday.id.toString(),
                 firstName: birthday.first_name || birthday.name?.split(' ')[0] || '',
@@ -283,9 +286,20 @@ export async function GET(request: NextRequest) {
                 ttl: 86400000, // 24 hours
               },
               webpush: {
+                notification: {
+                  icon: "/icon-192x192.png",
+                  badge: "/badge-72x72.png",
+                  vibrate: [200, 100, 200],
+                  tag: `birthday-${birthday.id}`,
+                  requireInteraction: true,
+                  renotify: true,
+                },
                 headers: {
                   Urgency: "high",
                   TTL: "86400",
+                },
+                fcmOptions: {
+                  link: "/?birthday=" + birthday.id,
                 },
               },
               tokens: fcmTokens,
