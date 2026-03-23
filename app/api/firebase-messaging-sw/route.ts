@@ -2,9 +2,9 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   const swContent = `
-// Firebase Messaging Service Worker v6
+// Firebase Messaging Service Worker v7
 // For background push notifications on Android PWA
-console.log('[SW v6] Loading...')
+console.log('[SW v7] Loading...')
 
 // Firebase config
 const firebaseConfig = {
@@ -24,42 +24,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 firebase.initializeApp(firebaseConfig)
 const messaging = firebase.messaging()
 
-console.log('[SW v6] Firebase initialized')
+console.log('[SW v7] Firebase initialized')
 
-// Handle push event
-self.addEventListener('push', function(event) {
-  console.log('[SW v6] Push received')
-  
-  let data = {}
-  
-  if (event.data) {
-    try {
-      const json = event.data.json()
-      data = json.data || json.notification || json
-    } catch (e) {
-      data = { title: 'Уведомление', body: event.data.text() }
-    }
-  }
-
-  const title = data.title || '🎂 День рождения!'
-  const options = {
-    body: data.body || 'У кого-то сегодня день рождения!',
-    icon: '/icon-192x192.png',
-    badge: '/badge-72x72.png',
-    tag: data.tag || 'notification-' + Date.now(),
-    renotify: true,
-    requireInteraction: true,
-    vibrate: [200, 100, 200],
-    data: {
-      url: data.url || data.clickAction || '/',
-      birthdayId: data.birthdayId || '',
-    }
-  }
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  )
-})
+// NOTE: Do NOT add a manual self.addEventListener('push', ...) here.
+// Firebase Messaging SDK intercepts the push event internally.
+// Adding a manual handler causes duplicate notifications.
+// Use onBackgroundMessage for data-only FCM messages instead.
 
 // Handle notification click
 self.addEventListener('notificationclick', function(event) {
@@ -81,8 +51,10 @@ self.addEventListener('notificationclick', function(event) {
 })
 
 // Firebase background message handler (data-only messages)
+// Called by Firebase SDK for messages WITHOUT a 'notification' field.
+// This is the ONLY place that shows the notification — no duplicates.
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[SW v6] Background message:', payload)
+  console.log('[SW v7] Background message:', payload)
 
   const data = payload.data || {}
   const title = data.title || '🎂 День рождения!'
@@ -105,13 +77,13 @@ messaging.onBackgroundMessage(function(payload) {
 
 // Install
 self.addEventListener('install', function(event) {
-  console.log('[SW v6] Installing')
+  console.log('[SW v7] Installing')
   self.skipWaiting()
 })
 
 // Activate
 self.addEventListener('activate', function(event) {
-  console.log('[SW v6] Activated')
+  console.log('[SW v7] Activated')
   event.waitUntil(self.clients.claim())
 })
 `

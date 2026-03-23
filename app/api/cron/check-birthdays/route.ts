@@ -261,11 +261,10 @@ export async function GET(request: NextRequest) {
 
             const ageText = formatAge(age)
             const notifBody = `${fullName} — сегодня исполняется ${ageText}!`
+            // Data-only message: Firebase SDK calls onBackgroundMessage in SW,
+            // which shows exactly ONE notification. Do NOT add a 'notification'
+            // field here — that would cause duplicate notifications.
             const message = {
-              notification: {
-                title: "🎂 День рождения!",
-                body: notifBody,
-              },
               data: {
                 title: "🎂 День рождения!",
                 body: notifBody,
@@ -286,20 +285,9 @@ export async function GET(request: NextRequest) {
                 ttl: 86400000, // 24 hours
               },
               webpush: {
-                notification: {
-                  icon: "/icon-192x192.png",
-                  badge: "/badge-72x72.png",
-                  vibrate: [200, 100, 200],
-                  tag: `birthday-${birthday.id}`,
-                  requireInteraction: true,
-                  renotify: true,
-                },
                 headers: {
                   Urgency: "high",
                   TTL: "86400",
-                },
-                fcmOptions: {
-                  link: "/?birthday=" + birthday.id,
                 },
               },
               tokens: fcmTokens,
