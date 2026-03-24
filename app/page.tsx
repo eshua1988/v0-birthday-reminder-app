@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Birthday, ViewMode } from "@/types/birthday"
@@ -54,6 +55,8 @@ export default function HomePage() {
   const [editingListId, setEditingListId] = useState<string | null>(null)
   const [showListDropdown, setShowListDropdown] = useState(false)
   const listDropdownRef = useRef<HTMLDivElement>(null)
+  const folderBtnRef = useRef<HTMLButtonElement>(null)
+  const [folderDropdownPos, setFolderDropdownPos] = useState({ bottom: 0, left: 0 })
   const [newListName, setNewListName] = useState("")
 
   const supabase = createClient()
@@ -605,6 +608,17 @@ export default function HomePage() {
     setShowListDropdown(false)
   }
 
+  useEffect(() => {
+    if (!showListDropdown) return
+    const handler = (e: MouseEvent) => {
+      if (folderBtnRef.current && !folderBtnRef.current.contains(e.target as Node)) {
+        setShowListDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [showListDropdown])
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -776,14 +790,24 @@ export default function HomePage() {
                 {/* Add to folder */}
                 <div className="relative flex-1" ref={listDropdownRef}>
                   <button
-                    onClick={() => setShowListDropdown((v) => !v)}
+                    ref={folderBtnRef}
+                    onClick={() => {
+                      if (folderBtnRef.current) {
+                        const r = folderBtnRef.current.getBoundingClientRect()
+                        setFolderDropdownPos({ bottom: window.innerHeight - r.top + 8, left: r.left + r.width / 2 })
+                      }
+                      setShowListDropdown((v) => !v)
+                    }}
                     className="flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-lg active:bg-white/10"
                   >
                     <FolderPlus className="h-[22px] w-[22px]" />
                     <span className="text-[9px] leading-none">В папку</span>
                   </button>
-                  {showListDropdown && (
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 min-w-[160px] rounded-lg border bg-popover text-popover-foreground shadow-lg py-1">
+                  {showListDropdown && typeof document !== "undefined" && createPortal(
+                    <div
+                      className="fixed z-[9999] min-w-[160px] rounded-lg border bg-popover text-popover-foreground shadow-xl py-1"
+                      style={{ bottom: folderDropdownPos.bottom, left: folderDropdownPos.left, transform: "translateX(-50%)" }}
+                    >
                       {lists.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-muted-foreground">Нет папок</div>
                       ) : (
@@ -797,7 +821,8 @@ export default function HomePage() {
                           </button>
                         ))
                       )}
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
 
