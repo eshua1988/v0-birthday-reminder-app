@@ -7,6 +7,7 @@ import type { Birthday, ViewMode } from "@/types/birthday"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { FilterBar, type SortOption, type FilterOptions, defaultFilters } from "@/components/filter-bar"
+import { detectGender } from "@/lib/gender-detection"
 import { BirthdayCard } from "@/components/birthday-card"
 import { BirthdayList } from "@/components/birthday-list"
 import { BirthdayTable } from "@/components/birthday-table"
@@ -308,14 +309,14 @@ export default function HomePage() {
       )
     }
 
-    // Filter: gender — checks custom_fields for a field named "Пол" (case-insensitive)
+    // Filter: gender — manual override via custom_fields "Пол", fallback to auto-detect by name
     if (filters.gender) {
       filtered = filtered.filter((b) => {
         const genderField = b.custom_fields?.find(
           (f) => f.name.toLowerCase() === "пол" || f.name.toLowerCase() === "gender",
         )
-        if (!genderField) return false
-        return genderField.value.toLowerCase().startsWith(filters.gender)
+        if (genderField) return genderField.value.toLowerCase().startsWith(filters.gender)
+        return detectGender(b.first_name) === filters.gender
       })
     }
 
