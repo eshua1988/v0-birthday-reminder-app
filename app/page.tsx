@@ -32,7 +32,18 @@ export default function HomePage() {
   const isMobile = useIsMobile()
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [filteredBirthdays, setFilteredBirthdays] = useState<Birthday[]>([])
-  const [viewMode, setViewMode] = useState<ViewMode>("cards")
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("viewMode")
+      if (saved === "cards" || saved === "list" || saved === "table") return saved
+    }
+    return "cards"
+  })
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem("viewMode", mode)
+  }
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -626,7 +637,7 @@ export default function HomePage() {
       <div className="flex-1 w-full">
         <Header
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
           onUndo={handleUndo}
