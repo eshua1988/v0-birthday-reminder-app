@@ -10,6 +10,15 @@ function base64url(input: Buffer | string) {
   return base64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
 }
 
+function buildRange(sheetName: string, rangeInput: string): string {
+  const range = (rangeInput || 'A:Z').trim()
+  const name = (sheetName || '').trim()
+  if (range.includes('!')) return range
+  if (!name) return range
+  const quotedName = name.startsWith("'") ? name : `'${name.replace(/'/g, "\\'")}'`
+  return `${quotedName}!${range}`
+}
+
 async function fetchAccessToken(serviceAccount: any) {
   const now = Math.floor(Date.now() / 1000)
   const header = { alg: 'RS256', typ: 'JWT' }
@@ -206,7 +215,7 @@ export async function POST(request: NextRequest) {
           ])
         })
 
-        const range = conn.sheet_range || "'Data app'!A:Z"
+        const range = buildRange(conn.sheet_name, conn.sheet_range)
         console.log('[v0] Writing to', conn.spreadsheet_id, 'range', range)
         const sheetsRes = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheet_id}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
@@ -372,7 +381,7 @@ export async function POST(request: NextRequest) {
 
       for (const conn of connections) {
         if (!conn.spreadsheet_id) continue
-        const range = conn.sheet_range || "'Data app'!A:Z"
+        const range = buildRange(conn.sheet_name, conn.sheet_range)
 
         const sheetsRes = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheet_id}/values/${encodeURIComponent(range)}`,

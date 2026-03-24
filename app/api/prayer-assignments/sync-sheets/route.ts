@@ -14,6 +14,15 @@ function base64url(input: Buffer | string) {
   return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
 }
 
+function buildRange(sheetName: string, rangeInput: string): string {
+  const range = (rangeInput || "A:Z").trim()
+  const name = (sheetName || "").trim()
+  if (range.includes("!")) return range
+  if (!name) return range
+  const quotedName = name.startsWith("'") ? name : `'${name.replace(/'/g, "\\'")}'`
+  return `${quotedName}!${range}`
+}
+
 async function getGoogleToken(raw: string): Promise<string> {
   let sa: any
   try { sa = JSON.parse(raw) } catch {
@@ -158,14 +167,16 @@ export async function POST() {
       values.push([wname, recs.join(", "), bdays.join(", ")])
     }
 
-    // If a specific participants list is selected for prayer — append participants below prayer assignments
-    if (prayerListId !== "__all__") {
-      const { data: birthdays } = await supabaseAdmin
+    // Append participants below prayer assignments (same as manual Export button in settings)
+    {
+      let bdayQuery = supabaseAdmin
         .from("birthdays")
         .select("id, first_name, last_name, birth_date, phone, email")
         .eq("user_id", user.id)
-        .eq("list_id", prayerListId)
         .order("birth_date")
+      const listFilter = prayerListId !== "__all__" ? prayerListId : (conn.list_id || null)
+      if (listFilter) bdayQuery = (bdayQuery as any).eq("list_id", listFilter)
+      const { data: birthdays } = await bdayQuery
       if (birthdays && birthdays.length > 0) {
         values.push([""]) // separator row
         values.push(["ID", "ФИО", "Дата рождения", "Телефон", "Email"])
@@ -182,7 +193,7 @@ export async function POST() {
     }
 
     // Determine range
-    const range = conn.sheet_range || `'${conn.sheet_name || "Sheet1"}'!A1`
+    const range = buildRange(conn.sheet_name, conn.sheet_range || "A:Z")
 
     // Write directly to Google Sheets API (avoid internal fetch which fails server-side)
     await writeToSheets(conn.spreadsheet_id, range, values)
