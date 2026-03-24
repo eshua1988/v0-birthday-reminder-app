@@ -40,16 +40,9 @@ export default function SettingsPage() {
   ];
 
   const currentLanguage = languages.find((lang) => lang.value === locale)
-  const [defaultNotificationTime, setDefaultNotificationTime] = useState(() => {
-    // Текущее время по умолчанию (только часы)
-    const now = new Date()
-    return now.getHours().toString().padStart(2, "0")
-  })
-  const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>(() => {
-    const now = new Date()
-    const currentHour = now.getHours().toString().padStart(2, "0")
-    return [currentHour]
-  })
+  const [defaultNotificationTime, setDefaultNotificationTime] = useState("09:00")
+  const [defaultNotificationTimes, setDefaultNotificationTimes] = useState<string[]>([])
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(true)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
@@ -318,6 +311,8 @@ export default function SettingsPage() {
   }
 
   const loadSettings = async () => {
+    setIsLoadingSettings(true)
+    try {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -390,10 +385,19 @@ export default function SettingsPage() {
             });
             setDefaultNotificationTimes(formatted);
             setDefaultNotificationTime(formatted[0]);
+          } else {
+            setDefaultNotificationTimes(["09:00"])
+            setDefaultNotificationTime("09:00")
           }
         } catch (e) {
           console.error("[v0] Error parsing default notification times:", e)
+          setDefaultNotificationTimes(["09:00"])
+          setDefaultNotificationTime("09:00")
         }
+      } else {
+        // No saved times yet — use 09:00 as default
+        setDefaultNotificationTimes(["09:00"])
+        setDefaultNotificationTime("09:00")
       }
 
       // Load theme settings
@@ -429,6 +433,9 @@ export default function SettingsPage() {
       if (themeEndData && themeEndData.value) {
         setScheduledThemeEnd(themeEndData.value)
       }
+    }
+    } finally {
+      setIsLoadingSettings(false)
     }
   }
 
@@ -964,7 +971,12 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex flex-row flex-wrap gap-2 items-center">
-                  {defaultNotificationTimes.map((time, index) => {
+                  {isLoadingSettings ? (
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Загрузка...
+                    </div>
+                  ) : defaultNotificationTimes.map((time, index) => {
                     // time может быть в формате "HH:mm" или "HH"
                     const [hour, minute = "00"] = time.split(":");
                     return (
