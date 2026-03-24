@@ -134,7 +134,85 @@ export function FilterBar({
               )}
             </div>
 
-            {/* Sort direction (moved here from top bar) */}
+            {/* Возраст + Год рождения — одна строка */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Возраст / Год рождения</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type="number"
+                    placeholder="Возраст"
+                    value={filters.age}
+                    onChange={(e) => update("age", e.target.value)}
+                    className="h-8 text-sm pr-6"
+                    min={0}
+                    max={150}
+                  />
+                  {filters.age && (
+                    <button onClick={() => update("age", "")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <div className="relative flex-1">
+                  <Input
+                    type="number"
+                    placeholder="Год"
+                    value={filters.birthYear}
+                    onChange={(e) => update("birthYear", e.target.value)}
+                    className="h-8 text-sm pr-6"
+                    min={1900}
+                    max={new Date().getFullYear()}
+                  />
+                  {filters.birthYear && (
+                    <button onClick={() => update("birthYear", "")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Месяц рождения */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Месяц рождения</Label>
+              <Select
+                value={filters.birthMonth || "__all__"}
+                onValueChange={(v) => update("birthMonth", v === "__all__" ? "" : v)}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Все месяцы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Все месяцы</SelectItem>
+                  {MONTHS.map((month, idx) => (
+                    <SelectItem key={idx} value={String(idx + 1)}>
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Пол */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Пол</Label>
+              <div className="flex gap-2">
+                {(["", "м", "ж"] as const).map((g) => (
+                  <Button
+                    key={g === "" ? "all" : g}
+                    size="sm"
+                    variant={filters.gender === g ? "default" : "outline"}
+                    onClick={() => update("gender", g)}
+                    className="flex-1 h-8 text-sm"
+                  >
+                    {g === "" ? "Все" : g === "м" ? "♂ М" : "♀ Ж"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Направление сортировки */}
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Направление сортировки</Label>
               <div className="flex gap-2">
@@ -156,114 +234,6 @@ export function FilterBar({
                   <ArrowDown className="h-3 w-3" />
                   По убыванию
                 </Button>
-              </div>
-            </div>
-
-            {/* Gender */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Пол</Label>
-              <div className="flex gap-2">
-                {(["", "м", "ж"] as const).map((g) => (
-                  <Button
-                    key={g === "" ? "all" : g}
-                    size="sm"
-                    variant={filters.gender === g ? "default" : "outline"}
-                    onClick={() => update("gender", g)}
-                    className="flex-1 h-8 text-sm"
-                  >
-                    {g === "" ? "Все" : g === "м" ? "♂ М" : "♀ Ж"}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Name */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Имя / буквы</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Введите имя или буквы..."
-                  value={filters.name}
-                  onChange={(e) => update("name", e.target.value)}
-                  className="h-8 text-sm pr-7"
-                />
-                {filters.name && (
-                  <button
-                    onClick={() => update("name", "")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Birth month */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Месяц рождения</Label>
-              <Select
-                value={filters.birthMonth || "__all__"}
-                onValueChange={(v) => update("birthMonth", v === "__all__" ? "" : v)}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Все месяцы" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Все месяцы</SelectItem>
-                  {MONTHS.map((month, idx) => (
-                    <SelectItem key={idx} value={String(idx + 1)}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Birth year */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Год рождения</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  placeholder="Например: 1990"
-                  value={filters.birthYear}
-                  onChange={(e) => update("birthYear", e.target.value)}
-                  className="h-8 text-sm pr-7"
-                  min={1900}
-                  max={new Date().getFullYear()}
-                />
-                {filters.birthYear && (
-                  <button
-                    onClick={() => update("birthYear", "")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Age */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Возраст (лет)</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  placeholder="Например: 35"
-                  value={filters.age}
-                  onChange={(e) => update("age", e.target.value)}
-                  className="h-8 text-sm pr-7"
-                  min={0}
-                  max={150}
-                />
-                {filters.age && (
-                  <button
-                    onClick={() => update("age", "")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
               </div>
             </div>
           </div>
