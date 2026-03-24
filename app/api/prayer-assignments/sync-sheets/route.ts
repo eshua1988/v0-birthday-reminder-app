@@ -2,11 +2,63 @@ import { NextResponse } from "next/server"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient } from "@supabase/supabase-js"
 import { format } from "date-fns"
+import crypto from "crypto"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+function base64url(input: Buffer | string) {
+  const base64 = (typeof input === "string" ? Buffer.from(input) : input).toString("base64")
+  return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
+}
+
+async function getGoogleToken(raw: string): Promise<string> {
+  let sa: any
+  try { sa = JSON.parse(raw) } catch {
+    try { sa = JSON.parse(raw.replace(/\\n/g, "\n")) } catch { sa = null }
+  }
+  if (!sa) throw new Error("Invalid service account JSON")
+  if (sa.private_key) sa.private_key = sa.private_key.replace(/\\n/g, "\n").replace(/\r/g, "").trim()
+
+  const now = Math.floor(Date.now() / 1000)
+  const header = { alg: "RS256", typ: "JWT" }
+  const payload = {
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/spreadsheets",
+    aud: sa.token_uri || "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now - 30,
+  }
+  const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`
+  const sign = crypto.createSign("RSA-SHA256")
+  sign.update(unsigned, "utf8")
+  sign.end()
+  const jwt = `${unsigned}.${base64url(sign.sign(sa.private_key))}`
+
+  const tokenRes = await fetch(sa.token_uri || "https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`,
+  })
+  if (!tokenRes.ok) throw new Error(`Token error: ${await tokenRes.text()}`)
+  return (await tokenRes.json()).access_token
+}
+
+async function writeToSheets(spreadsheetId: string, range: string, values: string[][]): Promise<void> {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT || ""
+  if (!raw) throw new Error("No service account configured")
+  const token = await getGoogleToken(raw)
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=RAW`
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ values }),
+  })
+  if (!res.ok) throw new Error(`Sheets write error: ${await res.text()}`)
+}
 
 const MONTH_NAMES = [
   "январь","февраль","март","апрель","май","июнь",
@@ -46,20 +98,31 @@ export async function POST() {
 
     // Get current month assignments
     const currentMonth = new Date().toISOString().slice(0, 7)
-    const { data: assignments } = await supabaseAdmin
+    const { data: assignments, error: assignError } = await supabaseAdmin
       .from("prayer_assignments")
       .select("warrior_id, recipient_name")
       .eq("user_id", user.id)
       .eq("assigned_month", currentMonth)
 
+    if (assignError) {
+      console.error("[prayer sync-sheets] assignments error:", assignError)
+      // Table doesn't exist or other DB error — skip gracefully
+      return NextResponse.json({ error: assignError.message }, { status: 400 })
+    }
+
     if (!assignments || assignments.length === 0) {
       return NextResponse.json({ error: "Нет назначений на текущий месяц" }, { status: 400 })
     }
 
-    const { data: warriors } = await supabaseAdmin
+    const { data: warriors, error: warriorError } = await supabaseAdmin
       .from("prayer_warriors")
       .select("id, name")
       .eq("user_id", user.id)
+
+    if (warriorError) {
+      console.error("[prayer sync-sheets] warriors error:", warriorError)
+      return NextResponse.json({ error: warriorError.message }, { status: 400 })
+    }
 
     const warriorMap = new Map((warriors || []).map((w: any) => [w.id, w.name]))
 
@@ -119,16 +182,10 @@ export async function POST() {
     }
 
     // Determine range
-    const range = conn.sheet_range || `'${conn.sheet_name}'!A:Z`
+    const range = conn.sheet_range || `'${conn.sheet_name || "Sheet1"}'!A1`
 
-    // Write to Google Sheets via existing /api/google-sheets route
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/google-sheets`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "write", spreadsheetId: conn.spreadsheet_id, range, values }),
-    })
-    const resData = await res.json()
-    if (!res.ok) throw new Error(resData.error || "Ошибка записи в таблицу")
+    // Write directly to Google Sheets API (avoid internal fetch which fails server-side)
+    await writeToSheets(conn.spreadsheet_id, range, values)
 
     return NextResponse.json({ success: true, rows: values.length - 1 })
   } catch (e: any) {
