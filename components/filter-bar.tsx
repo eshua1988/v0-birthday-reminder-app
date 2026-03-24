@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -52,17 +53,37 @@ export function FilterBar({
   const { t } = useLocale()
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [panelPos, setPanelPos] = useState({ top: 0, right: 0 })
+
+  // Position panel under the button
+  const updatePos = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPanelPos({ top: r.bottom + window.scrollY + 8, right: window.innerWidth - r.right })
+    }
+  }
 
   // Close on click outside
   useEffect(() => {
     if (!open) return
+    updatePos()
     const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      if (
+        panelRef.current && !panelRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) {
         setOpen(false)
       }
     }
     document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
+    window.addEventListener("scroll", updatePos, true)
+    window.addEventListener("resize", updatePos)
+    return () => {
+      document.removeEventListener("mousedown", handler)
+      window.removeEventListener("scroll", updatePos, true)
+      window.removeEventListener("resize", updatePos)
+    }
   }, [open])
 
   const activeCount = [
@@ -79,8 +100,9 @@ export function FilterBar({
   const clearAll = () => onFiltersChange(defaultFilters)
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative">
         <Button
+          ref={btnRef}
           variant={open || activeCount > 0 ? "default" : "outline"}
           size="icon"
           onClick={() => setOpen((v) => !v)}
@@ -95,8 +117,12 @@ export function FilterBar({
           )}
         </Button>
 
-        {open && (
-          <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-lg border bg-popover text-popover-foreground shadow-lg p-4 space-y-4" style={{ minWidth: "18rem" }}>
+        {open && typeof document !== "undefined" && createPortal(
+          <div
+            ref={panelRef}
+            className="fixed z-[9999] w-72 rounded-lg border bg-popover text-popover-foreground shadow-lg p-4 space-y-4"
+            style={{ top: panelPos.top, right: panelPos.right, minWidth: "18rem" }}
+          >
             {/* Header */}
             <div className="flex items-center justify-between">
               <h4 className="font-semibold text-sm">Фильтры</h4>
@@ -241,7 +267,7 @@ export function FilterBar({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
     </div>
   )
 }
