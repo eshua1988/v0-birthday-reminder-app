@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { Birthday, ViewMode } from "@/types/birthday"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
-import { FilterBar, type SortOption } from "@/components/filter-bar"
+import { FilterBar, type SortOption, type FilterOptions, defaultFilters } from "@/components/filter-bar"
 import { BirthdayCard } from "@/components/birthday-card"
 import { BirthdayList } from "@/components/birthday-list"
 import { BirthdayTable } from "@/components/birthday-table"
@@ -34,6 +34,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [filters, setFilters] = useState<FilterOptions>(defaultFilters)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkFormOpen, setIsBulkFormOpen] = useState(false)
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null)
@@ -123,7 +124,7 @@ export default function HomePage() {
 
   useEffect(() => {
     filterAndSortBirthdays()
-  }, [searchQuery, birthdays, sortBy, sortDirection, activeListId])
+  }, [searchQuery, birthdays, sortBy, sortDirection, activeListId, filters])
 
   useEffect(() => {
     const loadAutoSyncSetting = async () => {
@@ -288,12 +289,52 @@ export default function HomePage() {
       filtered = filtered.filter((b) => b.list_id === activeListId)
     }
 
+    // Search query (existing top bar)
     if (searchQuery) {
       filtered = filtered.filter(
         (b) =>
           b.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           b.last_name.toLowerCase().includes(searchQuery.toLowerCase()),
       )
+    }
+
+    // Filter: name / letters (from filter panel)
+    if (filters.name) {
+      const q = filters.name.toLowerCase()
+      filtered = filtered.filter(
+        (b) =>
+          b.first_name.toLowerCase().includes(q) ||
+          b.last_name.toLowerCase().includes(q),
+      )
+    }
+
+    // Filter: gender — checks custom_fields for a field named "Пол" (case-insensitive)
+    if (filters.gender) {
+      filtered = filtered.filter((b) => {
+        const genderField = b.custom_fields?.find(
+          (f) => f.name.toLowerCase() === "пол" || f.name.toLowerCase() === "gender",
+        )
+        if (!genderField) return false
+        return genderField.value.toLowerCase().startsWith(filters.gender)
+      })
+    }
+
+    // Filter: birth month (1–12)
+    if (filters.birthMonth) {
+      const month = parseInt(filters.birthMonth)
+      filtered = filtered.filter((b) => new Date(b.birth_date).getMonth() + 1 === month)
+    }
+
+    // Filter: birth year
+    if (filters.birthYear) {
+      const year = parseInt(filters.birthYear)
+      filtered = filtered.filter((b) => new Date(b.birth_date).getFullYear() === year)
+    }
+
+    // Filter: age (exact)
+    if (filters.age) {
+      const targetAge = parseInt(filters.age)
+      filtered = filtered.filter((b) => calculateAge(b.birth_date) === targetAge)
     }
 
     const sorted = [...filtered].sort((a, b) => {
@@ -684,6 +725,8 @@ export default function HomePage() {
                 sortDirection={sortDirection}
                 onSortChange={setSortBy}
                 onSortDirectionToggle={toggleSortDirection}
+                filters={filters}
+                onFiltersChange={setFilters}
               />
             </div>
 
