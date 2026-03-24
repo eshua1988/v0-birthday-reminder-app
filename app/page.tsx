@@ -748,44 +748,42 @@ export default function HomePage() {
             </div>
 
             {isSelectionMode && selectedCards.size > 0 && (
-              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-3 py-2 bg-card/95 backdrop-blur-sm rounded-2xl border border-border shadow-2xl" style={{ maxWidth: "calc(100vw - 2rem)", width: "max-content" }}>
-                <div className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 min-w-[48px] shrink-0">
-                  <span className="text-lg font-bold leading-none">{selectedCards.size}</span>
-                  <span className="text-[10px] leading-none whitespace-nowrap text-muted-foreground">выбрано</span>
+              <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center bg-card/95 backdrop-blur-sm border-t border-border shadow-2xl px-2 py-2 safe-area-pb" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+                {/* Count */}
+                <div className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1">
+                  <span className="text-base font-bold leading-none">{selectedCards.size}</span>
+                  <span className="text-[9px] leading-none text-muted-foreground">выбрано</span>
                 </div>
 
                 {/* Select all */}
-                <button onClick={selectAllCards} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
-                  <CheckCheck className="h-5 w-5" />
-                  <span className="text-[10px] leading-none whitespace-nowrap">Все</span>
+                <button onClick={selectAllCards} className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg active:bg-white/10">
+                  <CheckCheck className="h-[22px] w-[22px]" />
+                  <span className="text-[9px] leading-none">Все</span>
                 </button>
 
                 {/* Copy */}
-                <button onClick={copySelectedToClipboard} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
-                  <Copy className="h-5 w-5" />
-                  <span className="text-[10px] leading-none whitespace-nowrap">Копировать</span>
+                <button onClick={copySelectedToClipboard} className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg active:bg-white/10">
+                  <Copy className="h-[22px] w-[22px]" />
+                  <span className="text-[9px] leading-none">Копировать</span>
                 </button>
 
                 {/* Share */}
-                <button onClick={shareSelected} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
-                  <Share2 className="h-5 w-5" />
-                  <span className="text-[10px] leading-none whitespace-nowrap">Поделиться</span>
+                <button onClick={shareSelected} className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg active:bg-white/10">
+                  <Share2 className="h-[22px] w-[22px]" />
+                  <span className="text-[9px] leading-none">Поделиться</span>
                 </button>
 
                 {/* Add to folder */}
-                <div className="relative" ref={listDropdownRef}>
+                <div className="relative flex-1" ref={listDropdownRef}>
                   <button
                     onClick={() => setShowListDropdown((v) => !v)}
-                    className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]"
+                    className="flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-lg active:bg-white/10"
                   >
-                    <FolderPlus className="h-5 w-5" />
-                    <span className="text-[10px] leading-none whitespace-nowrap">В папку</span>
+                    <FolderPlus className="h-[22px] w-[22px]" />
+                    <span className="text-[9px] leading-none">В папку</span>
                   </button>
                   {showListDropdown && (
-                    <div
-                      className="absolute left-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border bg-popover text-popover-foreground shadow-lg py-1"
-                      onMouseLeave={() => setShowListDropdown(false)}
-                    >
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 min-w-[160px] rounded-lg border bg-popover text-popover-foreground shadow-lg py-1">
                       {lists.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-muted-foreground">Нет папок</div>
                       ) : (
@@ -804,15 +802,15 @@ export default function HomePage() {
                 </div>
 
                 {/* Delete */}
-                <button onClick={deleteSelected} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-destructive/20 text-destructive transition-colors min-w-[48px]">
-                  <Trash2 className="h-5 w-5" />
-                  <span className="text-[10px] leading-none whitespace-nowrap">Удалить</span>
+                <button onClick={deleteSelected} className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg active:bg-destructive/20 text-destructive">
+                  <Trash2 className="h-[22px] w-[22px]" />
+                  <span className="text-[9px] leading-none">Удалить</span>
                 </button>
 
                 {/* Cancel */}
-                <button onClick={deselectAllCards} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-muted-foreground transition-colors ml-auto min-w-[48px]">
-                  <X className="h-5 w-5" />
-                  <span className="text-[10px] leading-none whitespace-nowrap">Отменить</span>
+                <button onClick={deselectAllCards} className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg active:bg-white/10 text-muted-foreground">
+                  <X className="h-[22px] w-[22px]" />
+                  <span className="text-[9px] leading-none">Отменить</span>
                 </button>
               </div>
             )}
