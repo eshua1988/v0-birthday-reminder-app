@@ -259,17 +259,28 @@ export const GoogleSheetsSettings: React.FC = () => {
       if (error) throw error
 
       if (birthdays && birthdays.length > 0) {
-        values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Удалить'])
-        ;(birthdays || []).forEach((b: any) => {
-          values.push([
-            b.id || '',
-            [b.last_name, b.first_name].filter(Boolean).join(' '),
-            b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
-            b.phone || '',
-            b.email || '',
-            '',
-          ])
-        })
+        if (isPrayerConn) {
+          values.push(['ID', 'ФИО', 'Дата рождения'])
+          ;(birthdays || []).forEach((b: any) => {
+            values.push([
+              b.id || '',
+              [b.last_name, b.first_name].filter(Boolean).join(' '),
+              b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
+            ])
+          })
+        } else {
+          values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Удалить'])
+          ;(birthdays || []).forEach((b: any) => {
+            values.push([
+              b.id || '',
+              [b.last_name, b.first_name].filter(Boolean).join(' '),
+              b.birth_date ? new Date(b.birth_date).toLocaleDateString('ru-RU') : '',
+              b.phone || '',
+              b.email || '',
+              '',
+            ])
+          })
+        }
       } else if (!isPrayerConn) {
         values.push(['ID', 'ФИО', 'Дата рождения', 'Телефон', 'Email', 'Удалить'])
       }

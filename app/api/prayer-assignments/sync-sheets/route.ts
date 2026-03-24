@@ -167,11 +167,11 @@ export async function POST() {
       values.push([wname, recs.join(", "), bdays.join(", ")])
     }
 
-    // Append participants below prayer assignments (same as manual Export button in settings)
+    // Append participants below prayer assignments
     {
       let bdayQuery = supabaseAdmin
         .from("birthdays")
-        .select("id, first_name, last_name, birth_date, phone, email")
+        .select("id, first_name, last_name, birth_date")
         .eq("user_id", user.id)
         .order("birth_date")
       const listFilter = prayerListId !== "__all__" ? prayerListId : (conn.list_id || null)
@@ -179,14 +179,12 @@ export async function POST() {
       const { data: birthdays } = await bdayQuery
       if (birthdays && birthdays.length > 0) {
         values.push([""]) // separator row
-        values.push(["ID", "ФИО", "Дата рождения", "Телефон", "Email"])
+        values.push(["ID", "ФИО", "Дата рождения"])
         for (const b of birthdays as any[]) {
           values.push([
             b.id || "",
             [b.last_name, b.first_name].filter(Boolean).join(" "),
             b.birth_date ? format(new Date(b.birth_date), "dd.MM.yyyy") : "",
-            b.phone || "",
-            b.email || "",
           ])
         }
       }

@@ -188,8 +188,15 @@ export async function POST(request: NextRequest) {
       console.log('[v0] Starting export for', connections.length, 'connection(s)...')
       let totalRows = 0
 
+      // Skip the prayer connection — it is exported by /api/prayer-assignments/sync-sheets
+      const prayerConnId = settings?.find((s: any) => s.key === 'prayer_sheets_connection_id')?.value
+
       for (const conn of connections) {
         if (!conn.spreadsheet_id) continue
+        if (prayerConnId && conn.id === prayerConnId) {
+          console.log('[v0] Skipping prayer connection', conn.id, 'during regular export')
+          continue
+        }
 
         // Filter by list_id if connection is tied to a specific list
         let query = supabase.from('birthdays').select('*').eq('user_id', userId).order('birth_date')
