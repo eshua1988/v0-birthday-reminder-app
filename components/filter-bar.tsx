@@ -79,30 +79,13 @@ export function FilterBar({
   const clearAll = () => onFiltersChange(defaultFilters)
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
-      <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-      <Label className="text-sm font-medium shrink-0">{t.sorting}:</Label>
-      <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortOption)}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue>
-            {sortBy === "date" ? t.sortByDate : sortBy === "alphabet" ? t.sortByAlphabet : t.sortByAge}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="date">{t.sortByDate}</SelectItem>
-          <SelectItem value="alphabet">{t.sortByAlphabet}</SelectItem>
-          <SelectItem value="age">{t.sortByAge}</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {/* Filter button */}
-      <div className="relative" ref={panelRef}>
+    <div className="relative" ref={panelRef}>
         <Button
           variant={open || activeCount > 0 ? "default" : "outline"}
           size="icon"
           onClick={() => setOpen((v) => !v)}
           title="Фильтры"
-          className="relative"
+          className="relative h-8 w-8"
         >
           <Filter className="h-4 w-4" />
           {activeCount > 0 && (
@@ -113,7 +96,7 @@ export function FilterBar({
         </Button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-lg border bg-popover text-popover-foreground shadow-lg p-4 space-y-4">
+          <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-lg border bg-popover text-popover-foreground shadow-lg p-4 space-y-4" style={{ minWidth: "18rem" }}>
             {/* Header */}
             <div className="flex items-center justify-between">
               <h4 className="font-semibold text-sm">Фильтры</h4>
@@ -259,7 +242,6 @@ export function FilterBar({
             </div>
           </div>
         )}
-      </div>
     </div>
   )
 }

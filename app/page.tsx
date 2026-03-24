@@ -717,18 +717,19 @@ export default function HomePage() {
                   placeholder={t.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 pr-12"
                 />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <FilterBar
+                    sortBy={sortBy}
+                    sortDirection={sortDirection}
+                    onSortChange={setSortBy}
+                    onSortDirectionToggle={toggleSortDirection}
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                  />
+                </div>
               </div>
-
-              <FilterBar
-                sortBy={sortBy}
-                sortDirection={sortDirection}
-                onSortChange={setSortBy}
-                onSortDirectionToggle={toggleSortDirection}
-                filters={filters}
-                onFiltersChange={setFilters}
-              />
             </div>
 
             {isSelectionMode && selectedCards.size > 0 && (
