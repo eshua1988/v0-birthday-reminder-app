@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Birthday, ViewMode } from "@/types/birthday"
@@ -15,7 +15,7 @@ import { BirthdayForm } from "@/components/birthday-form"
 import { BulkAddForm } from "@/components/bulk-add-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Users, Search, X } from "lucide-react"
+import { Plus, Users, Search, X, Copy, Share2, Trash2, FolderPlus, CheckCheck } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -52,6 +52,8 @@ export default function HomePage() {
   const [lists, setLists] = useState<{ id: string; name: string }[]>([])
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [editingListId, setEditingListId] = useState<string | null>(null)
+  const [showListDropdown, setShowListDropdown] = useState(false)
+  const listDropdownRef = useRef<HTMLDivElement>(null)
   const [newListName, setNewListName] = useState("")
 
   const supabase = createClient()
@@ -590,6 +592,19 @@ export default function HomePage() {
     setIsSelectionMode(false)
   }
 
+  const addSelectedToList = async (listId: string) => {
+    const ids = Array.from(selectedCards)
+    const { error } = await supabase.from("birthdays").update({ list_id: listId }).in("id", ids)
+    if (!error) {
+      setBirthdays((prev) => prev.map((b) => selectedCards.has(b.id) ? { ...b, list_id: listId } : b))
+      setSelectedCards(new Set())
+      setIsSelectionMode(false)
+    } else {
+      alert(`Ошибка: ${error.message}`)
+    }
+    setShowListDropdown(false)
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -733,25 +748,69 @@ export default function HomePage() {
             </div>
 
             {isSelectionMode && selectedCards.size > 0 && (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-4 bg-primary/10 rounded-lg border border-primary/20">
-                <span className="text-sm font-medium">Выбрано: {selectedCards.size}</span>
-                <div className="flex flex-wrap gap-2 sm:ml-auto">
-                  <Button size="sm" variant="outline" onClick={selectAllCards}>
-                    Выбрать все
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={copySelectedToClipboard}>
-                    Копировать
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={shareSelected}>
-                    Поделиться
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={deleteSelected}>
-                    Удалить
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={deselectAllCards}>
-                    Отменить
-                  </Button>
+              <div className="flex items-center gap-1 px-3 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                <span className="text-xs font-semibold text-muted-foreground mr-2 shrink-0">Выбрано:&nbsp;{selectedCards.size}</span>
+
+                {/* Select all */}
+                <button onClick={selectAllCards} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
+                  <CheckCheck className="h-5 w-5" />
+                  <span className="text-[10px] leading-none whitespace-nowrap">Все</span>
+                </button>
+
+                {/* Copy */}
+                <button onClick={copySelectedToClipboard} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
+                  <Copy className="h-5 w-5" />
+                  <span className="text-[10px] leading-none whitespace-nowrap">Копировать</span>
+                </button>
+
+                {/* Share */}
+                <button onClick={shareSelected} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
+                  <Share2 className="h-5 w-5" />
+                  <span className="text-[10px] leading-none whitespace-nowrap">Поделиться</span>
+                </button>
+
+                {/* Add to folder */}
+                <div className="relative" ref={listDropdownRef}>
+                  <button
+                    onClick={() => setShowListDropdown((v) => !v)}
+                    className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]"
+                  >
+                    <FolderPlus className="h-5 w-5" />
+                    <span className="text-[10px] leading-none whitespace-nowrap">В папку</span>
+                  </button>
+                  {showListDropdown && (
+                    <div
+                      className="absolute left-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border bg-popover text-popover-foreground shadow-lg py-1"
+                      onMouseLeave={() => setShowListDropdown(false)}
+                    >
+                      {lists.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">Нет папок</div>
+                      ) : (
+                        lists.map((list) => (
+                          <button
+                            key={list.id}
+                            onClick={() => addSelectedToList(list.id)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                          >
+                            {list.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Delete */}
+                <button onClick={deleteSelected} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-destructive/20 text-destructive transition-colors min-w-[48px]">
+                  <Trash2 className="h-5 w-5" />
+                  <span className="text-[10px] leading-none whitespace-nowrap">Удалить</span>
+                </button>
+
+                {/* Cancel */}
+                <button onClick={deselectAllCards} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-muted-foreground transition-colors ml-auto min-w-[48px]">
+                  <X className="h-5 w-5" />
+                  <span className="text-[10px] leading-none whitespace-nowrap">Отменить</span>
+                </button>
               </div>
             )}
 
