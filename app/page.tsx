@@ -748,7 +748,7 @@ export default function HomePage() {
             </div>
 
             {isSelectionMode && selectedCards.size > 0 && (
-              <div className="flex items-center gap-1 px-3 py-2 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-3 py-2 bg-card/95 backdrop-blur-sm rounded-2xl border border-border shadow-2xl" style={{ maxWidth: "calc(100vw - 2rem)", width: "max-content" }}>
                 <div className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 min-w-[48px] shrink-0">
                   <span className="text-lg font-bold leading-none">{selectedCards.size}</span>
                   <span className="text-[10px] leading-none whitespace-nowrap text-muted-foreground">выбрано</span>
