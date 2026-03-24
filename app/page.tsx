@@ -67,6 +67,7 @@ export default function HomePage() {
   const [showListDropdown, setShowListDropdown] = useState(false)
   const listDropdownRef = useRef<HTMLDivElement>(null)
   const folderBtnRef = useRef<HTMLButtonElement>(null)
+  const folderPanelRef = useRef<HTMLDivElement>(null)
   const [folderDropdownPos, setFolderDropdownPos] = useState({ bottom: 0, left: 0 })
   const [newListName, setNewListName] = useState("")
 
@@ -622,7 +623,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!showListDropdown) return
     const handler = (e: MouseEvent) => {
-      if (folderBtnRef.current && !folderBtnRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const insideBtn = folderBtnRef.current?.contains(target)
+      const insidePanel = folderPanelRef.current?.contains(target)
+      if (!insideBtn && !insidePanel) {
         setShowListDropdown(false)
       }
     }
@@ -816,6 +820,7 @@ export default function HomePage() {
                   </button>
                   {showListDropdown && typeof document !== "undefined" && createPortal(
                     <div
+                      ref={folderPanelRef}
                       className="fixed z-[9999] min-w-[160px] rounded-lg border bg-popover text-popover-foreground shadow-xl py-1"
                       style={{ bottom: folderDropdownPos.bottom, left: folderDropdownPos.left, transform: "translateX(-50%)" }}
                     >
