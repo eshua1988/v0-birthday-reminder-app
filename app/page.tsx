@@ -749,7 +749,10 @@ export default function HomePage() {
 
             {isSelectionMode && selectedCards.size > 0 && (
               <div className="flex items-center gap-1 px-3 py-2 bg-primary/10 rounded-lg border border-primary/20">
-                <span className="text-xs font-semibold text-muted-foreground mr-2 shrink-0">Выбрано:&nbsp;{selectedCards.size}</span>
+                <div className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 min-w-[48px] shrink-0">
+                  <span className="text-lg font-bold leading-none">{selectedCards.size}</span>
+                  <span className="text-[10px] leading-none whitespace-nowrap text-muted-foreground">выбрано</span>
+                </div>
 
                 {/* Select all */}
                 <button onClick={selectAllCards} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors min-w-[48px]">
