@@ -14,7 +14,7 @@ export default function AuthCallbackPage() {
     // exchangeCodeForSession internally (detectSessionInUrl: true by default).
     // We must NOT call it manually again — that would fail with "code already used".
     // Just listen for the SIGNED_IN event which fires after the auto-exchange.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
       if (event === "SIGNED_IN") {
         subscription.unsubscribe()
         // If we're in the popup, close it — main window will navigate via its own listener.
