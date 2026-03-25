@@ -11,6 +11,8 @@
   "id": "/",
   "lang": "ru",
   "dir": "ltr",
+  "capture_links": "existing-client-navigate",
+  "handle_links": "preferred",
   "icons": [
     {
       "src": "/icon-192x192.svg",
