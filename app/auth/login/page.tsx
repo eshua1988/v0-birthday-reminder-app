@@ -62,7 +62,7 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "https://v0-birthday-reminder-app-liart.vercel.app/",
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -98,7 +98,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: {
-          redirectTo: "https://v0-birthday-reminder-app-liart.vercel.app/",
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
@@ -131,7 +131,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
-          redirectTo: "https://v0-birthday-reminder-app-liart.vercel.app/",
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
