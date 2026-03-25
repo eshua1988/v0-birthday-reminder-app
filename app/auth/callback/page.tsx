@@ -10,26 +10,28 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.exchangeCodeForSession(window.location.href).then(({ error }: { error: { message: string } | null }) => {
-      if (error) {
-        console.error("[auth/callback] error:", error.message)
-        // If in popup — show error briefly then close; otherwise navigate
-        if (window.opener) {
-          document.title = "Ошибка входа"
-          setTimeout(() => window.close(), 2000)
-        } else {
-          router.replace("/auth/login?error=auth_callback_failed")
-        }
-      } else {
-        // Session is set — Supabase broadcasts SIGNED_IN to all same-origin windows.
-        // If in popup, close so the main window can navigate; otherwise go home.
+    // createBrowserClient automatically detects ?code= in URL and calls
+    // exchangeCodeForSession internally (detectSessionInUrl: true by default).
+    // We must NOT call it manually again — that would fail with "code already used".
+    // Just listen for the SIGNED_IN event which fires after the auto-exchange.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        subscription.unsubscribe()
+        // If we're in the popup, close it — main window will navigate via its own listener.
+        // If not in popup (e.g. mobile redirect flow), navigate directly.
         if (window.opener) {
           window.close()
         } else {
           router.replace("/")
         }
+      } else if (event === "SIGNED_OUT") {
+        // Shouldn't happen here, but handle gracefully
+        subscription.unsubscribe()
+        router.replace("/auth/login")
       }
     })
+
+    return () => subscription.unsubscribe()
   }, [router])
 
   return (
