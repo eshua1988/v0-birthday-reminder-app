@@ -10,13 +10,21 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const supabase = createClient()
 
-    // exchangeCodeForSession reads the ?code= from the URL automatically
     supabase.auth.exchangeCodeForSession(window.location.href).then(({ error }: { error: { message: string } | null }) => {
       if (error) {
         console.error("[auth/callback] error:", error.message)
-        router.replace("/auth/login?error=auth_callback_failed")
+        if (window.opener) {
+          window.close()
+        } else {
+          router.replace("/auth/login?error=auth_callback_failed")
+        }
       } else {
-        router.replace("/")
+        if (window.opener) {
+          // Running in popup — just close; main window detects SIGNED_IN event
+          window.close()
+        } else {
+          router.replace("/")
+        }
       }
     })
   }, [router])

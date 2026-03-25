@@ -65,20 +65,39 @@ export default function LoginPage() {
         setError("Supabase client не инициализирован. Проверьте переменные окружения.");
         return;
       }
-      console.log("[v0] Initiating Google OAuth sign in...");
+      // Get OAuth URL without redirecting current window (preserves PWA standalone mode)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: getCallbackUrl(),
+          skipBrowserRedirect: true,
         },
       });
-      if (error) {
-        console.log("[v0] Google OAuth error:", error);
-        throw error;
-      }
-      console.log("[v0] Google OAuth initiated successfully");
+      if (error) throw error;
+      if (!data.url) throw new Error("No OAuth URL returned");
+
+      // Open in popup so the main PWA window never navigates away
+      const popup = window.open(data.url, "oauth", "width=520,height=620,popup=1")
+
+      // Listen for session established by the popup
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+        if (event === "SIGNED_IN") {
+          subscription.unsubscribe()
+          if (popup && !popup.closed) popup.close()
+          router.replace("/")
+        }
+      })
+
+      // If popup is closed without signing in — reset loading
+      const timer = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(timer)
+          subscription.unsubscribe()
+          setIsLoading(false)
+        }
+      }, 800)
     } catch (error: any) {
-      console.log("[v0] Google sign in error:", error?.message || error);
+      console.error("[v0] Google sign in error:", error?.message || error);
       if (error?.message && (error.message.includes("Provider") || error.message.includes("enabled"))) {
         setError(
           "Google вход не настроен. Администратор должен настроить Google OAuth в Supabase Dashboard. См. документацию OAUTH_SETUP.md",
@@ -86,7 +105,6 @@ export default function LoginPage() {
       } else {
         setError(error?.message || "Ошибка входа через Google");
       }
-    } finally {
       setIsLoading(false);
     }
   }
