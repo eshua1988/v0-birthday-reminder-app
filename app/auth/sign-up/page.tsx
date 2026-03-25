@@ -71,23 +71,14 @@ export default function SignUpPage() {
       if (error) throw error
       if (!data.url) throw new Error("No OAuth URL returned")
 
-      const popup = window.open(data.url, "oauth", "width=520,height=620,popup=1")
+      window.open(data.url, "oauth", "width=520,height=620,popup=1")
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
         if (event === "SIGNED_IN") {
           subscription.unsubscribe()
-          if (popup && !popup.closed) popup.close()
           router.replace("/")
         }
       })
-
-      const timer = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(timer)
-          subscription.unsubscribe()
-          setIsLoading(false)
-        }
-      }, 800)
     } catch (error: any) {
       console.log("[v0] Google sign up error:", error.message)
       if (error.message.includes("Provider") || error.message.includes("enabled")) {

@@ -13,14 +13,17 @@ export default function AuthCallbackPage() {
     supabase.auth.exchangeCodeForSession(window.location.href).then(({ error }: { error: { message: string } | null }) => {
       if (error) {
         console.error("[auth/callback] error:", error.message)
+        // If in popup — show error briefly then close; otherwise navigate
         if (window.opener) {
-          window.close()
+          document.title = "Ошибка входа"
+          setTimeout(() => window.close(), 2000)
         } else {
           router.replace("/auth/login?error=auth_callback_failed")
         }
       } else {
+        // Session is set — Supabase broadcasts SIGNED_IN to all same-origin windows.
+        // If in popup, close so the main window can navigate; otherwise go home.
         if (window.opener) {
-          // Running in popup — just close; main window detects SIGNED_IN event
           window.close()
         } else {
           router.replace("/")
