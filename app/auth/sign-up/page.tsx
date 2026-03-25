@@ -21,6 +21,11 @@ import {
 
 const EMAIL_DOMAINS = ["@gmail.com", "@mail.ru", "@yandex.ru", "@outlook.com", "@yahoo.com", "@icloud.com"]
 
+function getCallbackUrl() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://v0-birthday-reminder-app-liart.vercel.app"
+  return `${siteUrl}/auth/callback`
+}
+
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -56,7 +61,7 @@ export default function SignUpPage() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: getCallbackUrl(),
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -93,7 +98,7 @@ export default function SignUpPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: getCallbackUrl(),
         },
       })
 
@@ -126,7 +131,7 @@ export default function SignUpPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: getCallbackUrl(),
         },
       })
 
