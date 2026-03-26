@@ -24,41 +24,35 @@ export default function AuthCallbackPage() {
     }
 
     const supabase = createClient()
-    let handled = false
 
-    const finish = () => {
-      if (handled) return
-      handled = true
-      // window.close() works for any script-opened popup regardless of COOP/opener state.
-      // Google sets COOP:same-origin which nullifies window.opener, but self-close still works.
-      window.close()
-      // Fallback: if this is NOT a popup (mobile direct redirect), navigate after close fails
-      setTimeout(() => router.replace("/"), 500)
-    }
-
-    // @supabase/ssr createBrowserClient has detectSessionInUrl: true — it auto-exchanges ?code=.
-    // We listen for SIGNED_IN (exchange just done) or INITIAL_SESSION with session (already done).
+    // @supabase/ssr createBrowserClient has detectSessionInUrl: true —
+    // it automatically calls exchangeCodeForSession when it sees ?code= in URL.
+    // We just listen for the result via onAuthStateChange.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: string, session: import("@supabase/supabase-js").Session | null) => {
         if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && session)) {
           subscription.unsubscribe()
-          finish()
+          router.replace("/")
+        } else if (event === "INITIAL_SESSION" && !session) {
+          subscription.unsubscribe()
+          setErrorMsg("Не удалось выполнить вход. Попробуйте снова.")
+          setTimeout(() => router.replace("/auth/login"), 3000)
         }
       }
     )
 
-    // Safety timeout: if auto-exchange never fires (15s), check manually
+    // Safety timeout: if onAuthStateChange never fires (10s), check session directly
     const timeoutId = setTimeout(async () => {
-      if (handled) return
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         subscription.unsubscribe()
-        finish()
+        router.replace("/")
       } else {
+        subscription.unsubscribe()
         setErrorMsg("Время ожидания истекло. Попробуйте войти снова.")
         setTimeout(() => router.replace("/auth/login"), 3000)
       }
-    }, 15000)
+    }, 10000)
 
     return () => {
       subscription.unsubscribe()

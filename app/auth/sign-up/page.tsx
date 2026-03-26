@@ -57,11 +57,10 @@ export default function SignUpPage() {
     setError(null)
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: getCallbackUrl(),
-          skipBrowserRedirect: true,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -69,16 +68,7 @@ export default function SignUpPage() {
         },
       })
       if (error) throw error
-      if (!data.url) throw new Error("No OAuth URL returned")
-
-      window.open(data.url, "oauth", "width=520,height=620,popup=1")
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
-        if (event === "SIGNED_IN") {
-          subscription.unsubscribe()
-          router.replace("/")
-        }
-      })
+      // Browser will redirect to Google automatically
     } catch (error: any) {
       console.log("[v0] Google sign up error:", error.message)
       if (error.message.includes("Provider") || error.message.includes("enabled")) {
