@@ -77,15 +77,39 @@ export default function LoginPage() {
       if (!data.url) throw new Error("No OAuth URL returned");
 
       // Open in popup so the main PWA window never navigates away
-      window.open(data.url, "oauth", "width=520,height=620,popup=1")
+      const popup = window.open(data.url, "oauth", "width=520,height=620,popup=1")
 
-      // Listen for session established by the popup via Supabase broadcast channel
+      if (!popup) {
+        // Popup was blocked by the browser — fall back to full-page redirect
+        window.location.href = data.url
+        return
+      }
+
+      const navigate = () => {
+        clearInterval(pollId)
+        clearTimeout(timeoutId)
+        subscription.unsubscribe()
+        router.replace("/")
+      }
+
+      // 1. Listen via onAuthStateChange (fires when popup stores session in localStorage)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
-        if (event === "SIGNED_IN") {
-          subscription.unsubscribe()
-          router.replace("/")
-        }
+        if (event === "SIGNED_IN") navigate()
       })
+
+      // 2. Polling fallback — in case storage events don't propagate in PWA mode
+      const pollId = setInterval(async () => {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) navigate()
+      }, 1500)
+
+      // 3. Safety timeout — reset loading after 10 min (user may have closed popup)
+      const timeoutId = setTimeout(() => {
+        clearInterval(pollId)
+        subscription.unsubscribe()
+        setIsLoading(false)
+      }, 10 * 60 * 1000)
+
     } catch (error: any) {
       console.error("[v0] Google sign in error:", error?.message || error);
       if (error?.message && (error.message.includes("Provider") || error.message.includes("enabled"))) {

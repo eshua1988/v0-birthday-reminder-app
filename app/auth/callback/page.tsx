@@ -9,74 +9,61 @@ export default function AuthCallbackPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
+    const url = new URL(window.location.href)
+    const errorParam = url.searchParams.get("error")
+    const code = url.searchParams.get("code")
+
+    if (errorParam) {
+      setErrorMsg(url.searchParams.get("error_description") || errorParam)
+      setTimeout(() => router.replace("/auth/login"), 3000)
+      return
+    }
+    if (!code) {
+      router.replace("/auth/login")
+      return
+    }
+
     const supabase = createClient()
     let handled = false
 
-    const finishAuth = () => {
+    const finish = () => {
       if (handled) return
       handled = true
-      // COOP from Google may nullify window.opener — treat null opener as regular navigation
-      if (window.opener) {
-        window.close()
-      } else {
-        router.replace("/")
-      }
+      // window.close() works for any script-opened popup regardless of COOP/opener state.
+      // Google sets COOP:same-origin which nullifies window.opener, but self-close still works.
+      window.close()
+      // Fallback: if this is NOT a popup (mobile direct redirect), navigate after close fails
+      setTimeout(() => router.replace("/"), 500)
     }
 
-    const run = async () => {
-      const url = new URL(window.location.href)
-
-      // Surface OAuth errors returned by the provider
-      const errorParam = url.searchParams.get("error")
-      const errorDescription = url.searchParams.get("error_description")
-      if (errorParam) {
-        setErrorMsg(errorDescription || errorParam)
-        setTimeout(() => router.replace("/auth/login"), 3000)
-        return
-      }
-
-      const code = url.searchParams.get("code")
-      if (!code) {
-        // No code and no error — nothing to do
-        router.replace("/auth/login")
-        return
-      }
-
-      // 1. Check if detectSessionInUrl already exchanged the code before we got here
-      const { data: { session: existingSession } } = await supabase.auth.getSession()
-      if (existingSession) {
-        finishAuth()
-        return
-      }
-
-      // 2. Explicit exchange (detectSessionInUrl race-condition fallback)
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href)
-      if (exchangeError) {
-        // If "code already used", the session should now exist
-        const { data: { session: retrySession } } = await supabase.auth.getSession()
-        if (retrySession) {
-          finishAuth()
-        } else {
-          setErrorMsg(exchangeError.message)
-          setTimeout(() => router.replace("/auth/login"), 3000)
+    // @supabase/ssr createBrowserClient has detectSessionInUrl: true — it auto-exchanges ?code=.
+    // We listen for SIGNED_IN (exchange just done) or INITIAL_SESSION with session (already done).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event: string, session: import("@supabase/supabase-js").Session | null) => {
+        if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && session)) {
+          subscription.unsubscribe()
+          finish()
         }
-        return
       }
+    )
 
-      finishAuth()
-    }
-
-    // Also listen for SIGNED_IN broadcast from another tab / the auto-exchange
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: import("@supabase/supabase-js").Session | null) => {
-      if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && session)) {
+    // Safety timeout: if auto-exchange never fires (15s), check manually
+    const timeoutId = setTimeout(async () => {
+      if (handled) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
         subscription.unsubscribe()
-        finishAuth()
+        finish()
+      } else {
+        setErrorMsg("Время ожидания истекло. Попробуйте войти снова.")
+        setTimeout(() => router.replace("/auth/login"), 3000)
       }
-    })
+    }, 15000)
 
-    run()
-
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeoutId)
+    }
   }, [router])
 
   if (errorMsg) {
