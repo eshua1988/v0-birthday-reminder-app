@@ -3,6 +3,33 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role"
 import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-admin"
 import { formatAge } from "@/lib/utils"
 
+function getLocalDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+async function claimDelivery(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  userId: string,
+  birthdayId: string,
+  dateKey: string,
+  notificationTime: string,
+): Promise<boolean> {
+  const key = `birthday_delivery:${dateKey}:${birthdayId}:fcm`
+  const { error } = await supabase.from("settings").insert({
+    user_id: userId,
+    key,
+    value: JSON.stringify({ birthdayId, channel: "fcm", notificationTime, sentAt: new Date().toISOString() }),
+  })
+
+  if (!error) return true
+  if (error.code === "23505") {
+    console.log("[v0] Cron: Skipping duplicate delivery:", key)
+    return false
+  }
+
+  throw error
+}
+
 /**
  * Convert local time to UTC based on user's timezone
  * @param localTime - Time in HH:MM or HH:MM:SS format (in user's timezone)
@@ -88,6 +115,7 @@ export async function GET(request: NextRequest) {
       .in("key", ["default_notification_time", "default_notification_times", "timezone", "notifications_enabled"])
 
     const globalTimesMap = new Map<string, string[]>()
+    const usersWithMultipleTimesSetting = new Set<string>()
     const userTimezonesMap = new Map<string, string>()
     const userNotificationsEnabledMap = new Map<string, boolean>()
     
@@ -103,12 +131,14 @@ export async function GET(request: NextRequest) {
           }
           
           if (setting.key === "default_notification_time") {
+            if (usersWithMultipleTimesSetting.has(setting.user_id)) continue
             globalTimesMap.get(setting.user_id)!.push(setting.value)
           } else if (setting.key === "default_notification_times") {
             try {
               const times = JSON.parse(setting.value)
               if (Array.isArray(times)) {
-                globalTimesMap.get(setting.user_id)!.push(...times)
+                usersWithMultipleTimesSetting.add(setting.user_id)
+                globalTimesMap.set(setting.user_id, times)
               }
             } catch (e) {
               console.error("[v0] Cron: Error parsing default_notification_times:", e)
@@ -156,28 +186,24 @@ export async function GET(request: NextRequest) {
       // Collect all notification times for this birthday
       const notificationTimes: string[] = []
 
-      // 1. Individual notification times (notification_times array)
-      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
-        // Convert each time from user's local timezone to UTC
-        notificationTimes.push(...birthday.notification_times.map((t: string) => {
-          const normalizedTime = t.length === 5 ? `${t}:00` : t
-          return convertLocalTimeToUTC(normalizedTime, userTimezone)
-        }))
-      }
-
-      // 2. Individual notification time (legacy single time)
-      if (birthday.notification_time) {
-        notificationTimes.push(convertLocalTimeToUTC(birthday.notification_time, userTimezone))
-      }
-
-      // 3. Global notification times for this user
+      // Use global settings as the source of truth. Birthday-level values are
+      // retained only as a fallback for accounts that have not saved settings yet.
       const globalTimes = globalTimesMap.get(birthday.user_id)
       if (globalTimes && globalTimes.length > 0) {
-        // Convert each time from user's local timezone to UTC
         notificationTimes.push(...globalTimes.map(t => {
           const normalizedTime = t.length === 5 ? `${t}:00` : t
           return convertLocalTimeToUTC(normalizedTime, userTimezone)
         }))
+      } else {
+        if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
+          notificationTimes.push(...birthday.notification_times.map((t: string) => {
+            const normalizedTime = t.length === 5 ? `${t}:00` : t
+            return convertLocalTimeToUTC(normalizedTime, userTimezone)
+          }))
+        }
+        if (birthday.notification_time) {
+          notificationTimes.push(convertLocalTimeToUTC(birthday.notification_time, userTimezone))
+        }
       }
 
       // Remove duplicates
@@ -231,7 +257,17 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      if (tokens && tokens.length > 0) {
+      const shouldSendFcm = tokens && tokens.length > 0
+        ? await claimDelivery(
+            supabase,
+            birthday.user_id,
+            birthday.id.toString(),
+            getLocalDateKey(nowInUserTimezone),
+            currentTime,
+          )
+        : false
+
+      if (tokens && tokens.length > 0 && shouldSendFcm) {
         const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
 
         console.log(

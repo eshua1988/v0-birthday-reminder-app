@@ -284,6 +284,7 @@ export default function SettingsPage() {
         .from("settings")
         .select("telegram_chat_id, telegram_username")
         .eq("user_id", userId)
+        .not("telegram_chat_id", "is", null)
         .limit(1)
         .maybeSingle()
       if (data?.telegram_chat_id) {
@@ -324,6 +325,7 @@ export default function SettingsPage() {
       .from("settings")
       .select("telegram_chat_id, telegram_username")
       .eq("user_id", user.id)
+      .not("telegram_chat_id", "is", null)
       .limit(1)
       .maybeSingle()
     if (telegramSettings?.telegram_chat_id) {
@@ -629,37 +631,24 @@ export default function SettingsPage() {
           if (timesArrayForDB.length === 0) {
             // nothing to apply
           } else {
-            // Fetch existing birthdays for this user to merge times instead of overwriting
+            // Keep existing birthdays in sync with the currently selected reminder times.
             const { data: userBirthdays, error: fetchError } = await supabase
               .from("birthdays")
-              .select("id, notification_times, notification_time")
+              .select("id")
               .eq("user_id", user.id)
 
             if (fetchError) {
               console.error("[v0] Error fetching birthdays for merge:", fetchError)
             } else if (userBirthdays && userBirthdays.length > 0) {
               const updatePromises = userBirthdays.map((b: any) => {
-                const existingTimes: string[] = []
-                if (b.notification_times && Array.isArray(b.notification_times)) {
-                  existingTimes.push(...b.notification_times.map((x: any) => (typeof x === 'string' ? (x.length === 5 ? `${x}:00` : x) : String(x))))
-                }
-                if (b.notification_time) {
-                  const nt = typeof b.notification_time === 'string' ? b.notification_time : String(b.notification_time)
-                  existingTimes.push(nt.length === 5 ? `${nt}:00` : nt)
-                }
-
-                // Merge unique
-                const merged = Array.from(new Set([...existingTimes, ...timesArrayForDB]))
-
-                const legacy = merged[0] ? merged[0].slice(0,5) : null
-
-                return supabase.from("birthdays").update({ notification_times: merged, notification_time: legacy }).eq("id", b.id)
+                const legacy = timesArrayForDB[0].slice(0, 5)
+                return supabase.from("birthdays").update({ notification_times: timesArrayForDB, notification_time: legacy }).eq("id", b.id)
               })
 
               // Run updates in parallel
               try {
                 await Promise.all(updatePromises)
-                console.log("[v0] Merged and applied default notification times to existing birthdays for user:", user.id)
+                console.log("[v0] Replaced notification times for existing birthdays for user:", user.id)
               } catch (upErr) {
                 console.error('[v0] Error applying merged times to birthdays:', upErr)
               }
@@ -668,7 +657,7 @@ export default function SettingsPage() {
             }
           }
         } catch (err) {
-          console.error('[v0] Failed to merge/apply default times to birthdays:', err)
+          console.error('[v0] Failed to replace default times on birthdays:', err)
         }
 
       // Save theme settings
@@ -784,7 +773,7 @@ export default function SettingsPage() {
 
   const addDefaultNotificationTime = () => {
     if (defaultNotificationTimes.length < 4) {
-      setDefaultNotificationTimes([...defaultNotificationTimes, "09"])
+      setDefaultNotificationTimes([...defaultNotificationTimes, "09:00"])
     }
   }
 

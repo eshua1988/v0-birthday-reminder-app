@@ -37,12 +37,27 @@ export function NotificationManager() {
     const { data: globalSettings } = await supabase
       .from("settings")
       .select("*")
-      .eq("key", "notifications_enabled")
-      .maybeSingle()
+      .in("key", ["notifications_enabled", "default_notification_time", "default_notification_times"])
 
-    if (globalSettings?.value !== "true") {
+    const notificationsEnabled = globalSettings?.find((setting: { key: string; value: string }) => setting.key === "notifications_enabled")
+    if (notificationsEnabled?.value !== "true") {
       console.log("[v0] Global notifications disabled")
       return
+    }
+
+    const configuredTimes: string[] = []
+    const defaultTimesSetting = globalSettings?.find((setting: { key: string; value: string }) => setting.key === "default_notification_times")
+    if (defaultTimesSetting?.value) {
+      try {
+        const parsedTimes = JSON.parse(defaultTimesSetting.value)
+        if (Array.isArray(parsedTimes)) configuredTimes.push(...parsedTimes.map((time: string) => time.slice(0, 5)))
+      } catch (error) {
+        console.error("[v0] Error parsing default notification times:", error)
+      }
+    }
+    const defaultTimeSetting = globalSettings?.find((setting: { key: string; value: string }) => setting.key === "default_notification_time")
+    if (configuredTimes.length === 0 && defaultTimeSetting?.value) {
+      configuredTimes.push(defaultTimeSetting.value.slice(0, 5))
     }
 
     const now = new Date()
@@ -87,15 +102,23 @@ export function NotificationManager() {
       if (!isBirthdayToday) return
 
       // Check against notification_times array (HH:MM:00) and legacy notification_time (HH:MM)
-      const times: string[] = []
-      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
-        times.push(...birthday.notification_times.map((t: string) => t.slice(0, 5)))
-      }
-      if (birthday.notification_time) {
-        times.push(birthday.notification_time.slice(0, 5))
+      const times: string[] = [...configuredTimes]
+      if (times.length === 0) {
+        if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
+          times.push(...birthday.notification_times.map((t: string) => t.slice(0, 5)))
+        }
+        if (birthday.notification_time) {
+          times.push(birthday.notification_time.slice(0, 5))
+        }
       }
 
       if (times.includes(currentTimeHHMM)) {
+        const deliveryKey = `birthday-browser-delivery:${currentDate}:${birthday.id}`
+        if (localStorage.getItem(deliveryKey)) {
+          console.log("[v0] Browser: Skipping duplicate delivery for:", birthday.id)
+          return
+        }
+
         const age = now.getFullYear() - birthDate.getFullYear()
         const ageText = formatAge(age)
         const message = `${birthday.first_name} ${birthday.last_name} — сегодня исполняется ${ageText}!`
@@ -107,6 +130,7 @@ export function NotificationManager() {
           tag: `birthday-${birthday.id}`,
           requireInteraction: true,
         })
+        localStorage.setItem(deliveryKey, new Date().toISOString())
       }
     })
   }

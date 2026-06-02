@@ -4,6 +4,34 @@ import { getFirebaseMessaging, isFirebaseAdminConfigured } from "@/lib/firebase-
 import { sendBirthdayReminder } from "@/lib/telegram"
 import { formatAge } from "@/lib/utils"
 
+function getLocalDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+async function claimDelivery(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  userId: string,
+  birthdayId: string,
+  dateKey: string,
+  channel: "fcm" | "telegram",
+  notificationTime: string,
+): Promise<boolean> {
+  const key = `birthday_delivery:${dateKey}:${birthdayId}:${channel}`
+  const { error } = await supabase.from("settings").insert({
+    user_id: userId,
+    key,
+    value: JSON.stringify({ birthdayId, channel, notificationTime, sentAt: new Date().toISOString() }),
+  })
+
+  if (!error) return true
+  if (error.code === "23505") {
+    console.log("[v0] Cron: Skipping duplicate delivery:", key)
+    return false
+  }
+
+  throw error
+}
+
 // This endpoint should be called by a cron job (e.g., Vercel Cron)
 // Configure in vercel.json:
 // {
@@ -61,6 +89,7 @@ export async function GET(request: NextRequest) {
       .select("*")
 
     const globalTimesMap = new Map<string, string[]>()
+    const usersWithMultipleTimesSetting = new Set<string>()
     const userTimezonesMap = new Map<string, string>()
     const userTelegramMap = new Map<string, string>() // user_id -> telegram_chat_id
     const userEmailMap = new Map<string, string>() // user_id -> email
@@ -98,18 +127,17 @@ export async function GET(request: NextRequest) {
         
         // Load notification times
         if (setting.key === "default_notification_time") {
+          if (usersWithMultipleTimesSetting.has(setting.user_id)) continue
           if (!globalTimesMap.has(setting.user_id)) {
             globalTimesMap.set(setting.user_id, [])
           }
           globalTimesMap.get(setting.user_id)!.push(setting.value)
         } else if (setting.key === "default_notification_times") {
-          if (!globalTimesMap.has(setting.user_id)) {
-            globalTimesMap.set(setting.user_id, [])
-          }
           try {
             const times = JSON.parse(setting.value)
             if (Array.isArray(times)) {
-              globalTimesMap.get(setting.user_id)!.push(...times)
+              usersWithMultipleTimesSetting.add(setting.user_id)
+              globalTimesMap.set(setting.user_id, times)
             }
           } catch (e) {
             console.error("[v0] Cron: Error parsing default_notification_times:", e)
@@ -186,36 +214,29 @@ export async function GET(request: NextRequest) {
         user_id: birthday.user_id,
       })
 
-      // 1. Individual notification times (notification_times array)
-      if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
-        // Normalize to HH:MM:SS format
-        notificationTimes.push(...birthday.notification_times.map((t: string) => 
-          t.length === 5 ? `${t}:00` : t
-        ))
-        console.log("[v0] Cron: Added individual notification_times array:", birthday.notification_times)
-      }
-
-      // 2. Individual notification time (legacy single time)
-      if (birthday.notification_time) {
-        // Normalize to HH:MM:SS format
-        const time = birthday.notification_time
-        notificationTimes.push(time.length === 5 ? `${time}:00` : time)
-        console.log("[v0] Cron: Added individual notification_time:", birthday.notification_time)
-      }
-
-      // 3. Global notification times for this user
+      // Use global settings as the source of truth. Birthday-level values are
+      // retained only as a fallback for accounts that have not saved settings yet.
       const globalTimes = globalTimesMap.get(birthday.user_id)
       console.log("[v0] Cron: Global times for user", birthday.user_id, ":", globalTimes)
       
       if (globalTimes && globalTimes.length > 0) {
-        // Normalize to HH:MM:SS format
         notificationTimes.push(...globalTimes.map(t => 
           t.length === 5 ? `${t}:00` : t
         ))
         console.log("[v0] Cron: Added global times:", globalTimes)
+      } else {
+        if (birthday.notification_times && Array.isArray(birthday.notification_times)) {
+          notificationTimes.push(...birthday.notification_times.map((t: string) =>
+            t.length === 5 ? `${t}:00` : t
+          ))
+        }
+        if (birthday.notification_time) {
+          const time = birthday.notification_time
+          notificationTimes.push(time.length === 5 ? `${time}:00` : time)
+        }
       }
 
-      // 4. If no notification times found anywhere, skip this birthday
+      // If no notification times found anywhere, skip this birthday
       if (notificationTimes.length === 0) {
         console.log("[v0] Cron: No notification times configured for this birthday, skipping")
         continue
@@ -242,7 +263,12 @@ export async function GET(request: NextRequest) {
       // Get FCM tokens for this user
       const { data: tokens } = await supabase.from("fcm_tokens").select("token").eq("user_id", birthday.user_id)
 
-      if (tokens && tokens.length > 0) {
+      const deliveryDate = getLocalDateKey(userNow)
+      const shouldSendFcm = tokens && tokens.length > 0
+        ? await claimDelivery(supabase, birthday.user_id, birthday.id.toString(), deliveryDate, "fcm", userCurrentTime)
+        : false
+
+      if (tokens && tokens.length > 0 && shouldSendFcm) {
         const fcmTokens = (tokens as { token: string }[]).map((t) => t.token)
 
         console.log(
@@ -352,7 +378,11 @@ export async function GET(request: NextRequest) {
 
       // Also send via Telegram if user has linked their account
       const telegramChatId = userTelegramMap.get(birthday.user_id)
-      if (telegramChatId) {
+      const shouldSendTelegram = telegramChatId
+        ? await claimDelivery(supabase, birthday.user_id, birthday.id.toString(), deliveryDate, "telegram", userCurrentTime)
+        : false
+
+      if (telegramChatId && shouldSendTelegram) {
         const age = userNow.getFullYear() - birthDate.getFullYear()
         const fullName = birthday.name || `${birthday.first_name} ${birthday.last_name}`
         
