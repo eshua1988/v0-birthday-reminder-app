@@ -70,7 +70,7 @@ export const GoogleSheetsSettings: React.FC = () => {
   const { toast } = useToast()
   const [autoSync, setAutoSync] = useState(false)
   const [autoDeleteCheck, setAutoDeleteCheck] = useState(false)
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   const [connections, setConnections] = useState<SheetConnection[]>([])
   const [lists, setLists] = useState<BirthdayList[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)

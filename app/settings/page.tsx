@@ -50,9 +50,9 @@ export default function SettingsPage() {
   const [isLoadingTimezone, setIsLoadingTimezone] = useState(false)
   const [browserPermission, setBrowserPermission] = useState(checkNotificationSupport())
   const [openSections, setOpenSections] = useState({
-    telegram: true,
-    notifications: true,
-    theme: true,
+    telegram: false,
+    notifications: false,
+    theme: false,
   })
 
   const toggleSection = (section: keyof typeof openSections) => {

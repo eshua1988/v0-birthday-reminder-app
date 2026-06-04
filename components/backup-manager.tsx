@@ -21,7 +21,7 @@ export function BackupManager() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [sheetSettings, setSheetSettings] = useState<{ spreadsheet_id?: string; sheet_range?: string; autoSync?: boolean; autoDeleteCheck?: boolean; connections?: any[] } | null>(null)
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   // Load Google Sheets settings for current user
   const loadSheetSettings = async () => {
