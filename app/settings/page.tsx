@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { checkNotificationSupport, requestNotificationPermission, sendNotification } from "@/lib/notifications"
-import { Bell, BellOff, AlertCircle, Info, Plus, X, Languages, Moon, Sun, Clock, Send, Trash2, Loader2 } from "lucide-react"
+import { Bell, BellOff, AlertCircle, Info, Plus, X, Languages, Moon, Sun, Clock, Send, Trash2, Loader2, ChevronDown } from "lucide-react"
 import { useLocale } from "@/lib/locale-context"
 import type { Locale } from "@/lib/i18n"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -49,6 +49,15 @@ export default function SettingsPage() {
   const [isLoadingTheme, setIsLoadingTheme] = useState(false)
   const [isLoadingTimezone, setIsLoadingTimezone] = useState(false)
   const [browserPermission, setBrowserPermission] = useState(checkNotificationSupport())
+  const [openSections, setOpenSections] = useState({
+    telegram: true,
+    notifications: true,
+    theme: true,
+  })
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
 
   useEffect(() => {
     loadSettings()
@@ -832,14 +841,24 @@ export default function SettingsPage() {
           <GoogleSheetsSettings />
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Send className="h-5 w-5 text-[#0088cc]" />
-                Telegram Bot
-              </CardTitle>
-              <CardDescription>
-                {t.telegramBotDescription || "Подключите Telegram для получения уведомлений"}
-              </CardDescription>
+              <button
+                type="button"
+                onClick={() => toggleSection("telegram")}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <div className="space-y-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Send className="h-5 w-5 text-[#0088cc]" />
+                    Telegram Bot
+                  </CardTitle>
+                  <CardDescription>
+                    {t.telegramBotDescription || "Подключите Telegram для получения уведомлений"}
+                  </CardDescription>
+                </div>
+                <ChevronDown className={cn("mt-1 h-5 w-5 text-muted-foreground transition-transform", openSections.telegram && "rotate-180")} />
+              </button>
             </CardHeader>
+            {openSections.telegram && (
             <CardContent>
               {telegramLinked ? (
                 <div className="space-y-3">
@@ -919,13 +938,24 @@ export default function SettingsPage() {
                 </div>
               )}
             </CardContent>
+            )}
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Оповещения</CardTitle>
-              <CardDescription>Настройте время оповещения о днях рождения</CardDescription>
+              <button
+                type="button"
+                onClick={() => toggleSection("notifications")}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <div className="space-y-2">
+                  <CardTitle>Оповещения</CardTitle>
+                  <CardDescription>Настройте время оповещения о днях рождения</CardDescription>
+                </div>
+                <ChevronDown className={cn("mt-1 h-5 w-5 text-muted-foreground transition-transform", openSections.notifications && "rotate-180")} />
+              </button>
             </CardHeader>
+            {openSections.notifications && (
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
@@ -1026,18 +1056,29 @@ export default function SettingsPage() {
               </Button>
               {/* Default times теперь применяются ко всем карточкам автоматически */}
             </CardContent>
+            )}
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Moon className="h-5 w-5" />
-                Тема оформления
-              </CardTitle>
-              <CardDescription>
-                Выберите цветовую тему приложения
-              </CardDescription>
+              <button
+                type="button"
+                onClick={() => toggleSection("theme")}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <div className="space-y-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Moon className="h-5 w-5" />
+                    Тема оформления
+                  </CardTitle>
+                  <CardDescription>
+                    Выберите цветовую тему приложения
+                  </CardDescription>
+                </div>
+                <ChevronDown className={cn("mt-1 h-5 w-5 text-muted-foreground transition-transform", openSections.theme && "rotate-180")} />
+              </button>
             </CardHeader>
+            {openSections.theme && (
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1144,6 +1185,7 @@ export default function SettingsPage() {
                 Настройки темы сохраняются автоматически
               </div>
             </CardContent>
+            )}
           </Card>
 
         </div>

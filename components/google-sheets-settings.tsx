@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Settings, ExternalLink, Plus, Trash2, Upload, Download, TableProperties } from "lucide-react"
+import { ChevronDown, Settings, ExternalLink, Plus, Trash2, Upload, Download, TableProperties } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 const supabase = createClient()
 
@@ -69,6 +70,7 @@ export const GoogleSheetsSettings: React.FC = () => {
   const { toast } = useToast()
   const [autoSync, setAutoSync] = useState(false)
   const [autoDeleteCheck, setAutoDeleteCheck] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
   const [connections, setConnections] = useState<SheetConnection[]>([])
   const [lists, setLists] = useState<BirthdayList[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
@@ -402,12 +404,20 @@ export const GoogleSheetsSettings: React.FC = () => {
     <Card>
       <CardHeader>
         <div className="w-full flex items-start justify-between">
-          <div>
-            <CardTitle>Google Sheets</CardTitle>
-            <CardDescription>Синхронизация с вашими таблицами</CardDescription>
+          <button
+            type="button"
+            onClick={() => setIsOpen(prev => !prev)}
+            className="flex w-full items-start justify-between gap-4 text-left"
+          >
+            <div className="space-y-2">
+              <CardTitle>Google Sheets</CardTitle>
+              <CardDescription>Синхронизация с вашими таблицами</CardDescription>
+            </div>
+            <ChevronDown className={cn("mt-1 h-5 w-5 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+          </button>
           </div>
-        </div>
       </CardHeader>
+      {isOpen && (
       <CardContent className="space-y-4">
 
         {/* Global toggles */}
@@ -585,6 +595,7 @@ export const GoogleSheetsSettings: React.FC = () => {
         </Dialog>
 
       </CardContent>
+      )}
     </Card>
   )
 }

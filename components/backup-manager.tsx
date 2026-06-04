@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Download, Upload, FileText, Table2 } from "lucide-react"
+import { ChevronDown, Download, Upload, FileText, Table2 } from "lucide-react"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { useLocale } from "@/lib/locale-context"
 import { format, parse } from "date-fns"
 import { Birthday } from "@/types/birthday"
+import { cn } from "@/lib/utils"
 
 const supabase = createClient()
 
@@ -20,6 +21,7 @@ export function BackupManager() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [sheetSettings, setSheetSettings] = useState<{ spreadsheet_id?: string; sheet_range?: string; autoSync?: boolean; autoDeleteCheck?: boolean; connections?: any[] } | null>(null)
+  const [isOpen, setIsOpen] = useState(true)
 
   // Load Google Sheets settings for current user
   const loadSheetSettings = async () => {
@@ -901,11 +903,21 @@ export function BackupManager() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t.backupAndRestore || "Резервное копирование и восстановление"}</CardTitle>
-        <CardDescription>
-          {t.backupDescription || "Экспортируйте и импортируйте все данные о днях рождения"}
-        </CardDescription>
+        <button
+          type="button"
+          onClick={() => setIsOpen(prev => !prev)}
+          className="flex w-full items-start justify-between gap-4 text-left"
+        >
+          <div className="space-y-2">
+            <CardTitle>{t.backupAndRestore || "Резервное копирование и восстановление"}</CardTitle>
+            <CardDescription>
+              {t.backupDescription || "Экспортируйте и импортируйте все данные о днях рождения"}
+            </CardDescription>
+          </div>
+          <ChevronDown className={cn("mt-1 h-5 w-5 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+        </button>
       </CardHeader>
+      {isOpen && (
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <h4 className="text-sm font-medium">{t.exportData || "Экспорт данных"}</h4>
@@ -949,6 +961,7 @@ export function BackupManager() {
           </div>
         </div>
       </CardContent>
+      )}
     </Card>
   )
 }
