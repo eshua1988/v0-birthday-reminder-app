@@ -14,6 +14,7 @@ import { BirthdayList } from "@/components/birthday-list"
 import { BirthdayTable } from "@/components/birthday-table"
 import { BirthdayForm } from "@/components/birthday-form"
 import { BulkAddForm } from "@/components/bulk-add-form"
+import { BirthdayCalendarView } from "@/app/calendar/page"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Users, Search, X, Copy, Share2, Trash2, FolderPlus, CheckCheck } from "lucide-react"
@@ -27,11 +28,14 @@ interface HistoryState {
   birthdays: Birthday[]
 }
 
+type HomeSection = "upcoming" | "calendar"
+
 export default function HomePage() {
   const { t } = useLocale()
   const isMobile = useIsMobile()
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
   const [filteredBirthdays, setFilteredBirthdays] = useState<Birthday[]>([])
+  const [homeSection, setHomeSection] = useState<HomeSection>("upcoming")
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("viewMode")
@@ -640,8 +644,8 @@ export default function HomePage() {
 
       <div className="flex-1 w-full">
         <Header
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
+          viewMode={homeSection === "upcoming" ? viewMode : undefined}
+          onViewModeChange={homeSection === "upcoming" ? handleViewModeChange : undefined}
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
           onUndo={handleUndo}
@@ -649,7 +653,37 @@ export default function HomePage() {
         />
 
         <main className={cn(isMobile ? "p-0 pt-14" : "ml-16 pt-14")}>
+          <div className={cn(isMobile ? "px-4 pt-4" : "px-8 pt-8")}>
+            <div className="max-w-7xl mx-auto">
+              <div className="inline-flex w-full max-w-xl rounded-xl bg-muted/80 p-1">
+                <button
+                  onClick={() => setHomeSection("upcoming")}
+                  className={cn(
+                    "flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors",
+                    homeSection === "upcoming"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t.upcomingBirthdays}
+                </button>
+                <button
+                  onClick={() => setHomeSection("calendar")}
+                  className={cn(
+                    "flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors",
+                    homeSection === "calendar"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t.calendar}
+                </button>
+              </div>
+            </div>
+          </div>
 
+          {homeSection === "upcoming" ? (
+          <>
           {/* ===== Browser-style tab bar ===== */}
           <div className="flex items-end gap-0 overflow-x-auto bg-muted/30 border-b border-border px-2 pt-1 min-h-[40px]">
             {/* "All" tab */}
@@ -918,6 +952,14 @@ export default function HomePage() {
           </div>
 
           </div>{/* end p-8 wrapper */}
+          </>
+          ) : (
+            <div className={cn(isMobile ? "p-4 pb-20" : "p-8")}>
+              <div className="max-w-7xl mx-auto">
+                <BirthdayCalendarView embedded />
+              </div>
+            </div>
+          )}
         </main>
       </div>
 

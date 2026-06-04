@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 
 type CalendarView = "month" | "week" | "year"
 
-export default function CalendarPage() {
+export function BirthdayCalendarView({ embedded = false }: { embedded?: boolean } = {}) {
   const { t, setLocale, locale } = useLocale()
   const isMobile = useIsMobile()
   const languages: { value: Locale; label: string; flag: string }[] = [
@@ -395,10 +395,10 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
+    <div className={cn(embedded ? "space-y-6" : "flex min-h-screen bg-background")}>
+      {!embedded && <Sidebar />}
 
-      <main className={cn("flex-1", isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
+      <main className={cn("flex-1", embedded ? "p-0" : isMobile ? "p-4 pt-20" : "p-8 pt-24 md:ml-16")}>
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -721,4 +721,8 @@ export default function CalendarPage() {
       />
     </div>
   )
+}
+
+export default function CalendarPage() {
+  return <BirthdayCalendarView />
 }
