@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Settings, Menu, X, LogOut, RotateCw } from "lucide-react"
+import { CalendarClock, Home, Settings, Menu, X, LogOut, RotateCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -159,6 +159,7 @@ export function Sidebar() {
 
   const links: Array<{ href: string; icon?: typeof Home; emoji?: string; label: string }> = [
     { href: "/", icon: Home, label: t.home },
+    { href: "/reminders", icon: CalendarClock, label: "Календарь напоминаний" },
     { href: "/prayer-assignments", emoji: "🙏", label: "Молитвенные назначения" },
     { href: "/settings", icon: Settings, label: t.settings },
   ]
