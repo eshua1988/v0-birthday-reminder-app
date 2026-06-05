@@ -31,6 +31,8 @@ type ManualReminder = {
   sentGroupAt?: string
 }
 
+type ReminderView = "calendar" | "bulk"
+
 const SETTINGS_KEY = "manual_reminders"
 
 function formatDateKey(date: Date) {
@@ -65,6 +67,10 @@ function makeEmptyReminder(date: string): ManualReminder {
   }
 }
 
+function makeBulkReminder(date = formatDateKey(new Date())): ManualReminder {
+  return makeEmptyReminder(date)
+}
+
 export default function RemindersPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -72,10 +78,12 @@ export default function RemindersPage() {
   const supabase = createClient()
   const [userId, setUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [view, setView] = useState<ReminderView>("calendar")
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [reminders, setReminders] = useState<ManualReminder[]>([])
   const [draft, setDraft] = useState<ManualReminder>(() => makeEmptyReminder(formatDateKey(new Date())))
+  const [bulkDrafts, setBulkDrafts] = useState<ManualReminder[]>(() => [makeBulkReminder()])
   const [isSaving, setIsSaving] = useState(false)
 
   const monthNames = [
@@ -227,6 +235,80 @@ export default function RemindersPage() {
     }
   }
 
+  const updateBulkDraft = (id: string, updates: Partial<ManualReminder>) => {
+    setBulkDrafts((prev) => prev.map((reminder) => (reminder.id === id ? { ...reminder, ...updates } : reminder)))
+  }
+
+  const addBulkRow = () => {
+    const date = bulkDrafts[bulkDrafts.length - 1]?.date || formatDateKey(new Date())
+    setBulkDrafts((prev) => [...prev, makeBulkReminder(date)])
+  }
+
+  const removeBulkRow = (id: string) => {
+    setBulkDrafts((prev) => (prev.length === 1 ? [makeBulkReminder()] : prev.filter((reminder) => reminder.id !== id)))
+  }
+
+  const resetBulkRows = () => {
+    setBulkDrafts([makeBulkReminder()])
+  }
+
+  const saveBulkRows = async () => {
+    const prepared = bulkDrafts
+      .map((reminder) => ({
+        ...reminder,
+        fullName: reminder.fullName.trim(),
+        text: reminder.text.trim(),
+        telegramPrivate: reminder.telegramPrivate.trim(),
+        telegramGroup: reminder.telegramGroup.trim(),
+      }))
+      .filter((reminder) => reminder.fullName || reminder.text || reminder.telegramPrivate || reminder.telegramGroup)
+
+    if (prepared.length === 0) {
+      toast({
+        title: "Добавьте события",
+        description: "Заполните хотя бы одну строку для сохранения",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const invalid = prepared.find(
+      (reminder) =>
+        !reminder.date ||
+        !reminder.time ||
+        !reminder.fullName ||
+        !reminder.text ||
+        (reminder.sendPrivate && !reminder.telegramPrivate) ||
+        (reminder.sendGroup && !reminder.telegramGroup),
+    )
+
+    if (invalid) {
+      toast({
+        title: "Проверьте строки",
+        description: "Для каждого события нужны дата, время, имя, текст и выбранные Telegram-получатели",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const next = [...reminders, ...prepared].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+
+    try {
+      await saveReminders(next)
+      resetBulkRows()
+      toast({
+        title: "События добавлены",
+        description: `Сохранено напоминаний: ${prepared.length}`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Ошибка сохранения",
+        description: error?.message || "Не удалось сохранить события",
+        variant: "destructive",
+      })
+    }
+  }
+
   const days = Array.from({ length: getDaysInMonth(currentDate) }, (_, index) => index + 1)
   const emptyDays = Array.from({ length: getFirstDayOffset(currentDate) })
   const todayKey = formatDateKey(new Date())
@@ -248,17 +330,37 @@ export default function RemindersPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Сегодня</Button>
-              <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            {view === "calendar" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Сегодня</Button>
+                <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
+          <div className="inline-flex rounded-lg bg-muted p-1">
+            <Button
+              variant={view === "calendar" ? "default" : "ghost"}
+              onClick={() => setView("calendar")}
+              className="min-w-36"
+            >
+              Календарь
+            </Button>
+            <Button
+              variant={view === "bulk" ? "default" : "ghost"}
+              onClick={() => setView("bulk")}
+              className="min-w-44"
+            >
+              Несколько событий
+            </Button>
+          </div>
+
+          {view === "calendar" ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -321,6 +423,122 @@ export default function RemindersPage() {
               )}
             </CardContent>
           </Card>
+          ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>Несколько событий</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={resetBulkRows} disabled={isSaving}>
+                    Сбросить
+                  </Button>
+                  <Button variant="outline" onClick={addBulkRow} disabled={isSaving}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Добавить строку
+                  </Button>
+                  <Button onClick={saveBulkRows} disabled={isSaving}>
+                    Сохранить все
+                  </Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {bulkDrafts.map((reminder, index) => (
+                <div key={reminder.id} className="rounded-lg border bg-card p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="font-semibold">Событие {index + 1}</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => removeBulkRow(reminder.id)}
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`bulk-date-${reminder.id}`}>Дата</Label>
+                      <Input
+                        id={`bulk-date-${reminder.id}`}
+                        type="date"
+                        value={reminder.date}
+                        onChange={(event) => updateBulkDraft(reminder.id, { date: event.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`bulk-time-${reminder.id}`}>Время</Label>
+                      <Input
+                        id={`bulk-time-${reminder.id}`}
+                        type="time"
+                        value={reminder.time}
+                        onChange={(event) => updateBulkDraft(reminder.id, { time: event.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label htmlFor={`bulk-name-${reminder.id}`}>Имя и фамилия</Label>
+                      <Input
+                        id={`bulk-name-${reminder.id}`}
+                        value={reminder.fullName}
+                        onChange={(event) => updateBulkDraft(reminder.id, { fullName: event.target.value })}
+                        placeholder="Например: Павел Когут"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor={`bulk-text-${reminder.id}`}>Текст напоминания</Label>
+                    <Textarea
+                      id={`bulk-text-${reminder.id}`}
+                      value={reminder.text}
+                      onChange={(event) => updateBulkDraft(reminder.id, { text: event.target.value })}
+                      placeholder="Что нужно напомнить"
+                      className="min-h-24"
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor={`bulk-private-switch-${reminder.id}`} className="cursor-pointer">Отправить в личку</Label>
+                        <Switch
+                          id={`bulk-private-switch-${reminder.id}`}
+                          checked={reminder.sendPrivate}
+                          onCheckedChange={(checked) => updateBulkDraft(reminder.id, { sendPrivate: checked })}
+                        />
+                      </div>
+                      <Input
+                        value={reminder.telegramPrivate}
+                        onChange={(event) => updateBulkDraft(reminder.id, { telegramPrivate: event.target.value })}
+                        placeholder="Telegram chat id или @username"
+                        disabled={!reminder.sendPrivate}
+                      />
+                    </div>
+
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor={`bulk-group-switch-${reminder.id}`} className="cursor-pointer">Отправить в группу</Label>
+                        <Switch
+                          id={`bulk-group-switch-${reminder.id}`}
+                          checked={reminder.sendGroup}
+                          onCheckedChange={(checked) => updateBulkDraft(reminder.id, { sendGroup: checked })}
+                        />
+                      </div>
+                      <Input
+                        value={reminder.telegramGroup}
+                        onChange={(event) => updateBulkDraft(reminder.id, { telegramGroup: event.target.value })}
+                        placeholder="@groupname или -100..."
+                        disabled={!reminder.sendGroup}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          )}
         </div>
       </main>
 
