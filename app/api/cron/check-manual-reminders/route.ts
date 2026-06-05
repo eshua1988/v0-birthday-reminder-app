@@ -8,6 +8,7 @@ type ManualReminder = {
   time: string
   fullName: string
   text: string
+  telegramMessage?: string
   telegramPrivate?: string
   telegramGroup?: string
   sendPrivate?: boolean
@@ -31,6 +32,13 @@ function escapeHtml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+}
+
+function sanitizeTelegramHtml(value: string) {
+  return escapeHtml(value).replace(
+    /&lt;(\/?)(b|strong|i|em|u|ins|s|strike|del|code|pre)&gt;/gi,
+    "<$1$2>",
+  )
 }
 
 function normalizeTime(value: string) {
@@ -58,6 +66,16 @@ function getNowForTimezone(now: Date, timezone: string) {
 }
 
 function buildMessage(reminder: ManualReminder) {
+  const customMessage = reminder.telegramMessage?.trim()
+
+  if (customMessage) {
+    return sanitizeTelegramHtml(customMessage)
+      .replaceAll("{name}", escapeHtml(reminder.fullName))
+      .replaceAll("{text}", escapeHtml(reminder.text))
+      .replaceAll("{date}", escapeHtml(reminder.date))
+      .replaceAll("{time}", escapeHtml(normalizeTime(reminder.time)))
+  }
+
   return [
     "🔔 <b>Напоминание</b>",
     "",

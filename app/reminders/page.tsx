@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, CalendarClock, ChevronLeft, ChevronRight, Clock, Plus, Trash2 } from "lucide-react"
+import { Bell, Bold, CalendarClock, ChevronLeft, ChevronRight, Clock, Code2, Italic, Plus, Trash2, Underline } from "lucide-react"
 import { Sidebar } from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,7 @@ type ManualReminder = {
   time: string
   fullName: string
   text: string
+  telegramMessage: string
   telegramPrivate: string
   telegramGroup: string
   sendPrivate: boolean
@@ -59,6 +60,7 @@ function makeEmptyReminder(date: string): ManualReminder {
     time: "09:00",
     fullName: "",
     text: "",
+    telegramMessage: "",
     telegramPrivate: "",
     telegramGroup: "",
     sendPrivate: true,
@@ -69,6 +71,10 @@ function makeEmptyReminder(date: string): ManualReminder {
 
 function makeBulkReminder(date = formatDateKey(new Date())): ManualReminder {
   return makeEmptyReminder(date)
+}
+
+function appendTelegramSnippet(value: string, snippet: string) {
+  return value ? `${value}\n${snippet}` : snippet
 }
 
 export default function RemindersPage() {
@@ -204,6 +210,7 @@ export default function RemindersPage() {
       ...draft,
       fullName: draft.fullName.trim(),
       text: draft.text.trim(),
+      telegramMessage: draft.telegramMessage.trim(),
       telegramPrivate: draft.telegramPrivate.trim(),
       telegramGroup: draft.telegramGroup.trim(),
     }
@@ -258,6 +265,7 @@ export default function RemindersPage() {
         ...reminder,
         fullName: reminder.fullName.trim(),
         text: reminder.text.trim(),
+        telegramMessage: reminder.telegramMessage.trim(),
         telegramPrivate: reminder.telegramPrivate.trim(),
         telegramGroup: reminder.telegramGroup.trim(),
       }))
@@ -499,6 +507,28 @@ export default function RemindersPage() {
                     />
                   </div>
 
+                  <div className="mt-4 space-y-3 rounded-lg border p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <Label htmlFor={`bulk-telegram-message-${reminder.id}`}>Текст для Telegram</Label>
+                        <p className="text-xs text-muted-foreground">Можно использовать HTML: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;code&gt; и переменные {"{name}"} {"{text}"} {"{date}"} {"{time}"}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="icon" title="Жирный" onClick={() => updateBulkDraft(reminder.id, { telegramMessage: appendTelegramSnippet(reminder.telegramMessage, "<b>{name}</b>") })}><Bold className="h-4 w-4" /></Button>
+                        <Button type="button" variant="outline" size="icon" title="Курсив" onClick={() => updateBulkDraft(reminder.id, { telegramMessage: appendTelegramSnippet(reminder.telegramMessage, "<i>{text}</i>") })}><Italic className="h-4 w-4" /></Button>
+                        <Button type="button" variant="outline" size="icon" title="Подчеркнуть" onClick={() => updateBulkDraft(reminder.id, { telegramMessage: appendTelegramSnippet(reminder.telegramMessage, "<u>Важно</u>") })}><Underline className="h-4 w-4" /></Button>
+                        <Button type="button" variant="outline" size="icon" title="Код" onClick={() => updateBulkDraft(reminder.id, { telegramMessage: appendTelegramSnippet(reminder.telegramMessage, "<code>{date} {time}</code>") })}><Code2 className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                    <Textarea
+                      id={`bulk-telegram-message-${reminder.id}`}
+                      value={reminder.telegramMessage}
+                      onChange={(event) => updateBulkDraft(reminder.id, { telegramMessage: event.target.value })}
+                      placeholder={"🔔 <b>Напоминание</b>\n\n<b>{name}</b>\n{text}\n\n📅 {date} {time}"}
+                      className="min-h-28"
+                    />
+                  </div>
+
                   <div className="mt-4 grid gap-4 lg:grid-cols-2">
                     <div className="space-y-3 rounded-lg border p-3">
                       <div className="flex items-center justify-between gap-3">
@@ -580,6 +610,28 @@ export default function RemindersPage() {
                 value={draft.text}
                 onChange={(event) => setDraft((prev) => ({ ...prev, text: event.target.value }))}
                 placeholder="Что нужно напомнить"
+                className="min-h-28"
+              />
+            </div>
+
+            <div className="space-y-3 rounded-lg border p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <Label htmlFor="reminder-telegram-message">Текст для Telegram</Label>
+                  <p className="text-xs text-muted-foreground">Можно использовать HTML: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;code&gt; и переменные {"{name}"} {"{text}"} {"{date}"} {"{time}"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="icon" title="Жирный" onClick={() => setDraft((prev) => ({ ...prev, telegramMessage: appendTelegramSnippet(prev.telegramMessage, "<b>{name}</b>") }))}><Bold className="h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" size="icon" title="Курсив" onClick={() => setDraft((prev) => ({ ...prev, telegramMessage: appendTelegramSnippet(prev.telegramMessage, "<i>{text}</i>") }))}><Italic className="h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" size="icon" title="Подчеркнуть" onClick={() => setDraft((prev) => ({ ...prev, telegramMessage: appendTelegramSnippet(prev.telegramMessage, "<u>Важно</u>") }))}><Underline className="h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" size="icon" title="Код" onClick={() => setDraft((prev) => ({ ...prev, telegramMessage: appendTelegramSnippet(prev.telegramMessage, "<code>{date} {time}</code>") }))}><Code2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              <Textarea
+                id="reminder-telegram-message"
+                value={draft.telegramMessage}
+                onChange={(event) => setDraft((prev) => ({ ...prev, telegramMessage: event.target.value }))}
+                placeholder={"🔔 <b>Напоминание</b>\n\n<b>{name}</b>\n{text}\n\n📅 {date} {time}"}
                 className="min-h-28"
               />
             </div>
