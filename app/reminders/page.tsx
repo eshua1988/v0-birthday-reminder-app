@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -33,8 +34,10 @@ type ManualReminder = {
 }
 
 type ReminderView = "calendar" | "bulk"
+type CalendarView = "month" | "week" | "year"
 
 const SETTINGS_KEY = "manual_reminders"
+const CALENDAR_VIEW_KEY = "manual_reminder_calendar_view"
 
 function formatDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
@@ -51,6 +54,30 @@ function getFirstDayOffset(date: Date) {
 
 function getDaysInMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+}
+
+function startOfWeek(date: Date) {
+  const result = new Date(date)
+  const day = result.getDay()
+  const diff = result.getDate() - day + (day === 0 ? -6 : 1)
+  result.setDate(diff)
+  result.setHours(0, 0, 0, 0)
+  return result
+}
+
+function addDays(date: Date, days: number) {
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
+}
+
+function parseDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function formatDisplayDate(date: Date) {
+  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 }
 
 function makeEmptyReminder(date: string): ManualReminder {
@@ -86,7 +113,15 @@ export default function RemindersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [view, setView] = useState<ReminderView>("calendar")
   const [currentDate, setCurrentDate] = useState(() => new Date())
+  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem(CALENDAR_VIEW_KEY) as CalendarView | null
+      if (saved === "month" || saved === "week" || saved === "year") return saved
+    }
+    return "month"
+  })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false)
   const [reminders, setReminders] = useState<ManualReminder[]>([])
   const [draft, setDraft] = useState<ManualReminder>(() => makeEmptyReminder(formatDateKey(new Date())))
   const [bulkDrafts, setBulkDrafts] = useState<ManualReminder[]>(() => [makeBulkReminder()])
@@ -161,6 +196,16 @@ export default function RemindersPage() {
   }, [reminders])
 
   const selectedReminders = selectedDate ? remindersByDate[selectedDate] || [] : []
+  const selectedDateObject = selectedDate ? parseDateKey(selectedDate) : null
+
+  const setCalendarViewAndSave = (value: CalendarView) => {
+    setCalendarView(value)
+    try {
+      sessionStorage.setItem(CALENDAR_VIEW_KEY, value)
+    } catch {
+      // sessionStorage can be unavailable in private browsing.
+    }
+  }
 
   const saveReminders = async (nextReminders: ManualReminder[]) => {
     if (!userId) return
@@ -182,9 +227,10 @@ export default function RemindersPage() {
     }
   }
 
-  const openDate = (dateKey: string) => {
+  const openDate = (dateKey: string, openDialog = false) => {
     setSelectedDate(dateKey)
     setDraft(makeEmptyReminder(dateKey))
+    if (openDialog) setIsReminderDialogOpen(true)
   }
 
   const addReminder = async () => {
@@ -317,9 +363,241 @@ export default function RemindersPage() {
     }
   }
 
+  const todayKey = formatDateKey(new Date())
   const days = Array.from({ length: getDaysInMonth(currentDate) }, (_, index) => index + 1)
   const emptyDays = Array.from({ length: getFirstDayOffset(currentDate) })
-  const todayKey = formatDateKey(new Date())
+  const weekStart = startOfWeek(currentDate)
+  const weekEnd = addDays(weekStart, 6)
+
+  const previousPeriod = () => {
+    if (calendarView === "year") {
+      setCurrentDate(new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1))
+    } else if (calendarView === "week") {
+      setCurrentDate(addDays(currentDate, -7))
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+    }
+  }
+
+  const nextPeriod = () => {
+    if (calendarView === "year") {
+      setCurrentDate(new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), 1))
+    } else if (calendarView === "week") {
+      setCurrentDate(addDays(currentDate, 7))
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+    }
+  }
+
+  const calendarTitle =
+    calendarView === "year"
+      ? String(currentDate.getFullYear())
+      : calendarView === "week"
+        ? `Неделя ${formatDisplayDate(weekStart)} - ${formatDisplayDate(weekEnd)}`
+        : `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+
+  const renderReminderPill = (reminder: ManualReminder) => (
+    <div key={reminder.id} className="truncate rounded bg-muted px-2 py-1 text-xs">
+      {reminder.time} {reminder.fullName}
+    </div>
+  )
+
+  const renderMonthView = () => {
+    const days = Array.from({ length: getDaysInMonth(currentDate) }, (_, index) => index + 1)
+    const emptyDays = Array.from({ length: getFirstDayOffset(currentDate) })
+
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-muted-foreground">
+          {weekDays.map((day) => (
+            <div key={day} className="py-2">{day}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-2">
+          {emptyDays.map((_, index) => (
+            <div key={`empty-${index}`} className="min-h-24 rounded-lg border border-transparent" />
+          ))}
+          {days.map((day) => {
+            const dateKey = formatDateKey(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))
+            const dayReminders = remindersByDate[dateKey] || []
+            const isToday = dateKey === todayKey
+            const isSelected = selectedDate === dateKey
+
+            return (
+              <button
+                key={dateKey}
+                onClick={() => openDate(dateKey)}
+                className={cn(
+                  "min-h-24 rounded-lg border bg-card p-2 text-left transition-colors hover:bg-muted/70",
+                  isToday && "border-primary",
+                  isSelected && "ring-2 ring-primary",
+                  dayReminders.length > 0 && "bg-primary/5",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={cn("font-semibold", isToday && "text-primary")}>{day}</span>
+                  {dayReminders.length > 0 && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+                      {dayReminders.length}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 space-y-1">
+                  {dayReminders.slice(0, 2).map(renderReminderPill)}
+                  {dayReminders.length > 2 && (
+                    <div className="text-xs text-muted-foreground">+{dayReminders.length - 2}</div>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  const renderWeekView = () => {
+    const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+
+    return (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        {days.map((date, index) => {
+          const dateKey = formatDateKey(date)
+          const dayReminders = remindersByDate[dateKey] || []
+          const isToday = dateKey === todayKey
+          const isSelected = selectedDate === dateKey
+
+          return (
+            <button
+              key={dateKey}
+              onClick={() => openDate(dateKey)}
+              className={cn(
+                "min-h-40 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/70",
+                isToday && "border-primary",
+                isSelected && "ring-2 ring-primary",
+                dayReminders.length > 0 && "bg-primary/5",
+              )}
+            >
+              <div className="mb-3 rounded-lg bg-muted p-3 text-center">
+                <div className="text-sm font-semibold text-muted-foreground">{weekDays[index]}</div>
+                <div className={cn("text-2xl font-bold", isToday && "text-primary")}>{date.getDate()}</div>
+              </div>
+              <div className="space-y-2">
+                {dayReminders.slice(0, 3).map(renderReminderPill)}
+                {dayReminders.length > 3 && (
+                  <div className="text-center text-xs text-muted-foreground">+{dayReminders.length - 3}</div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const renderYearView = () => (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {monthNames.map((monthName, monthIndex) => {
+        const monthReminders = reminders.filter((reminder) => {
+          const reminderDate = parseDateKey(reminder.date)
+          return reminderDate.getFullYear() === currentDate.getFullYear() && reminderDate.getMonth() === monthIndex
+        })
+
+        return (
+          <button
+            key={monthName}
+            onClick={() => {
+              setCurrentDate(new Date(currentDate.getFullYear(), monthIndex, 1))
+              setCalendarViewAndSave("month")
+            }}
+            className="rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/70"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="font-semibold">{monthName}</h3>
+              <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                {monthReminders.length}
+              </span>
+            </div>
+            <div className="space-y-1">
+              {monthReminders.slice(0, 4).map((reminder) => (
+                <div
+                  key={reminder.id}
+                  className="truncate rounded bg-muted px-2 py-1 text-xs"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    openDate(reminder.date, true)
+                  }}
+                >
+                  {parseDateKey(reminder.date).getDate()} · {reminder.time} {reminder.fullName}
+                </div>
+              ))}
+              {monthReminders.length > 4 && (
+                <div className="text-xs text-muted-foreground">+{monthReminders.length - 4}</div>
+              )}
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  const renderSelectedDateRecords = () => {
+    if (!selectedDate || !selectedDateObject) return null
+
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>
+              {formatDisplayDate(selectedDateObject)}
+            </CardTitle>
+            <Button
+              size="sm"
+              onClick={() => {
+                setDraft(makeEmptyReminder(selectedDate))
+                setIsReminderDialogOpen(true)
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {selectedReminders.length === 0 ? (
+            <p className="py-4 text-center text-muted-foreground">Нет напоминаний на эту дату</p>
+          ) : (
+            <div className="space-y-2">
+              {selectedReminders.map((reminder) => (
+                <div key={reminder.id} className="flex gap-3 rounded-lg border bg-card p-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Bell className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{reminder.fullName}</p>
+                      <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        {reminder.time}
+                      </span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{reminder.text}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      {reminder.sendPrivate && reminder.telegramPrivate && <span>Личка: {reminder.telegramPrivate}</span>}
+                      {reminder.sendGroup && reminder.telegramGroup && <span>Группа: {reminder.telegramGroup}</span>}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive" onClick={() => deleteReminder(reminder.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -340,11 +618,11 @@ export default function RemindersPage() {
 
             {view === "calendar" && (
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>
+                <Button variant="outline" size="icon" onClick={previousPeriod}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Сегодня</Button>
-                <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>
+                <Button variant="outline" size="icon" onClick={nextPeriod}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -369,10 +647,29 @@ export default function RemindersPage() {
           </div>
 
           {view === "calendar" ? (
+          <div className="space-y-4">
+          <ToggleGroup
+            type="single"
+            value={calendarView}
+            onValueChange={(value) => value && setCalendarViewAndSave(value as CalendarView)}
+            className={cn("rounded-lg bg-muted p-1", isMobile && "w-full")}
+          >
+            <ToggleGroupItem value="year" aria-label="Год" className={cn(isMobile && "flex-1")}>
+              Год
+            </ToggleGroupItem>
+            <ToggleGroupItem value="month" aria-label="Месяц" className={cn(isMobile && "flex-1")}>
+              Месяц
+            </ToggleGroupItem>
+            <ToggleGroupItem value="week" aria-label="Неделя" className={cn(isMobile && "flex-1")}>
+              Неделя
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+          {calendarView === "month" ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
+                <span>{calendarTitle}</span>
                 <span className="text-sm font-normal text-muted-foreground">{reminders.length} напоминаний</span>
               </CardTitle>
             </CardHeader>
@@ -431,6 +728,27 @@ export default function RemindersPage() {
               )}
             </CardContent>
           </Card>
+          ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{calendarTitle}</span>
+                <span className="text-sm font-normal text-muted-foreground">{reminders.length} напоминаний</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="py-12 text-center text-muted-foreground">Загрузка...</div>
+              ) : calendarView === "week" ? (
+                renderWeekView()
+              ) : (
+                renderYearView()
+              )}
+            </CardContent>
+          </Card>
+          )}
+          {(calendarView === "month" || calendarView === "week") && renderSelectedDateRecords()}
+          </div>
           ) : (
           <Card>
             <CardHeader>
@@ -572,7 +890,7 @@ export default function RemindersPage() {
         </div>
       </main>
 
-      <Dialog open={selectedDate !== null} onOpenChange={(open) => !open && setSelectedDate(null)}>
+      <Dialog open={isReminderDialogOpen} onOpenChange={setIsReminderDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Напоминания на {selectedDate}</DialogTitle>
@@ -708,7 +1026,7 @@ export default function RemindersPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedDate(null)}>Закрыть</Button>
+            <Button variant="outline" onClick={() => setIsReminderDialogOpen(false)}>Закрыть</Button>
             <Button onClick={addReminder} disabled={isSaving}>
               <Plus className="mr-2 h-4 w-4" />
               Добавить напоминание
