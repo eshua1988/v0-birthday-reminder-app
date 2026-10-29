@@ -29,10 +29,16 @@ function getCallbackUrl() {
   return `${siteUrl}/auth/callback`
 }
 
+function getPasswordResetUrl() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://v0-birthday-reminder-app-liart.vercel.app"
+  return `${siteUrl}/auth/reset-password`
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showEmailSuggestions, setShowEmailSuggestions] = useState(false)
@@ -157,6 +163,33 @@ export default function LoginPage() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/auth/sign-up")
+  }
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError("Введите email, на который нужно отправить ссылку для смены пароля.")
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const supabase = createClient()
+      if (!supabase) throw new Error("Supabase client не инициализирован.")
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getPasswordResetUrl(),
+      })
+
+      if (error) throw error
+      setNotice("Проверьте почту: отправлена новая ссылка для смены пароля.")
+    } catch (error: any) {
+      setError(error?.message || "Не удалось отправить ссылку для смены пароля.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -358,9 +391,18 @@ export default function LoginPage() {
                 </div>
 
                 {error && <p className="text-sm text-red-500">{error}</p>}
+                {notice && <p className="text-sm text-green-600">{notice}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? `${t.signInButton}...` : t.signInButton}
                 </Button>
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={isLoading}
+                  className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+                >
+                  Забыли пароль?
+                </button>
               </div>
               <div className="mt-4 text-center text-sm space-y-2">
                 <div>
